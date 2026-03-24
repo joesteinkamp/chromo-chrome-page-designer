@@ -1,0 +1,122 @@
+/**
+ * Inline text editing — double-click a selected element to edit its text content.
+ * Sets contentEditable, handles blur/Escape to save, sends TEXT_CHANGED message.
+ */
+
+import type { Message } from "../shared/messages";
+import { generateSelector } from "../shared/selector";
+
+let editingElement: HTMLElement | null = null;
+let originalText: string = "";
+let onEditComplete: (() => void) | null = null;
+
+export function startInlineEdit(
+  element: Element,
+  callback: () => void
+): boolean {
+  if (!(element instanceof HTMLElement)) return false;
+
+  // Only edit elements with direct text content
+  if (!hasEditableText(element)) return false;
+
+  editingElement = element;
+  originalText = element.textContent || "";
+  onEditComplete = callback;
+
+  element.contentEditable = "true";
+  element.classList.add("__pd-editing");
+  element.focus();
+
+  // Select all text
+  const range = document.createRange();
+  range.selectNodeContents(element);
+  const selection = window.getSelection();
+  selection?.removeAllRanges();
+  selection?.addRange(range);
+
+  element.addEventListener("blur", onBlur);
+  element.addEventListener("keydown", onKeyDown);
+
+  return true;
+}
+
+export function stopInlineEdit(): void {
+  if (!editingElement) return;
+  finishEdit(false);
+}
+
+export function isEditing(): boolean {
+  return editingElement !== null;
+}
+
+// --- Internal ---
+
+function onBlur(): void {
+  // Small delay to allow click-away to register
+  setTimeout(() => finishEdit(true), 50);
+}
+
+function onKeyDown(e: KeyboardEvent): void {
+  if (e.key === "Escape") {
+    e.preventDefault();
+    e.stopPropagation();
+    // Revert to original text
+    if (editingElement) {
+      editingElement.textContent = originalText;
+    }
+    finishEdit(false);
+  } else if (e.key === "Enter" && !e.shiftKey) {
+    // Single Enter commits (Shift+Enter for newline in block elements)
+    const tag = editingElement?.tagName.toLowerCase();
+    const isBlock = tag && ["p", "h1", "h2", "h3", "h4", "h5", "h6", "li", "span", "a", "button"].includes(tag);
+    if (isBlock) {
+      e.preventDefault();
+      finishEdit(true);
+    }
+  }
+}
+
+function finishEdit(save: boolean): void {
+  if (!editingElement) return;
+
+  const element = editingElement;
+  const newText = element.textContent || "";
+
+  element.contentEditable = "false";
+  element.classList.remove("__pd-editing");
+  element.removeEventListener("blur", onBlur);
+  element.removeEventListener("keydown", onKeyDown);
+
+  // Clear selection
+  window.getSelection()?.removeAllRanges();
+
+  if (save && newText !== originalText) {
+    const selector = generateSelector(element);
+    chrome.runtime.sendMessage({
+      type: "TEXT_CHANGED",
+      selector,
+      from: originalText,
+      to: newText,
+    } satisfies Message);
+  }
+
+  editingElement = null;
+  originalText = "";
+  onEditComplete?.();
+  onEditComplete = null;
+}
+
+function hasEditableText(element: Element): boolean {
+  // Check if element has direct text node children
+  for (const node of element.childNodes) {
+    if (node.nodeType === Node.TEXT_NODE && node.textContent?.trim()) {
+      return true;
+    }
+  }
+  // Also allow elements that are purely text containers
+  const children = element.children;
+  if (children.length === 0 && element.textContent?.trim()) {
+    return true;
+  }
+  return false;
+}

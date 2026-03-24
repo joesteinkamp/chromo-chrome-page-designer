@@ -1,0 +1,94 @@
+/* Page Designer overlay styles — prefixed to avoid collisions with host page */
+
+.__pd-overlay {
+  position: fixed !important;
+  pointer-events: none !important;
+  z-index: 2147483646 !important;
+  border: 2px solid #4f9eff !important;
+  border-radius: 2px !important;
+  background: rgba(79, 158, 255, 0.08) !important;
+  transition: all 0.05s ease-out !important;
+  display: none !important;
+  box-sizing: border-box !important;
+}
+
+.__pd-overlay--hover {
+  border-style: dashed !important;
+}
+
+.__pd-overlay--selected {
+  border-style: solid !important;
+  background: rgba(79, 158, 255, 0.05) !important;
+}
+
+.__pd-overlay--visible {
+  display: block !important;
+}
+
+.__pd-badge {
+  position: fixed !important;
+  z-index: 2147483647 !important;
+  pointer-events: none !important;
+  background: #4f9eff !important;
+  color: #fff !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+  font-size: 11px !important;
+  font-weight: 500 !important;
+  line-height: 1 !important;
+  padding: 3px 6px !important;
+  border-radius: 3px !important;
+  white-space: nowrap !important;
+  display: none !important;
+  box-sizing: border-box !important;
+}
+
+.__pd-badge--visible {
+  display: block !important;
+}
+
+/* Resize handles */
+.__pd-handle {
+  position: fixed !important;
+  z-index: 2147483647 !important;
+  width: 8px !important;
+  height: 8px !important;
+  background: #fff !important;
+  border: 1.5px solid #4f9eff !important;
+  border-radius: 1px !important;
+  pointer-events: auto !important;
+  box-sizing: border-box !important;
+  display: none !important;
+}
+
+.__pd-handle--visible {
+  display: block !important;
+}
+
+.__pd-handle--nw { cursor: nw-resize !important; }
+.__pd-handle--n  { cursor: n-resize !important; }
+.__pd-handle--ne { cursor: ne-resize !important; }
+.__pd-handle--e  { cursor: e-resize !important; }
+.__pd-handle--se { cursor: se-resize !important; }
+.__pd-handle--s  { cursor: s-resize !important; }
+.__pd-handle--sw { cursor: sw-resize !important; }
+.__pd-handle--w  { cursor: w-resize !important; }
+
+/* Drag insertion indicator */
+.__pd-insertion-line {
+  position: fixed !important;
+  z-index: 2147483647 !important;
+  pointer-events: none !important;
+  height: 2px !important;
+  background: #4f9eff !important;
+  display: none !important;
+}
+
+.__pd-insertion-line--visible {
+  display: block !important;
+}
+
+/* Inline editing highlight */
+.__pd-editing {
+  outline: 2px solid #4f9eff !important;
+  outline-offset: 2px !important;
+}

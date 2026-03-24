@@ -1,0 +1,91 @@
+/* Typography tab — compact Figma-style layout */
+
+.pd-typography {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* Labeled row */
+.pd-typography__row {
+  padding: 6px 12px;
+  border-top: 1px solid var(--pd-border);
+}
+
+.pd-typography__row:first-child {
+  border-top: none;
+}
+
+.pd-typography__row-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--pd-text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 6px;
+}
+
+.pd-typography__row-fields {
+  display: flex;
+  gap: 6px;
+  align-items: flex-start;
+}
+
+.pd-typography__row-fields > * {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Button group (alignment / transform / decoration) */
+.pd-typography__btn-group {
+  display: flex;
+  gap: 1px;
+  background: var(--pd-border);
+  border-radius: var(--pd-radius);
+  overflow: hidden;
+}
+
+.pd-typography__btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 28px;
+  min-width: 32px;
+  border: none;
+  background: var(--pd-bg-raised);
+  color: var(--pd-text-dim);
+  font-family: var(--pd-font);
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.1s, color 0.1s;
+  padding: 0 4px;
+  white-space: nowrap;
+}
+
+.pd-typography__btn:hover {
+  background: var(--pd-bg-hover);
+  color: var(--pd-text);
+}
+
+.pd-typography__btn--active {
+  background: var(--pd-accent-dim);
+  color: var(--pd-accent);
+}
+
+.pd-typography__btn--active:hover {
+  background: var(--pd-accent-dim);
+  color: var(--pd-accent);
+}
+
+/* Color row — inline with label */
+.pd-typography__color-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pd-typography__color-row .pd-color-picker {
+  flex: 1;
+}

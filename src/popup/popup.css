@@ -1,0 +1,49 @@
+.pd-popup {
+  width: 240px;
+  padding: 16px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: #1e1e1e;
+  color: #e0e0e0;
+}
+
+.pd-popup__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.pd-popup__icon {
+  color: #4f9eff;
+  font-size: 16px;
+}
+
+.pd-popup__title {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.pd-popup__btn {
+  width: 100%;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 6px;
+  background: #4f9eff;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.15s;
+}
+
+.pd-popup__btn:hover {
+  background: #3a8fee;
+}
+
+.pd-popup__hint {
+  margin-top: 8px;
+  font-size: 11px;
+  color: #666;
+  text-align: center;
+}

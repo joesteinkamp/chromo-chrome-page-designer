@@ -8,6 +8,7 @@ import {
   OpacitySection,
   BlurSection,
 } from "../sections";
+import { TypographyTab } from "./TypographyTab";
 import type { ElementData } from "../../shared/types";
 
 interface Props {
@@ -16,7 +17,7 @@ interface Props {
 }
 
 export function DesignTab({ data, onStyleChange }: Props) {
-  const { computedStyles } = data;
+  const { computedStyles, hasTextContent } = data;
 
   return (
     <div className="pd-design-tab">
@@ -28,6 +29,12 @@ export function DesignTab({ data, onStyleChange }: Props) {
         computedStyles={computedStyles}
         onStyleChange={onStyleChange}
       />
+      {hasTextContent && (
+        <TypographyTab
+          computedStyles={computedStyles}
+          onStyleChange={onStyleChange}
+        />
+      )}
       <FillSection
         computedStyles={computedStyles}
         onStyleChange={onStyleChange}

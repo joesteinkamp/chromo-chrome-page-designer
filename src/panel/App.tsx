@@ -3,14 +3,12 @@ import { useElementData } from "./hooks/useElementData";
 import { useStyleChange } from "./hooks/useStyleChange";
 import { ElementInfo } from "./components/ElementInfo";
 import { DesignTab } from "./components/DesignTab";
-import { TypographyTab } from "./components/TypographyTab";
 import { ChangesTab } from "./components/ChangesTab";
-import { AITab } from "./components/AITab";
 import { exportAsJSON, exportAsSummary } from "../shared/export";
 import type { Change } from "../shared/types";
 import type { Message } from "../shared/messages";
 
-type Tab = "design" | "typography" | "changes" | "ai";
+type Tab = "design" | "changes";
 
 export function App() {
   const { elementData, isConnected } = useElementData();
@@ -19,92 +17,25 @@ export function App() {
   const [changes, setChanges] = useState<Change[]>([]);
   const [pageUrl, setPageUrl] = useState("");
 
-  // AI state
-  const [aiLoading, setAiLoading] = useState(false);
-  const [aiResult, setAiResult] = useState<{
-    explanation: string;
-    appliedCount: number;
-  } | null>(null);
-  const [aiError, setAiError] = useState<string | null>(null);
-
-  // Listen for change updates and AI responses
   useEffect(() => {
     const listener = (message: Message) => {
-      switch (message.type) {
-        case "CHANGES_RESPONSE":
-          setChanges(message.changes);
-          break;
-        case "AI_RESPONSE":
-          handleAIResponse(message);
-          break;
-        case "AI_ERROR":
-          setAiLoading(false);
-          setAiError(message.error);
-          setAiResult(null);
-          break;
+      if (message.type === "CHANGES_RESPONSE") {
+        setChanges(message.changes);
       }
     };
 
     chrome.runtime.onMessage.addListener(listener);
 
-    // Get current tab URL
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       if (tabs[0]?.url) setPageUrl(tabs[0].url);
     });
 
-    // Load existing changes
     chrome.runtime.sendMessage({ type: "GET_CHANGES" } satisfies Message);
 
     return () => {
       chrome.runtime.onMessage.removeListener(listener);
     };
   }, []);
-
-  // --- AI handlers ---
-
-  const handleAIResponse = useCallback(
-    (msg: Extract<Message, { type: "AI_RESPONSE" }>) => {
-      // Forward changes to content script for application
-      chrome.runtime.sendMessage(
-        {
-          type: "APPLY_AI_CHANGES",
-          styleChanges: msg.styleChanges,
-          textContent: msg.textContent,
-        } satisfies Message,
-        (response: any) => {
-          setAiLoading(false);
-          setAiResult({
-            explanation: msg.explanation,
-            appliedCount: response?.appliedCount ?? msg.styleChanges.length,
-          });
-          setAiError(null);
-          // Refresh changes
-          chrome.runtime.sendMessage({
-            type: "GET_CHANGES",
-          } satisfies Message);
-        }
-      );
-    },
-    []
-  );
-
-  const handleApplyAI = useCallback(
-    (prompt: string) => {
-      if (!elementData) return;
-      setAiLoading(true);
-      setAiResult(null);
-      setAiError(null);
-
-      chrome.runtime.sendMessage({
-        type: "AI_REQUEST",
-        prompt,
-        elementHTML: elementData.outerHTML,
-        computedStyles: elementData.computedStyles,
-        selector: elementData.selector,
-      } satisfies Message);
-    },
-    [elementData]
-  );
 
   // --- Change tracking handlers ---
 
@@ -212,18 +143,6 @@ export function App() {
                 Design
               </button>
               <button
-                className={`pd-panel__tab ${activeTab === "typography" ? "pd-panel__tab--active" : ""}`}
-                onClick={() => setActiveTab("typography")}
-              >
-                Type
-              </button>
-              <button
-                className={`pd-panel__tab ${activeTab === "ai" ? "pd-panel__tab--active" : ""}`}
-                onClick={() => setActiveTab("ai")}
-              >
-                AI
-              </button>
-              <button
                 className={`pd-panel__tab ${activeTab === "changes" ? "pd-panel__tab--active" : ""}`}
                 onClick={() => setActiveTab("changes")}
               >
@@ -238,21 +157,6 @@ export function App() {
                 <DesignTab
                   data={elementData}
                   onStyleChange={sendStyleChange}
-                />
-              )}
-              {activeTab === "typography" && (
-                <TypographyTab
-                  computedStyles={elementData.computedStyles}
-                  onStyleChange={sendStyleChange}
-                />
-              )}
-              {activeTab === "ai" && (
-                <AITab
-                  elementData={elementData}
-                  onApplyAI={handleApplyAI}
-                  isLoading={aiLoading}
-                  lastResult={aiResult}
-                  error={aiError}
                 />
               )}
               {activeTab === "changes" && (

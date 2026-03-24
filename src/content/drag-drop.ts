@@ -6,7 +6,7 @@
 
 import { isOverlayElement } from "./overlay";
 import { generateSelector } from "../shared/selector";
-import type { Message } from "../shared/messages";
+import { recordMoveChange } from "./change-tracker";
 
 let isDragging = false;
 let dragElement: HTMLElement | null = null;
@@ -18,7 +18,7 @@ let startX = 0;
 let startY = 0;
 let onDragEnd: (() => void) | null = null;
 
-const DRAG_THRESHOLD = 5; // px before drag starts
+const DRAG_THRESHOLD = 5;
 let hasDragStarted = false;
 
 export function initDragDrop(
@@ -61,16 +61,12 @@ function onMouseMove(e: MouseEvent): void {
     dragElement.style.opacity = "0.3";
   }
 
-  // Move ghost
   if (ghost) {
     ghost.style.left = `${e.clientX + 10}px`;
     ghost.style.top = `${e.clientY + 10}px`;
   }
 
-  // Find drop target
-  // Temporarily hide ghost and drag element to get element underneath
   if (ghost) ghost.style.display = "none";
-  const prevOpacity = dragElement.style.opacity;
   dragElement.style.pointerEvents = "none";
 
   const target = document.elementFromPoint(e.clientX, e.clientY);
@@ -91,7 +87,6 @@ function onMouseMove(e: MouseEvent): void {
     const midY = rect.top + rect.height / 2;
     insertBefore = e.clientY < midY;
 
-    // Position insertion line
     if (insertionLine) {
       const lineY = insertBefore ? rect.top : rect.bottom;
       insertionLine.style.cssText = `
@@ -114,7 +109,6 @@ function onMouseUp(e: MouseEvent): void {
   }
 
   if (hasDragStarted && dropTarget && dragElement) {
-    // Record original position
     const originalParent = dragElement.parentElement;
     const originalIndex = originalParent
       ? Array.from(originalParent.children).indexOf(dragElement)
@@ -123,7 +117,6 @@ function onMouseUp(e: MouseEvent): void {
       ? generateSelector(originalParent)
       : "body";
 
-    // Move element
     const targetParent = dropTarget.parentElement;
     if (targetParent) {
       if (insertBefore) {
@@ -132,7 +125,6 @@ function onMouseUp(e: MouseEvent): void {
         targetParent.insertBefore(dragElement, dropTarget.nextSibling);
       }
 
-      // Record new position
       const newParent = dragElement.parentElement;
       const newIndex = newParent
         ? Array.from(newParent.children).indexOf(dragElement)
@@ -141,14 +133,13 @@ function onMouseUp(e: MouseEvent): void {
         ? generateSelector(newParent)
         : "body";
 
-      chrome.runtime.sendMessage({
-        type: "ELEMENT_MOVED",
-        selector: generateSelector(dragElement),
-        fromParent: fromParentSelector,
-        fromIndex: originalIndex,
-        toParent: toParentSelector,
-        toIndex: newIndex,
-      } satisfies Message);
+      recordMoveChange(
+        dragElement,
+        fromParentSelector,
+        originalIndex,
+        toParentSelector,
+        newIndex
+      );
     }
   }
 

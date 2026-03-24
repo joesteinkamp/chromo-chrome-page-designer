@@ -33,6 +33,21 @@ export function recordStyleChange(
   to: string
 ): Change {
   const selector = getSelector(element);
+
+  // Coalesce: if the last change is for the same element+property, update it
+  const existing = findExisting(selector, "style", property);
+  if (existing && existing.type === "style") {
+    existing.to = to;
+    existing.timestamp = Date.now();
+    existing.description = `Changed ${property} from "${truncate(existing.from)}" to "${truncate(to)}"`;
+    // If we've gone back to the original value, remove the change entirely
+    if (existing.from === to) {
+      changes.splice(changes.indexOf(existing), 1);
+    }
+    broadcastChanges();
+    return existing;
+  }
+
   const change: StyleChange = {
     id: makeId(),
     timestamp: Date.now(),
@@ -54,6 +69,20 @@ export function recordTextChange(
   to: string
 ): Change {
   const selector = getSelector(element);
+
+  // Coalesce: if there's already a text change for this element, update it
+  const existing = findExisting(selector, "text");
+  if (existing && existing.type === "text") {
+    existing.to = to;
+    existing.timestamp = Date.now();
+    existing.description = `Changed text from "${truncate(existing.from, 30)}" to "${truncate(to, 30)}"`;
+    if (existing.from === to) {
+      changes.splice(changes.indexOf(existing), 1);
+    }
+    broadcastChanges();
+    return existing;
+  }
+
   const change: TextChange = {
     id: makeId(),
     timestamp: Date.now(),
@@ -98,6 +127,20 @@ export function recordResizeChange(
   to: { width: string; height: string }
 ): Change {
   const selector = getSelector(element);
+
+  // Coalesce: update existing resize for same element
+  const existing = findExisting(selector, "resize");
+  if (existing && existing.type === "resize") {
+    existing.to = to;
+    existing.timestamp = Date.now();
+    existing.description = `Resized from ${existing.from.width}×${existing.from.height} to ${to.width}×${to.height}`;
+    if (existing.from.width === to.width && existing.from.height === to.height) {
+      changes.splice(changes.indexOf(existing), 1);
+    }
+    broadcastChanges();
+    return existing;
+  }
+
   const change: ResizeChange = {
     id: makeId(),
     timestamp: Date.now(),
@@ -255,6 +298,29 @@ export function replayChanges(savedChanges: Change[]): { applied: number; failed
 }
 
 // --- Helpers ---
+
+/**
+ * Find an existing change for the same element+type+property.
+ * Used to coalesce repeated edits (e.g. adjusting border-radius with a slider)
+ * into a single change that records original → final value.
+ */
+function findExisting(
+  selector: string,
+  type: Change["type"],
+  property?: string
+): Change | undefined {
+  for (let i = changes.length - 1; i >= 0; i--) {
+    const c = changes[i];
+    if (c.selector === selector && c.type === type) {
+      if (type === "style" && property) {
+        if (c.type === "style" && c.property === property) return c;
+      } else {
+        return c;
+      }
+    }
+  }
+  return undefined;
+}
 
 function truncate(s: string, max = 20): string {
   if (s.length <= max) return s;

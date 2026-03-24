@@ -1,10 +1,9 @@
 /**
  * Inline text editing — double-click a selected element to edit its text content.
- * Sets contentEditable, handles blur/Escape to save, sends TEXT_CHANGED message.
+ * Sets contentEditable, handles blur/Escape to save.
  */
 
-import type { Message } from "../shared/messages";
-import { generateSelector } from "../shared/selector";
+import { recordTextChange } from "./change-tracker";
 
 let editingElement: HTMLElement | null = null;
 let originalText: string = "";
@@ -60,13 +59,11 @@ function onKeyDown(e: KeyboardEvent): void {
   if (e.key === "Escape") {
     e.preventDefault();
     e.stopPropagation();
-    // Revert to original text
     if (editingElement) {
       editingElement.textContent = originalText;
     }
     finishEdit(false);
   } else if (e.key === "Enter" && !e.shiftKey) {
-    // Single Enter commits (Shift+Enter for newline in block elements)
     const tag = editingElement?.tagName.toLowerCase();
     const isBlock = tag && ["p", "h1", "h2", "h3", "h4", "h5", "h6", "li", "span", "a", "button"].includes(tag);
     if (isBlock) {
@@ -87,17 +84,10 @@ function finishEdit(save: boolean): void {
   element.removeEventListener("blur", onBlur);
   element.removeEventListener("keydown", onKeyDown);
 
-  // Clear selection
   window.getSelection()?.removeAllRanges();
 
   if (save && newText !== originalText) {
-    const selector = generateSelector(element);
-    chrome.runtime.sendMessage({
-      type: "TEXT_CHANGED",
-      selector,
-      from: originalText,
-      to: newText,
-    } satisfies Message);
+    recordTextChange(element, originalText, newText);
   }
 
   editingElement = null;
@@ -107,13 +97,11 @@ function finishEdit(save: boolean): void {
 }
 
 function hasEditableText(element: Element): boolean {
-  // Check if element has direct text node children
   for (const node of element.childNodes) {
     if (node.nodeType === Node.TEXT_NODE && node.textContent?.trim()) {
       return true;
     }
   }
-  // Also allow elements that are purely text containers
   const children = element.children;
   if (children.length === 0 && element.textContent?.trim()) {
     return true;

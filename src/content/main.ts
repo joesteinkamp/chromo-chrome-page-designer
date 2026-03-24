@@ -22,9 +22,6 @@ import { showImageToolbar, hideImageToolbar } from "./image-replace";
 import {
   recordStyleChange,
   recordTextChange,
-  recordMoveChange,
-  recordResizeChange,
-  recordImageChange,
   undoChange,
   undoAll,
   getChanges,
@@ -113,54 +110,11 @@ chrome.runtime.onMessage.addListener(
         return true;
       }
 
-      // Change tracking messages
-      case "TEXT_CHANGED": {
-        // Already handled by inline-edit.ts sending directly,
-        // but we also listen here for recording
-        const el = message.selector
-          ? document.querySelector(message.selector)
-          : null;
-        if (el) {
-          recordTextChange(el, message.from, message.to);
-        }
-        break;
-      }
-
-      case "ELEMENT_MOVED": {
-        const el = message.selector
-          ? document.querySelector(message.selector)
-          : null;
-        if (el) {
-          recordMoveChange(
-            el,
-            message.fromParent,
-            message.fromIndex,
-            message.toParent,
-            message.toIndex
-          );
-        }
-        break;
-      }
-
-      case "ELEMENT_RESIZED": {
-        const el = message.selector
-          ? document.querySelector(message.selector)
-          : null;
-        if (el) {
-          recordResizeChange(el, message.from, message.to);
-        }
-        break;
-      }
-
-      case "IMAGE_REPLACED": {
-        const el = message.selector
-          ? document.querySelector(message.selector)
-          : null;
-        if (el) {
-          recordImageChange(el, message.from, message.to);
-        }
-        break;
-      }
+      // Note: TEXT_CHANGED, ELEMENT_MOVED, ELEMENT_RESIZED, IMAGE_REPLACED
+      // are recorded directly by the interaction modules (inline-edit.ts,
+      // drag-drop.ts, resize.ts, image-replace.ts) calling change-tracker
+      // functions. chrome.runtime.sendMessage can't be received by the
+      // same context that sent it.
 
       case "UNDO_CHANGE":
         undoChange(message.changeId);

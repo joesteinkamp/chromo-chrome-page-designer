@@ -3,8 +3,7 @@
  * toolbar with a "Replace" button. Opens file picker or URL input.
  */
 
-import { generateSelector } from "../shared/selector";
-import type { Message } from "../shared/messages";
+import { recordImageChange } from "./change-tracker";
 
 let toolbar: HTMLDivElement | null = null;
 let currentImage: HTMLImageElement | null = null;
@@ -42,7 +41,6 @@ export function showImageToolbar(element: Element): void {
   toolbar.appendChild(urlBtn);
   document.documentElement.appendChild(toolbar);
 
-  // Create hidden file input
   fileInput = document.createElement("input");
   fileInput.type = "file";
   fileInput.accept = "image/*";
@@ -110,10 +108,8 @@ function onFileSelected(): void {
 }
 
 function promptUrl(): void {
-  // Create a small inline URL input in the toolbar
   if (!toolbar || !currentImage) return;
 
-  // Clear toolbar and show input
   toolbar.innerHTML = "";
 
   const input = document.createElement("input");
@@ -157,12 +153,7 @@ function replaceImage(newSrc: string): void {
   const oldSrc = currentImage.src;
   currentImage.src = newSrc;
 
-  chrome.runtime.sendMessage({
-    type: "IMAGE_REPLACED",
-    selector: generateSelector(currentImage),
-    from: oldSrc,
-    to: newSrc,
-  } satisfies Message);
+  recordImageChange(currentImage, oldSrc, newSrc);
 
   hideImageToolbar();
 }

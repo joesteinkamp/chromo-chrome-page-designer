@@ -4,8 +4,7 @@
  */
 
 import { getHandleDirection, updateSelection } from "./overlay";
-import { generateSelector } from "../shared/selector";
-import type { Message } from "../shared/messages";
+import { recordResizeChange } from "./change-tracker";
 
 type HandleDir = "nw" | "n" | "ne" | "e" | "se" | "s" | "sw" | "w";
 
@@ -47,12 +46,10 @@ export function tryStartResize(
   startTop = rect.top;
   aspectRatio = startWidth / startHeight;
 
-  // Save original CSS values for undo
   const computed = window.getComputedStyle(element);
   origWidth = computed.width;
   origHeight = computed.height;
 
-  // Default aspect ratio constraint for images
   constrainAspect = element.tagName.toLowerCase() === "img";
 
   document.addEventListener("mousemove", onMouseMove, true);
@@ -78,13 +75,11 @@ function onMouseMove(e: MouseEvent): void {
   const dx = e.clientX - startX;
   const dy = e.clientY - startY;
 
-  // Shift toggles aspect ratio constraint
   const constrain = e.shiftKey ? !constrainAspect : constrainAspect;
 
   let newWidth = startWidth;
   let newHeight = startHeight;
 
-  // Calculate new dimensions based on handle direction
   switch (handleDir) {
     case "e":
       newWidth = startWidth + dx;
@@ -124,21 +119,17 @@ function onMouseMove(e: MouseEvent): void {
       break;
   }
 
-  // Enforce minimums
   newWidth = Math.max(10, newWidth);
   newHeight = Math.max(10, newHeight);
 
-  // Apply
   resizeElement.style.setProperty("width", `${Math.round(newWidth)}px`, "important");
   resizeElement.style.setProperty("height", `${Math.round(newHeight)}px`, "important");
 
-  // For images, also set the attributes
   if (resizeElement.tagName.toLowerCase() === "img") {
     (resizeElement as HTMLImageElement).width = Math.round(newWidth);
     (resizeElement as HTMLImageElement).height = Math.round(newHeight);
   }
 
-  // Update overlay to follow
   updateSelection(resizeElement);
 }
 
@@ -153,12 +144,11 @@ function onMouseUp(e: MouseEvent): void {
   const newHeight = computed.height;
 
   if (newWidth !== origWidth || newHeight !== origHeight) {
-    chrome.runtime.sendMessage({
-      type: "ELEMENT_RESIZED",
-      selector: generateSelector(resizeElement),
-      from: { width: origWidth, height: origHeight },
-      to: { width: newWidth, height: newHeight },
-    } satisfies Message);
+    recordResizeChange(
+      resizeElement,
+      { width: origWidth, height: origHeight },
+      { width: newWidth, height: newHeight }
+    );
   }
 
   cleanup();
@@ -166,7 +156,6 @@ function onMouseUp(e: MouseEvent): void {
 
 function onKeyDown(e: KeyboardEvent): void {
   if (e.key === "Escape") {
-    // Revert
     if (resizeElement) {
       resizeElement.style.setProperty("width", origWidth, "important");
       resizeElement.style.setProperty("height", origHeight, "important");
@@ -176,9 +165,7 @@ function onKeyDown(e: KeyboardEvent): void {
   }
 }
 
-function onKeyUp(_e: KeyboardEvent): void {
-  // Shift key handled in mousemove via e.shiftKey
-}
+function onKeyUp(_e: KeyboardEvent): void {}
 
 function cleanup(): void {
   document.removeEventListener("mousemove", onMouseMove, true);

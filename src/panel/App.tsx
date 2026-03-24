@@ -112,6 +112,15 @@ export function App() {
           {changes.length > 0 && (
             <button
               className="pd-panel__header-btn"
+              onClick={() => handleUndo(changes[changes.length - 1].id)}
+              title="Undo last change"
+            >
+              Undo
+            </button>
+          )}
+          {changes.length > 0 && (
+            <button
+              className="pd-panel__header-btn"
               onClick={handleSaveEdits}
               title="Save edits for this page"
             >

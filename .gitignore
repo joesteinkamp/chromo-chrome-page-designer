@@ -1,4 +1,5 @@
 node_modules/
 dist/
+mcp-server/dist/
 *.map
 .DS_Store

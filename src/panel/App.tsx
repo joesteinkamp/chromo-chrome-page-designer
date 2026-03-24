@@ -190,16 +190,34 @@ export function App() {
     );
   }, []);
 
+  // --- Send to MCP server ---
+
+  const MCP_URL = "http://127.0.0.1:19532";
+
+  const sendToMCP = useCallback(async () => {
+    const json = exportAsJSON(pageUrl, changes);
+    try {
+      const res = await fetch(`${MCP_URL}/changes`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: json,
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    } catch {
+      // Fallback: copy to clipboard if MCP server isn't running
+      navigator.clipboard.writeText(
+        `Apply these visual changes to the codebase:\n\n${json}`
+      );
+    }
+  }, [pageUrl, changes]);
+
   // --- Send menu actions ---
 
   const sendMenuActions = [
     {
       label: "Send to Claude Code",
-      action: () => {
-        const json = exportAsJSON(pageUrl, changes);
-        navigator.clipboard.writeText(
-          `Apply these visual changes to the codebase:\n\n${json}`
-        );
+      action: async () => {
+        await sendToMCP();
         setSendMenuOpen(false);
       },
     },

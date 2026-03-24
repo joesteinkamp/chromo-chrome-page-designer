@@ -11,7 +11,7 @@ import type { Message } from "../shared/messages";
 type Tab = "design" | "changes";
 
 export function App() {
-  const { elementData, isConnected } = useElementData();
+  const { elementData, isConnected, setElementData } = useElementData();
   const sendStyleChange = useStyleChange();
   const [activeTab, setActiveTab] = useState<Tab>("design");
   const [changes, setChanges] = useState<Change[]>([]);
@@ -45,8 +45,24 @@ export function App() {
 
     chrome.runtime.sendMessage({ type: "GET_CHANGES" } satisfies Message);
 
+    // When the user switches tabs, reset to inactive
+    const onTabActivated = () => {
+      setEditMode(false);
+      setElementData(null);
+      setChanges([]);
+      setCanRedo(false);
+
+      // Update URL for the new tab
+      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+        if (tabs[0]?.url) setPageUrl(tabs[0].url);
+      });
+    };
+
+    chrome.tabs.onActivated.addListener(onTabActivated);
+
     return () => {
       chrome.runtime.onMessage.removeListener(listener);
+      chrome.tabs.onActivated.removeListener(onTabActivated);
     };
   }, []);
 

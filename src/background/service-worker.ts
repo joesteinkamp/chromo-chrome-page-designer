@@ -28,13 +28,22 @@ chrome.runtime.onMessage.addListener(
           if (tab?.id) {
             await chrome.sidePanel.open({ tabId: tab.id });
             activeTabId = tab.id;
-            chrome.tabs.sendMessage(tab.id, { type: "ACTIVATE" } satisfies Message);
+            await ensureContentScript(tab.id);
+            sendToTab(tab.id, { type: "ACTIVATE" });
           }
         });
         break;
 
-      // --- Forward to content script ---
       case "ACTIVATE":
+        // From side panel — ensure content script is injected first
+        getActiveTabId().then(async (tabId) => {
+          if (!tabId) return;
+          await ensureContentScript(tabId);
+          sendToTab(tabId, message);
+        });
+        break;
+
+      // --- Forward to content script ---
       case "DEACTIVATE":
       case "APPLY_STYLE":
       case "UNDO_CHANGE":
@@ -44,9 +53,30 @@ chrome.runtime.onMessage.addListener(
         break;
 
       case "GET_STATE":
+        // Try to forward — if content script isn't there, respond with inactive
+        getActiveTabId().then(async (tabId) => {
+          if (!tabId) {
+            sendResponse({ type: "STATE_RESPONSE", isActive: false });
+            return;
+          }
+          try {
+            await ensureContentScript(tabId);
+            chrome.tabs.sendMessage(tabId, message, (resp) => {
+              if (chrome.runtime.lastError || !resp) {
+                sendResponse({ type: "STATE_RESPONSE", isActive: false });
+              } else {
+                sendResponse(resp);
+              }
+            });
+          } catch {
+            sendResponse({ type: "STATE_RESPONSE", isActive: false });
+          }
+        });
+        return true;
+
       case "GET_CHANGES":
         forwardToContentScript(message, sendResponse);
-        return true; // async
+        return true;
 
       // --- Forward to panel (from content script) ---
       case "ELEMENT_SELECTED":
@@ -103,6 +133,45 @@ chrome.runtime.onMessage.addListener(
   }
 );
 
+// --- Content script injection ---
+
+/**
+ * Ensure the content script is loaded on the given tab.
+ * After extension install/reload, existing tabs won't have it.
+ * Uses chrome.scripting.executeScript to inject if needed.
+ */
+async function ensureContentScript(tabId: number): Promise<void> {
+  try {
+    // Check if content script is already there by sending a ping
+    await new Promise<void>((resolve, reject) => {
+      chrome.tabs.sendMessage(tabId, { type: "GET_STATE" }, (response) => {
+        if (chrome.runtime.lastError) {
+          reject(chrome.runtime.lastError);
+        } else {
+          resolve();
+        }
+      });
+    });
+  } catch {
+    // Content script not loaded — inject it
+    try {
+      await chrome.scripting.executeScript({
+        target: { tabId },
+        files: ["content/main.js"],
+      });
+      await chrome.scripting.insertCSS({
+        target: { tabId },
+        files: ["content/content.css"],
+      });
+      // Give it a moment to initialize
+      await new Promise((r) => setTimeout(r, 100));
+    } catch (err) {
+      // Can't inject on chrome:// pages, etc.
+      console.warn("Page Designer: Cannot inject into this tab:", err);
+    }
+  }
+}
+
 // --- AI request handler ---
 
 async function handleAIRequest(message: Extract<Message, { type: "AI_REQUEST" }>): Promise<void> {
@@ -114,7 +183,6 @@ async function handleAIRequest(message: Extract<Message, { type: "AI_REQUEST" }>
       selector: message.selector,
     });
 
-    // Send AI response to panel
     chrome.runtime.sendMessage({
       type: "AI_RESPONSE",
       styleChanges: result.styleChanges,
@@ -131,28 +199,40 @@ async function handleAIRequest(message: Extract<Message, { type: "AI_REQUEST" }>
 
 // --- Helpers ---
 
-function forwardToContentScript(message: Message, sendResponse?: (resp: any) => void): void {
-  const tabId = activeTabId;
-  if (!tabId) {
+async function getActiveTabId(): Promise<number | null> {
+  if (activeTabId) return activeTabId;
+  return new Promise((resolve) => {
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-      const tab = tabs[0];
-      if (tab?.id) {
-        activeTabId = tab.id;
-        if (sendResponse) {
-          chrome.tabs.sendMessage(tab.id, message, sendResponse);
-        } else {
-          chrome.tabs.sendMessage(tab.id, message);
-        }
-      }
+      const tabId = tabs[0]?.id ?? null;
+      if (tabId) activeTabId = tabId;
+      resolve(tabId);
     });
-    return;
-  }
+  });
+}
 
-  if (sendResponse) {
-    chrome.tabs.sendMessage(tabId, message, sendResponse);
-  } else {
-    chrome.tabs.sendMessage(tabId, message);
-  }
+/** Send a message to a tab, swallowing errors if content script isn't there */
+function sendToTab(tabId: number, message: Message): void {
+  chrome.tabs.sendMessage(tabId, message, () => {
+    // Swallow "Receiving end does not exist" errors
+    void chrome.runtime.lastError;
+  });
+}
+
+function forwardToContentScript(message: Message, sendResponse?: (resp: any) => void): void {
+  getActiveTabId().then((tabId) => {
+    if (!tabId) return;
+    if (sendResponse) {
+      chrome.tabs.sendMessage(tabId, message, (resp) => {
+        // Clear lastError to prevent unchecked error
+        if (chrome.runtime.lastError) {
+          console.warn("Page Designer:", chrome.runtime.lastError.message);
+        }
+        sendResponse(resp);
+      });
+    } else {
+      sendToTab(tabId, message);
+    }
+  });
 }
 
 // Track active tab

@@ -211,6 +211,15 @@ export function App() {
       <header className="pd-panel__header">
         <div className="pd-panel__header-left">
           <button
+            className={`pd-panel__toggle ${editMode ? "pd-panel__toggle--on" : ""}`}
+            onClick={handleToggleEditMode}
+            title={editMode ? "Disable edit mode" : "Enable edit mode"}
+          >
+            <span className="pd-panel__toggle-track">
+              <span className="pd-panel__toggle-thumb" />
+            </span>
+          </button>
+          <button
             className={`pd-panel__icon-btn ${changes.length === 0 ? "pd-panel__icon-btn--disabled" : ""}`}
             onClick={handleUndoLast}
             disabled={changes.length === 0}
@@ -258,16 +267,6 @@ export function App() {
               </div>
             )}
           </div>
-
-          <button
-            className={`pd-panel__toggle ${editMode ? "pd-panel__toggle--on" : ""}`}
-            onClick={handleToggleEditMode}
-            title={editMode ? "Disable edit mode" : "Enable edit mode"}
-          >
-            <span className="pd-panel__toggle-track">
-              <span className="pd-panel__toggle-thumb" />
-            </span>
-          </button>
         </div>
       </header>
 

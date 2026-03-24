@@ -24,8 +24,8 @@ export function useElementData() {
 
     chrome.runtime.onMessage.addListener(listener);
 
-    // Check current state on mount
-    chrome.runtime.sendMessage({ type: "GET_STATE" } satisfies Message);
+    // Activate the content script when side panel opens
+    chrome.runtime.sendMessage({ type: "ACTIVATE" } satisfies Message);
 
     return () => {
       chrome.runtime.onMessage.removeListener(listener);

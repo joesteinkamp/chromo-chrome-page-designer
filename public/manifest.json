@@ -5,7 +5,6 @@
   "description": "Visual webpage editor — edit any page like Figma",
   "permissions": ["activeTab", "storage", "scripting", "sidePanel"],
   "action": {
-    "default_popup": "popup.html",
     "default_icon": {
       "16": "icons/icon-16.png",
       "48": "icons/icon-48.png",

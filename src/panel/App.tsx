@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useElementData } from "./hooks/useElementData";
 import { useStyleChange } from "./hooks/useStyleChange";
 import { ElementInfo } from "./components/ElementInfo";
@@ -16,6 +16,15 @@ export function App() {
   const [activeTab, setActiveTab] = useState<Tab>("design");
   const [changes, setChanges] = useState<Change[]>([]);
   const [pageUrl, setPageUrl] = useState("");
+  const [editMode, setEditMode] = useState(true);
+
+  const handleToggleEditMode = useCallback(() => {
+    const next = !editMode;
+    setEditMode(next);
+    chrome.runtime.sendMessage({
+      type: next ? "ACTIVATE" : "DEACTIVATE",
+    } satisfies Message);
+  }, [editMode]);
 
   useEffect(() => {
     const listener = (message: Message) => {
@@ -123,11 +132,16 @@ export function App() {
           >
             📷
           </button>
-          <span
-            className={`pd-panel__status ${isConnected ? "pd-panel__status--active" : ""}`}
+          <button
+            className={`pd-panel__toggle ${editMode ? "pd-panel__toggle--on" : ""}`}
+            onClick={handleToggleEditMode}
+            title={editMode ? "Disable edit mode" : "Enable edit mode"}
           >
-            {isConnected ? "Active" : "Inactive"}
-          </span>
+            <span className="pd-panel__toggle-track">
+              <span className="pd-panel__toggle-thumb" />
+            </span>
+            {editMode ? "On" : "Off"}
+          </button>
         </div>
       </header>
 

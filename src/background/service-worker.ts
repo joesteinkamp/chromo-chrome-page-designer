@@ -35,11 +35,20 @@ chrome.runtime.onMessage.addListener(
         break;
 
       case "ACTIVATE":
-        // From side panel — ensure content script is injected first
+        // From side panel — ensure content script is injected, then activate
         getActiveTabId().then(async (tabId) => {
           if (!tabId) return;
           await ensureContentScript(tabId);
-          sendToTab(tabId, message);
+          // Use sendMessage with callback to ensure delivery
+          chrome.tabs.sendMessage(tabId, message, (resp) => {
+            void chrome.runtime.lastError;
+            // Forward the STATE_RESPONSE to the panel if we got one
+            if (resp?.type === "STATE_RESPONSE") {
+              try {
+                chrome.runtime.sendMessage(resp);
+              } catch { /* panel may not be open */ }
+            }
+          });
         });
         break;
 

@@ -42,6 +42,10 @@ chrome.runtime.onMessage.addListener(
       case "ACTIVATE":
         activate();
         sendResponse({ type: "STATE_RESPONSE", isActive: true });
+        // Also broadcast so the panel picks it up even if sendResponse is lost
+        try {
+          chrome.runtime.sendMessage({ type: "STATE_RESPONSE", isActive: true } satisfies Message);
+        } catch { /* panel may not be open */ }
         break;
 
       case "DEACTIVATE":

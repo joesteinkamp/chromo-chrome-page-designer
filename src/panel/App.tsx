@@ -194,22 +194,24 @@ export function App() {
 
   const sendMenuActions = [
     {
-      label: "Send to Claude Code",
+      label: "Send to Claude",
       action: () => {
         const json = exportAsJSON(pageUrl, changes);
         navigator.clipboard.writeText(
           `Apply these visual design changes to the codebase. Each change includes a CSS selector to identify the element and the property to update. Find the matching components/styles in the source code and make the changes.\n\n${json}`
         );
+        chrome.tabs.create({ url: "https://claude.ai/new" });
         setSendMenuOpen(false);
       },
     },
     {
-      label: "Send to Codex",
+      label: "Send to ChatGPT",
       action: () => {
         const json = exportAsJSON(pageUrl, changes);
         navigator.clipboard.writeText(
           `Apply these visual design changes to the codebase. Each change includes a CSS selector to identify the element and the property to update. Find the matching components/styles in the source code and make the changes.\n\n${json}`
         );
+        chrome.tabs.create({ url: "https://chatgpt.com/" });
         setSendMenuOpen(false);
       },
     },

@@ -7,6 +7,7 @@ import { generateSelector } from "../shared/selector";
 import type { Change, StyleChange, TextChange, MoveChange, ResizeChange, ImageChange } from "../shared/types";
 
 let changes: Change[] = [];
+let redoStack: Change[] = [];
 let nextId = 1;
 const selectorCache = new WeakMap<Element, string>();
 
@@ -59,6 +60,7 @@ export function recordStyleChange(
     to,
   };
   changes.push(change);
+  redoStack = [];
   broadcastChanges();
   return change;
 }
@@ -93,6 +95,7 @@ export function recordTextChange(
     to,
   };
   changes.push(change);
+  redoStack = [];
   broadcastChanges();
   return change;
 }
@@ -117,6 +120,7 @@ export function recordMoveChange(
     toIndex,
   };
   changes.push(change);
+  redoStack = [];
   broadcastChanges();
   return change;
 }
@@ -151,6 +155,7 @@ export function recordResizeChange(
     to,
   };
   changes.push(change);
+  redoStack = [];
   broadcastChanges();
   return change;
 }
@@ -171,6 +176,7 @@ export function recordImageChange(
     to,
   };
   changes.push(change);
+  redoStack = [];
   broadcastChanges();
   return change;
 }
@@ -223,8 +229,55 @@ export function undoChange(changeId: string): boolean {
   }
 
   changes.splice(index, 1);
+  redoStack.push(change);
   broadcastChanges();
   return true;
+}
+
+/** Redo the most recently undone change */
+export function redoChange(): boolean {
+  if (redoStack.length === 0) return false;
+
+  const change = redoStack.pop()!;
+  const element = document.querySelector(change.selector);
+  if (!element || !(element instanceof HTMLElement)) return false;
+
+  switch (change.type) {
+    case "style":
+      element.style.setProperty(change.property, change.to, "important");
+      break;
+    case "text":
+      element.textContent = change.to;
+      break;
+    case "resize":
+      element.style.setProperty("width", change.to.width, "important");
+      element.style.setProperty("height", change.to.height, "important");
+      break;
+    case "image":
+      if (element.tagName.toLowerCase() === "img") {
+        (element as HTMLImageElement).src = change.to;
+      } else {
+        element.style.setProperty("background-image", `url(${change.to})`, "important");
+      }
+      break;
+    case "move": {
+      const newParent = document.querySelector(change.toParent);
+      if (newParent) {
+        const children = Array.from(newParent.children);
+        const refNode = children[change.toIndex] || null;
+        newParent.insertBefore(element, refNode);
+      }
+      break;
+    }
+  }
+
+  changes.push(change);
+  broadcastChanges();
+  return true;
+}
+
+export function canRedo(): boolean {
+  return redoStack.length > 0;
 }
 
 export function undoAll(): void {
@@ -332,6 +385,7 @@ function broadcastChanges(): void {
     chrome.runtime.sendMessage({
       type: "CHANGES_RESPONSE",
       changes: getChanges(),
+      canRedo: canRedo(),
     });
   } catch {
     // Extension context may be invalidated

@@ -8,6 +8,8 @@ interface Props {
   onUndoAll: () => void;
   onExportJSON: () => void;
   onExportSummary: () => void;
+  onSave: () => void;
+  onRestore: () => void;
   url: string;
 }
 
@@ -37,6 +39,8 @@ export function ChangesTab({
   onUndoAll,
   onExportJSON,
   onExportSummary,
+  onSave,
+  onRestore,
   url,
 }: Props) {
   const [toast, setToast] = useState<string | null>(null);
@@ -102,6 +106,24 @@ export function ChangesTab({
           disabled={!hasChanges}
         >
           Copy Summary
+        </button>
+      </div>
+
+      <div className="pd-changes__toolbar pd-changes__toolbar--secondary">
+        <button
+          type="button"
+          className="pd-changes__btn pd-changes__btn--accent"
+          onClick={() => { onSave(); showToast("Saved!"); }}
+          disabled={!hasChanges}
+        >
+          Permanently Save Changes
+        </button>
+        <button
+          type="button"
+          className="pd-changes__btn"
+          onClick={() => { onRestore(); showToast("Restoring..."); }}
+        >
+          Restore Saved
         </button>
       </div>
 

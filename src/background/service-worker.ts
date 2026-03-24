@@ -48,6 +48,7 @@ chrome.runtime.onMessage.addListener(
       case "APPLY_STYLE":
       case "UNDO_CHANGE":
       case "UNDO_ALL":
+      case "REDO":
       case "CLEAR_CHANGES":
         forwardToContentScript(message);
         break;

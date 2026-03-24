@@ -63,6 +63,27 @@
   color: #ff6961;
 }
 
+.pd-changes__btn--accent {
+  border-color: var(--pd-accent);
+  background: var(--pd-accent);
+  color: #fff;
+}
+
+.pd-changes__btn--accent:hover {
+  opacity: 0.9;
+}
+
+.pd-changes__btn--accent:disabled {
+  opacity: 0.35;
+}
+
+.pd-changes__toolbar--secondary {
+  border-top: none;
+  padding-top: 0;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
 /* Toast notification */
 .pd-changes__toast {
   position: fixed;

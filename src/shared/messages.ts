@@ -33,8 +33,9 @@ export type Message =
   // Change tracking
   | { type: "UNDO_CHANGE"; changeId: string }
   | { type: "UNDO_ALL" }
+  | { type: "REDO" }
   | { type: "GET_CHANGES" }
-  | { type: "CHANGES_RESPONSE"; changes: Change[] }
+  | { type: "CHANGES_RESPONSE"; changes: Change[]; canRedo: boolean }
   | { type: "CLEAR_CHANGES" }
   // AI
   | {

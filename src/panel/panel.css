@@ -41,45 +41,108 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 12px;
+  padding: 6px 8px;
   border-bottom: 1px solid var(--pd-border);
   background: var(--pd-bg-raised);
+  gap: 4px;
 }
 
-.pd-panel__logo {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-weight: 600;
-  font-size: 13px;
-}
-
-.pd-panel__logo-icon {
-  color: var(--pd-accent);
-  font-size: 14px;
-}
-
-.pd-panel__header-actions {
+.pd-panel__header-left,
+.pd-panel__header-right {
   display: flex;
   align-items: center;
   gap: 4px;
 }
 
-.pd-panel__header-btn {
+/* Icon buttons (undo/redo) */
+.pd-panel__icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
   border: none;
-  background: rgba(255, 255, 255, 0.06);
-  color: var(--pd-text-dim);
-  padding: 3px 8px;
   border-radius: var(--pd-radius);
-  font-size: 11px;
-  font-family: var(--pd-font);
+  background: none;
+  color: var(--pd-text-dim);
   cursor: pointer;
-  transition: all 0.15s;
+  transition: all 0.12s;
 }
 
-.pd-panel__header-btn:hover {
+.pd-panel__icon-btn:hover:not(:disabled) {
   background: var(--pd-bg-hover);
   color: var(--pd-text);
+}
+
+.pd-panel__icon-btn--disabled,
+.pd-panel__icon-btn:disabled {
+  color: var(--pd-text-muted);
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* Send Changes dropdown */
+.pd-panel__send-wrap {
+  position: relative;
+}
+
+.pd-panel__send-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  border: none;
+  background: var(--pd-accent);
+  color: #fff;
+  padding: 5px 10px;
+  border-radius: var(--pd-radius);
+  font-size: 11px;
+  font-weight: 600;
+  font-family: var(--pd-font);
+  cursor: pointer;
+  transition: opacity 0.12s;
+  white-space: nowrap;
+}
+
+.pd-panel__send-btn:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.pd-panel__send-btn--disabled,
+.pd-panel__send-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.pd-panel__send-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 100;
+  min-width: 190px;
+  background: var(--pd-bg-raised);
+  border: 1px solid var(--pd-border);
+  border-radius: 6px;
+  padding: 4px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+}
+
+.pd-panel__send-menu-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: none;
+  background: none;
+  color: var(--pd-text);
+  padding: 7px 10px;
+  border-radius: var(--pd-radius);
+  font-size: 12px;
+  font-family: var(--pd-font);
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.pd-panel__send-menu-item:hover {
+  background: var(--pd-bg-hover);
 }
 
 /* Edit mode toggle */

@@ -24,7 +24,9 @@ import {
   recordTextChange,
   undoChange,
   undoAll,
+  redoChange,
   getChanges,
+  canRedo,
   clearChanges,
   replayChanges,
 } from "./change-tracker";
@@ -131,10 +133,18 @@ chrome.runtime.onMessage.addListener(
         if (sel2) sendElementData(sel2);
         break;
 
+      case "REDO":
+        redoChange();
+        refreshSelection();
+        const sel3 = getSelectedElement();
+        if (sel3) sendElementData(sel3);
+        break;
+
       case "GET_CHANGES":
         sendResponse({
           type: "CHANGES_RESPONSE",
           changes: getChanges(),
+          canRedo: canRedo(),
         } satisfies Message);
         return true;
 

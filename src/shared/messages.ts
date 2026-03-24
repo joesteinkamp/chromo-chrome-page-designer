@@ -11,6 +11,8 @@ export type Message =
   // Element selection
   | { type: "ELEMENT_SELECTED"; data: ElementData }
   | { type: "ELEMENT_DESELECTED" }
+  // Multi-edit
+  | { type: "TOGGLE_MULTI_EDIT"; enabled: boolean }
   // Style changes (panel → content script)
   | { type: "APPLY_STYLE"; property: string; value: string }
   // Interaction events (content script → background → panel)

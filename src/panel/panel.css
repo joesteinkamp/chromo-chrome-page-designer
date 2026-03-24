@@ -427,6 +427,33 @@ body {
   background: rgba(96, 165, 250, 0.15);
 }
 
+/* Multi-edit button */
+.pd-element-info__multi-btn {
+  display: block;
+  width: 100%;
+  margin-top: 8px;
+  padding: 5px 8px;
+  border: 1px dashed #a78bfa;
+  border-radius: var(--pd-radius);
+  background: rgba(167, 139, 250, 0.08);
+  color: #a78bfa;
+  font-size: 11px;
+  font-weight: 500;
+  font-family: var(--pd-font);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.pd-element-info__multi-btn:hover {
+  background: rgba(167, 139, 250, 0.15);
+}
+
+.pd-element-info__multi-btn--active {
+  border-style: solid;
+  background: rgba(167, 139, 250, 0.2);
+  color: #c4b5fd;
+}
+
 /* Scrollbar styling */
 ::-webkit-scrollbar {
   width: 6px;

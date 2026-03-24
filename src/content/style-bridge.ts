@@ -39,6 +39,7 @@ export function extractElementData(element: Element): ElementData {
     isFlex: display === "flex" || display === "inline-flex",
     isGrid: display === "grid" || display === "inline-grid",
     outerHTML: element.outerHTML.slice(0, 2000),
+    matchCount: countMatchingElements(element),
   };
 }
 
@@ -49,6 +50,30 @@ export function applyStyleToElement(
   value: string
 ): void {
   element.style.setProperty(property, value, "important");
+}
+
+/** Find all elements matching the same tag and classes as the given element */
+export function findMatchingElements(element: Element): Element[] {
+  const tag = element.tagName.toLowerCase();
+  const classes = Array.from(element.classList).filter((c) => !c.startsWith("__pd-"));
+
+  if (classes.length === 0) return [];
+
+  // Build a selector from tag + all classes
+  const selector = tag + classes.map((c) => `.${CSS.escape(c)}`).join("");
+
+  try {
+    const all = Array.from(document.querySelectorAll(selector));
+    // Exclude the element itself
+    return all.filter((el) => el !== element);
+  } catch {
+    return [];
+  }
+}
+
+/** Count elements matching the same tag + classes */
+function countMatchingElements(element: Element): number {
+  return findMatchingElements(element).length;
 }
 
 /** Check if element has direct text nodes (not just child elements) */

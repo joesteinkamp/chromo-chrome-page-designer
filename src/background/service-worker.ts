@@ -54,6 +54,7 @@ chrome.runtime.onMessage.addListener(
 
       // --- Forward to content script ---
       case "DEACTIVATE":
+      case "TOGGLE_MULTI_EDIT":
       case "APPLY_STYLE":
       case "UNDO_CHANGE":
       case "UNDO_ALL":

@@ -21,6 +21,12 @@
   background: rgba(79, 158, 255, 0.05) !important;
 }
 
+.__pd-overlay--multi {
+  border-style: dashed !important;
+  border-color: #a78bfa !important;
+  background: rgba(167, 139, 250, 0.06) !important;
+}
+
 .__pd-overlay--visible {
   display: block !important;
 }

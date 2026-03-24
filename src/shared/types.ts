@@ -24,6 +24,8 @@ export interface ElementData {
   isGrid: boolean;
   /** Truncated outerHTML for AI context */
   outerHTML: string;
+  /** Number of matching elements (same tag + classes) on the page */
+  matchCount: number;
 }
 
 /** Editor state shared across contexts */

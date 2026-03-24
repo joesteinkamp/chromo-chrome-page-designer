@@ -4,7 +4,7 @@
  * tracks changes, and handles persistence replay.
  */
 
-import { initOverlay, destroyOverlay, getHandleDirection } from "./overlay";
+import { initOverlay, destroyOverlay, getHandleDirection, showMultiEditOverlays, hideMultiEditOverlays, updateMultiEditOverlays } from "./overlay";
 import {
   startPicker,
   stopPicker,
@@ -14,7 +14,7 @@ import {
   resumePicker,
   refreshSelection,
 } from "./element-picker";
-import { extractElementData, applyStyleToElement } from "./style-bridge";
+import { extractElementData, applyStyleToElement, findMatchingElements } from "./style-bridge";
 import { startInlineEdit, stopInlineEdit, isEditing } from "./inline-edit";
 import { initDragDrop, isDragActive, cancelDrag } from "./drag-drop";
 import { tryStartResize, isResizeActive } from "./resize";
@@ -33,6 +33,7 @@ import {
 import type { Message } from "../shared/messages";
 
 let isActive = false;
+let multiEditEnabled = false;
 
 // --- Message handling ---
 
@@ -57,17 +58,40 @@ chrome.runtime.onMessage.addListener(
         sendResponse({ type: "STATE_RESPONSE", isActive });
         break;
 
+      case "TOGGLE_MULTI_EDIT": {
+        multiEditEnabled = message.enabled;
+        const sel = getSelectedElement();
+        if (sel && multiEditEnabled) {
+          const matches = findMatchingElements(sel);
+          showMultiEditOverlays(matches);
+        } else {
+          hideMultiEditOverlays();
+        }
+        break;
+      }
+
       case "APPLY_STYLE": {
         const el = getSelectedElement();
         if (el && el instanceof HTMLElement) {
-          // Record the old value before applying
           const computed = window.getComputedStyle(el);
           const oldValue = computed.getPropertyValue(message.property);
 
+          // Apply to selected element
           applyStyleToElement(el, message.property, message.value);
+
+          // Apply to all matching elements if multi-edit is on
+          if (multiEditEnabled) {
+            const matches = findMatchingElements(el);
+            for (const match of matches) {
+              if (match instanceof HTMLElement) {
+                applyStyleToElement(match, message.property, message.value);
+              }
+            }
+            updateMultiEditOverlays(matches);
+          }
+
           refreshSelection();
 
-          // Track the change
           if (oldValue !== message.value) {
             recordStyleChange(el, message.property, oldValue, message.value);
           }
@@ -226,6 +250,8 @@ function deactivate(): void {
   stopInlineEdit();
   cancelDrag();
   hideImageToolbar();
+  hideMultiEditOverlays();
+  multiEditEnabled = false;
 
   stopPicker();
   destroyOverlay();
@@ -235,11 +261,19 @@ function deactivate(): void {
 
 function onElementSelected(element: Element | null): void {
   hideImageToolbar();
+  hideMultiEditOverlays();
 
   if (element) {
     sendElementData(element);
     if (element.tagName.toLowerCase() === "img") {
       showImageToolbar(element);
+    }
+    // Show multi-edit overlays if enabled
+    if (multiEditEnabled) {
+      const matches = findMatchingElements(element);
+      if (matches.length > 0) {
+        showMultiEditOverlays(matches);
+      }
     }
   } else {
     chrome.runtime.sendMessage({

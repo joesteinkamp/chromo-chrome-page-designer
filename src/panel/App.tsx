@@ -18,16 +18,29 @@ export function App() {
   const [canRedo, setCanRedo] = useState(false);
   const [pageUrl, setPageUrl] = useState("");
   const [editMode, setEditMode] = useState(true);
+  const [multiEdit, setMultiEdit] = useState(false);
   const [sendMenuOpen, setSendMenuOpen] = useState(false);
   const sendMenuRef = useRef<HTMLDivElement>(null);
 
   const handleToggleEditMode = useCallback(() => {
     const next = !editMode;
     setEditMode(next);
+    if (!next) {
+      setMultiEdit(false);
+    }
     chrome.runtime.sendMessage({
       type: next ? "ACTIVATE" : "DEACTIVATE",
     } satisfies Message);
   }, [editMode]);
+
+  const handleToggleMultiEdit = useCallback(() => {
+    const next = !multiEdit;
+    setMultiEdit(next);
+    chrome.runtime.sendMessage({
+      type: "TOGGLE_MULTI_EDIT",
+      enabled: next,
+    } satisfies Message);
+  }, [multiEdit]);
 
   useEffect(() => {
     const listener = (message: Message) => {
@@ -48,6 +61,7 @@ export function App() {
     // When the user switches tabs, reset to inactive
     const onTabActivated = () => {
       setEditMode(false);
+      setMultiEdit(false);
       setElementData(null);
       setChanges([]);
       setCanRedo(false);
@@ -291,7 +305,7 @@ export function App() {
       <div className="pd-panel__body">
         {elementData ? (
           <>
-            <ElementInfo data={elementData} />
+            <ElementInfo data={elementData} multiEdit={multiEdit} onToggleMultiEdit={handleToggleMultiEdit} />
             <div className="pd-panel__tabs">
               <button
                 className={`pd-panel__tab ${activeTab === "design" ? "pd-panel__tab--active" : ""}`}

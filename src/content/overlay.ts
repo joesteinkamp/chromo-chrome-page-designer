@@ -88,6 +88,39 @@ export function updateSelection(element: Element): void {
   positionHandles(rect);
 }
 
+// --- Multi-edit overlays (dotted borders on matching elements) ---
+
+let multiEditOverlays: HTMLDivElement[] = [];
+
+export function showMultiEditOverlays(elements: Element[]): void {
+  hideMultiEditOverlays();
+  for (const el of elements) {
+    const rect = el.getBoundingClientRect();
+    const overlay = createDiv("__pd-overlay __pd-overlay--multi");
+    positionOverlay(overlay, rect);
+    overlay.classList.add("__pd-overlay--visible");
+    document.documentElement.appendChild(overlay);
+    multiEditOverlays.push(overlay);
+  }
+}
+
+export function updateMultiEditOverlays(elements: Element[]): void {
+  // Reposition existing overlays or recreate if count changed
+  if (multiEditOverlays.length !== elements.length) {
+    showMultiEditOverlays(elements);
+    return;
+  }
+  for (let i = 0; i < elements.length; i++) {
+    const rect = elements[i].getBoundingClientRect();
+    positionOverlay(multiEditOverlays[i], rect);
+  }
+}
+
+export function hideMultiEditOverlays(): void {
+  multiEditOverlays.forEach((o) => o.remove());
+  multiEditOverlays = [];
+}
+
 /** Check if an element is part of our overlay */
 export function isOverlayElement(el: Element): boolean {
   if (!el || !el.className || typeof el.className !== "string") return false;

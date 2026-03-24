@@ -1,11 +1,15 @@
 import type { ElementData } from "../../shared/types";
+import type { Message } from "../../shared/messages";
 
 interface Props {
   data: ElementData;
+  multiEdit: boolean;
+  onToggleMultiEdit: () => void;
 }
 
-export function ElementInfo({ data }: Props) {
+export function ElementInfo({ data, multiEdit, onToggleMultiEdit }: Props) {
   const dimensions = `${Math.round(data.rect.width)} × ${Math.round(data.rect.height)}`;
+  const hasMatches = data.matchCount > 0;
 
   return (
     <div className="pd-element-info">
@@ -34,6 +38,17 @@ export function ElementInfo({ data }: Props) {
         {data.isImage && <span className="pd-element-info__badge pd-element-info__badge--img">Image</span>}
         {data.hasTextContent && <span className="pd-element-info__badge pd-element-info__badge--text">Text</span>}
       </div>
+
+      {hasMatches && (
+        <button
+          className={`pd-element-info__multi-btn ${multiEdit ? "pd-element-info__multi-btn--active" : ""}`}
+          onClick={onToggleMultiEdit}
+        >
+          {multiEdit
+            ? `Editing all ${data.matchCount + 1} instances`
+            : `Edit all ${data.matchCount + 1} matching`}
+        </button>
+      )}
     </div>
   );
 }

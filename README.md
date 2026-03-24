@@ -74,7 +74,27 @@ After making changes, go to `chrome://extensions` and click the refresh icon on 
 - Text alignment, transform, decoration
 - Text color
 
-All changes apply instantly to the page. Changes are ephemeral (lost on page refresh) — persistence and export are coming in future phases.
+All changes apply instantly to the page.
+
+### AI Editing
+
+1. Select an element and switch to the **AI** tab
+2. Describe what you want to change in natural language (e.g., "make this red and bigger", "add a subtle shadow")
+3. Click **Apply** — the AI generates and applies CSS changes
+4. Requires an API key configured in Settings (Claude or OpenAI)
+
+### Change Tracking & Export
+
+The **Changes** tab records every edit made during a session:
+- View a timestamped log of all changes with per-change undo
+- **Copy JSON** — structured changeset for Claude Code / Codex (selector + property + old/new values)
+- **Copy Summary** — human-readable markdown for GitHub issues or Slack
+
+### Persistence & Screenshots
+
+- **Save** — save edits for the current URL (persists in chrome.storage)
+- **Restore** — replay saved edits when revisiting a page
+- **Screenshot** (📷) — download a PNG of the current viewport
 
 ## Architecture
 
@@ -108,10 +128,33 @@ src/
 └── options/         # Settings page
 ```
 
-## Roadmap
+### AI Setup
 
-- [ ] **Phase 4** — Change tracking and export (JSON changesets for Claude Code / Codex, human-readable summaries)
-- [ ] **Phase 5** — AI-powered edits (natural language prompts), persistence per URL, screenshot export
+1. Click the extension icon → **Open Designer Panel**
+2. Right-click the extension icon → **Options** (or go to `chrome://extensions` → Page Designer → Details → Extension options)
+3. Enter your API key (Claude or OpenAI)
+4. Select a model and click **Save**
+
+## JSON Changeset Format
+
+The export format is designed for consumption by AI coding tools:
+
+```json
+{
+  "url": "https://example.com/page",
+  "timestamp": "2026-03-24T10:30:00Z",
+  "description": "2 style changes, 1 text edit",
+  "changes": [
+    {
+      "type": "style",
+      "selector": "#hero > h1",
+      "property": "font-size",
+      "from": "32px",
+      "to": "48px"
+    }
+  ]
+}
+```
 
 ## License
 

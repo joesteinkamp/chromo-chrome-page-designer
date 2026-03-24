@@ -1,18 +1,189 @@
-.pd-options {
-  max-width: 480px;
-  margin: 40px auto;
-  padding: 24px;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  color: #e0e0e0;
-  background: #1e1e1e;
+/* Options page — Page Designer settings */
+
+:root {
+  --pd-bg: #1e1e1e;
+  --pd-bg-raised: #2c2c2c;
+  --pd-bg-hover: #363636;
+  --pd-border: #3e3e3e;
+  --pd-text: #e0e0e0;
+  --pd-text-dim: #999;
+  --pd-text-muted: #666;
+  --pd-accent: #4f9eff;
+  --pd-accent-dim: rgba(79, 158, 255, 0.15);
+  --pd-green: #34c759;
+  --pd-radius: 4px;
+  --pd-font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "Helvetica Neue", sans-serif;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: var(--pd-font);
+  font-size: 13px;
+  color: var(--pd-text);
+  background: var(--pd-bg);
   min-height: 100vh;
 }
 
-.pd-options h1 {
-  font-size: 20px;
-  margin-bottom: 12px;
+.pd-options {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 32px 24px;
 }
 
-.pd-options p {
-  color: #999;
+/* Header */
+.pd-options__header {
+  margin-bottom: 28px;
+}
+
+.pd-options__title {
+  font-size: 20px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.pd-options__version {
+  font-size: 12px;
+  color: var(--pd-text-muted);
+}
+
+/* Sections */
+.pd-options__section {
+  margin-bottom: 24px;
+  padding: 16px;
+  background: var(--pd-bg-raised);
+  border: 1px solid var(--pd-border);
+  border-radius: 6px;
+}
+
+.pd-options__section-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--pd-text);
+  margin-bottom: 16px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-size: 11px;
+  color: var(--pd-text-dim);
+}
+
+/* Form field */
+.pd-options__field {
+  margin-bottom: 14px;
+}
+
+.pd-options__field:last-child {
+  margin-bottom: 0;
+}
+
+.pd-options__label {
+  display: block;
+  font-size: 12px;
+  color: var(--pd-text-dim);
+  margin-bottom: 4px;
+}
+
+.pd-options__input,
+.pd-options__select {
+  width: 100%;
+  height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--pd-border);
+  border-radius: var(--pd-radius);
+  background: var(--pd-bg);
+  color: var(--pd-text);
+  font-family: var(--pd-font);
+  font-size: 12px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.pd-options__input:focus,
+.pd-options__select:focus {
+  border-color: var(--pd-accent);
+}
+
+.pd-options__select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%23999' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  padding-right: 28px;
+}
+
+/* Password field with toggle */
+.pd-options__password-wrap {
+  position: relative;
+}
+
+.pd-options__password-wrap .pd-options__input {
+  padding-right: 36px;
+}
+
+.pd-options__password-toggle {
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 28px;
+  height: 24px;
+  border: none;
+  border-radius: 3px;
+  background: none;
+  color: var(--pd-text-muted);
+  font-size: 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pd-options__password-toggle:hover {
+  background: var(--pd-bg-hover);
+  color: var(--pd-text-dim);
+}
+
+/* Save button */
+.pd-options__save {
+  width: 100%;
+  height: 34px;
+  margin-top: 16px;
+  border: none;
+  border-radius: var(--pd-radius);
+  background: var(--pd-accent);
+  color: #fff;
+  font-family: var(--pd-font);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.pd-options__save:hover {
+  opacity: 0.9;
+}
+
+/* Messages */
+.pd-options__message {
+  margin-top: 10px;
+  padding: 6px 10px;
+  border-radius: var(--pd-radius);
+  font-size: 11px;
+}
+
+.pd-options__message--success {
+  background: rgba(52, 199, 89, 0.12);
+  border: 1px solid rgba(52, 199, 89, 0.25);
+  color: var(--pd-green);
+}
+
+.pd-options__message--error {
+  background: rgba(255, 69, 58, 0.12);
+  border: 1px solid rgba(255, 69, 58, 0.25);
+  color: #ff6961;
 }

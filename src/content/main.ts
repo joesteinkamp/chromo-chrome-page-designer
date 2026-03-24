@@ -1,8 +1,7 @@
 /**
  * Page Designer content script entry point.
- * Manages activation state and coordinates all interaction modes:
- *   idle → picking (hover/click) → selected
- *   selected → dragging | resizing | editing
+ * Manages activation state, coordinates all interaction modes,
+ * tracks changes, and handles persistence replay.
  */
 
 import { initOverlay, destroyOverlay, getHandleDirection } from "./overlay";
@@ -20,6 +19,18 @@ import { startInlineEdit, stopInlineEdit, isEditing } from "./inline-edit";
 import { initDragDrop, isDragActive, cancelDrag } from "./drag-drop";
 import { tryStartResize, isResizeActive } from "./resize";
 import { showImageToolbar, hideImageToolbar } from "./image-replace";
+import {
+  recordStyleChange,
+  recordTextChange,
+  recordMoveChange,
+  recordResizeChange,
+  recordImageChange,
+  undoChange,
+  undoAll,
+  getChanges,
+  clearChanges,
+  replayChanges,
+} from "./change-tracker";
 import type { Message } from "../shared/messages";
 
 let isActive = false;
@@ -46,12 +57,167 @@ chrome.runtime.onMessage.addListener(
       case "APPLY_STYLE": {
         const el = getSelectedElement();
         if (el && el instanceof HTMLElement) {
+          // Record the old value before applying
+          const computed = window.getComputedStyle(el);
+          const oldValue = computed.getPropertyValue(message.property);
+
           applyStyleToElement(el, message.property, message.value);
           refreshSelection();
-          // Send updated element data back to panel
+
+          // Track the change
+          if (oldValue !== message.value) {
+            recordStyleChange(el, message.property, oldValue, message.value);
+          }
+
           sendElementData(el);
         }
         break;
+      }
+
+      case "APPLY_AI_CHANGES": {
+        const el = getSelectedElement();
+        if (el && el instanceof HTMLElement) {
+          let appliedCount = 0;
+
+          // Apply style changes
+          if (message.styleChanges) {
+            for (const { property, value } of message.styleChanges) {
+              const computed = window.getComputedStyle(el);
+              const oldValue = computed.getPropertyValue(property);
+              applyStyleToElement(el, property, value);
+              if (oldValue !== value) {
+                recordStyleChange(el, property, oldValue, value);
+                appliedCount++;
+              }
+            }
+          }
+
+          // Apply text change
+          if (message.textContent !== undefined) {
+            const oldText = el.textContent || "";
+            el.textContent = message.textContent;
+            if (oldText !== message.textContent) {
+              recordTextChange(el, oldText, message.textContent);
+              appliedCount++;
+            }
+          }
+
+          refreshSelection();
+          sendElementData(el);
+
+          sendResponse({
+            type: "AI_CHANGES_APPLIED",
+            appliedCount,
+          } as any);
+        }
+        return true;
+      }
+
+      // Change tracking messages
+      case "TEXT_CHANGED": {
+        // Already handled by inline-edit.ts sending directly,
+        // but we also listen here for recording
+        const el = message.selector
+          ? document.querySelector(message.selector)
+          : null;
+        if (el) {
+          recordTextChange(el, message.from, message.to);
+        }
+        break;
+      }
+
+      case "ELEMENT_MOVED": {
+        const el = message.selector
+          ? document.querySelector(message.selector)
+          : null;
+        if (el) {
+          recordMoveChange(
+            el,
+            message.fromParent,
+            message.fromIndex,
+            message.toParent,
+            message.toIndex
+          );
+        }
+        break;
+      }
+
+      case "ELEMENT_RESIZED": {
+        const el = message.selector
+          ? document.querySelector(message.selector)
+          : null;
+        if (el) {
+          recordResizeChange(el, message.from, message.to);
+        }
+        break;
+      }
+
+      case "IMAGE_REPLACED": {
+        const el = message.selector
+          ? document.querySelector(message.selector)
+          : null;
+        if (el) {
+          recordImageChange(el, message.from, message.to);
+        }
+        break;
+      }
+
+      case "UNDO_CHANGE":
+        undoChange(message.changeId);
+        refreshSelection();
+        // Send updated element data if something is selected
+        const sel1 = getSelectedElement();
+        if (sel1) sendElementData(sel1);
+        break;
+
+      case "UNDO_ALL":
+        undoAll();
+        refreshSelection();
+        const sel2 = getSelectedElement();
+        if (sel2) sendElementData(sel2);
+        break;
+
+      case "GET_CHANGES":
+        sendResponse({
+          type: "CHANGES_RESPONSE",
+          changes: getChanges(),
+        } satisfies Message);
+        return true;
+
+      case "CLEAR_CHANGES":
+        clearChanges();
+        break;
+
+      case "REPLAY_CHANGES": {
+        const result = replayChanges(message.changes);
+        sendResponse({
+          type: "REPLAY_RESULT",
+          applied: result.applied,
+          failed: result.failed,
+        } as any);
+        return true;
+      }
+
+      case "SAVE_EDITS": {
+        // Forward to background for storage
+        chrome.runtime.sendMessage(message);
+        break;
+      }
+
+      case "CAPTURE_SCREENSHOT": {
+        // Forward to background
+        chrome.runtime.sendMessage(message, (response: any) => {
+          if (response?.type === "SCREENSHOT_CAPTURED" && response.dataUrl) {
+            // Trigger download
+            const link = document.createElement("a");
+            link.href = response.dataUrl;
+            link.download = `page-designer-${Date.now()}.png`;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+          }
+        });
+        return true;
       }
     }
     return true;
@@ -69,13 +235,26 @@ function activate(): void {
     onDoubleClick: onElementDoubleClick,
     onMouseDown: onElementMouseDown,
   });
+
+  // Check for saved edits
+  chrome.runtime.sendMessage(
+    { type: "CHECK_SAVED_EDITS", url: window.location.href } as any,
+    (response: any) => {
+      if (response?.hasSavedEdits) {
+        // Notify the panel that saved edits exist
+        chrome.runtime.sendMessage({
+          type: "SAVED_EDITS_AVAILABLE",
+          url: window.location.href,
+        } as any);
+      }
+    }
+  );
 }
 
 function deactivate(): void {
   if (!isActive) return;
   isActive = false;
 
-  // Clean up any active interaction
   stopInlineEdit();
   cancelDrag();
   hideImageToolbar();
@@ -91,8 +270,6 @@ function onElementSelected(element: Element | null): void {
 
   if (element) {
     sendElementData(element);
-
-    // Show image toolbar if it's an image
     if (element.tagName.toLowerCase() === "img") {
       showImageToolbar(element);
     }
@@ -113,7 +290,6 @@ function onElementDoubleClick(element: Element, _e: MouseEvent): void {
   hideImageToolbar();
 
   const started = startInlineEdit(element, () => {
-    // On edit complete
     resumePicker();
     refreshSelection();
     sendElementData(element);
@@ -134,7 +310,6 @@ function onElementMouseDown(
   if (isEditing() || isDragActive() || isResizeActive()) return;
   if (!(element instanceof HTMLElement)) return;
 
-  // Check if clicking a resize handle
   const handleDir = getHandleDirection(target);
   if (handleDir) {
     suspendPicker();
@@ -147,13 +322,11 @@ function onElementMouseDown(
     return;
   }
 
-  // Otherwise start drag-and-drop tracking
   suspendPicker();
   hideImageToolbar();
   initDragDrop(element, e, () => {
     resumePicker();
     refreshSelection();
-    // Re-select and send updated data
     const sel = getSelectedElement();
     if (sel) sendElementData(sel);
   });

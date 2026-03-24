@@ -1,0 +1,178 @@
+/* Changes tab — tracked changes list and export toolbar */
+
+.pd-changes {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+/* Toolbar */
+.pd-changes__toolbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--pd-border);
+  background: var(--pd-bg-raised);
+  flex-shrink: 0;
+}
+
+.pd-changes__badge {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--pd-text-dim);
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.06);
+  white-space: nowrap;
+}
+
+.pd-changes__toolbar-spacer {
+  flex: 1;
+}
+
+.pd-changes__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 24px;
+  padding: 0 8px;
+  border: 1px solid var(--pd-border);
+  border-radius: var(--pd-radius);
+  background: var(--pd-bg-raised);
+  color: var(--pd-text-dim);
+  font-family: var(--pd-font);
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.pd-changes__btn:hover {
+  background: var(--pd-bg-hover);
+  color: var(--pd-text);
+}
+
+.pd-changes__btn--danger {
+  border-color: #ff453a;
+  color: #ff453a;
+}
+
+.pd-changes__btn--danger:hover {
+  background: rgba(255, 69, 58, 0.15);
+  color: #ff6961;
+}
+
+/* Toast notification */
+.pd-changes__toast {
+  position: fixed;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 4px 12px;
+  border-radius: var(--pd-radius);
+  background: var(--pd-green);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  z-index: 100;
+  pointer-events: none;
+  animation: pd-changes-toast-in 0.15s ease;
+}
+
+@keyframes pd-changes-toast-in {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+/* Empty state */
+.pd-changes__empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 24px;
+  text-align: center;
+  color: var(--pd-text-muted);
+  font-size: 12px;
+  line-height: 1.5;
+  flex: 1;
+}
+
+/* Change list */
+.pd-changes__list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px 0;
+}
+
+/* Individual change item */
+.pd-changes__item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  transition: background 0.1s;
+  position: relative;
+}
+
+.pd-changes__item:hover {
+  background: var(--pd-bg-hover);
+}
+
+.pd-changes__item-icon {
+  font-size: 13px;
+  flex-shrink: 0;
+  width: 18px;
+  text-align: center;
+}
+
+.pd-changes__item-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.pd-changes__item-desc {
+  font-size: 11px;
+  color: var(--pd-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pd-changes__item-time {
+  font-size: 10px;
+  color: var(--pd-text-muted);
+  margin-top: 1px;
+}
+
+.pd-changes__item-undo {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  height: 20px;
+  padding: 0 6px;
+  border: 1px solid var(--pd-border);
+  border-radius: var(--pd-radius);
+  background: var(--pd-bg-raised);
+  color: var(--pd-text-dim);
+  font-family: var(--pd-font);
+  font-size: 10px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.15s;
+}
+
+.pd-changes__item:hover .pd-changes__item-undo {
+  display: inline-flex;
+}
+
+.pd-changes__item-undo:hover {
+  background: var(--pd-bg-hover);
+  color: var(--pd-text);
+}

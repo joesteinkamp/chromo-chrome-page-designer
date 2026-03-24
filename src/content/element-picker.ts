@@ -37,6 +37,7 @@ export function startPicker(cbs: PickerCallbacks): void {
   document.addEventListener("click", onClick, true);
   document.addEventListener("dblclick", onDoubleClick, true);
   document.addEventListener("mousedown", onMouseDown, true);
+  document.addEventListener("keydown", onKeyDown, true);
   window.addEventListener("scroll", onScroll, true);
   window.addEventListener("resize", onResize);
 }
@@ -51,6 +52,7 @@ export function stopPicker(): void {
   document.removeEventListener("click", onClick, true);
   document.removeEventListener("dblclick", onDoubleClick, true);
   document.removeEventListener("mousedown", onMouseDown, true);
+  document.removeEventListener("keydown", onKeyDown, true);
   window.removeEventListener("scroll", onScroll, true);
   window.removeEventListener("resize", onResize);
 
@@ -184,6 +186,37 @@ function onMouseDown(e: MouseEvent): void {
       // Don't prevent default yet — let click handler decide
       // But notify main.ts so it can start drag tracking
       callbacks?.onMouseDown(selectedElement, pageTarget || selectedElement, e);
+    }
+  }
+}
+
+function onKeyDown(e: KeyboardEvent): void {
+  if (!isActive || suspended || !selectedElement) return;
+  if (e.key !== "Enter") return;
+
+  e.preventDefault();
+  e.stopPropagation();
+  e.stopImmediatePropagation();
+
+  if (e.shiftKey) {
+    // Shift+Enter: go up to parent
+    const parent = selectedElement.parentElement;
+    if (parent && parent !== document.body && parent !== document.documentElement) {
+      selectedElement = parent;
+      hoveredElement = null;
+      hideHover();
+      showSelection(selectedElement);
+      callbacks?.onSelect(selectedElement);
+    }
+  } else {
+    // Enter: go down to first child element
+    const firstChild = selectedElement.children[0];
+    if (firstChild && !isOverlayElement(firstChild)) {
+      selectedElement = firstChild;
+      hoveredElement = null;
+      hideHover();
+      showSelection(selectedElement);
+      callbacks?.onSelect(selectedElement);
     }
   }
 }

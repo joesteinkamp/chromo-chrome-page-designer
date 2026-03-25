@@ -4,12 +4,11 @@ import { useStyleChange } from "./hooks/useStyleChange";
 import { ElementInfo } from "./components/ElementInfo";
 import { DesignTab } from "./components/DesignTab";
 import { ChangesTab } from "./components/ChangesTab";
-import { TypographyTab } from "./components/TypographyTab";
 import { exportAsJSON, exportAsSummary } from "../shared/export";
 import type { Change } from "../shared/types";
 import type { Message } from "../shared/messages";
 
-type Tab = "design" | "typography" | "changes";
+type Tab = "design" | "changes";
 
 export function App() {
   const { elementData, isConnected, setElementData, multiSelectCount } = useElementData();
@@ -332,12 +331,6 @@ export function App() {
                 Design
               </button>
               <button
-                className={`pd-panel__tab ${activeTab === "typography" ? "pd-panel__tab--active" : ""}`}
-                onClick={() => setActiveTab("typography")}
-              >
-                Type
-              </button>
-              <button
                 className={`pd-panel__tab ${activeTab === "changes" ? "pd-panel__tab--active" : ""}`}
                 onClick={() => setActiveTab("changes")}
               >
@@ -351,12 +344,6 @@ export function App() {
               {activeTab === "design" && (
                 <DesignTab
                   data={elementData}
-                  onStyleChange={sendStyleChange}
-                />
-              )}
-              {activeTab === "typography" && (
-                <TypographyTab
-                  computedStyles={elementData.computedStyles}
                   onStyleChange={sendStyleChange}
                 />
               )}

@@ -1,39 +1,10 @@
-/* Typography tab — compact Figma-style layout */
+/* Typography section — compact Figma-style layout */
 
-.pd-typography {
+/* Header actions (settings icon + arrow) */
+.pd-typography__header-actions {
   display: flex;
-  flex-direction: column;
+  align-items: center;
   gap: 2px;
-}
-
-/* Labeled row */
-.pd-typography__row {
-  padding: 6px 12px;
-  border-top: 1px solid var(--pd-border);
-}
-
-.pd-typography__row:first-child {
-  border-top: none;
-}
-
-.pd-typography__row-label {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--pd-text-dim);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  margin-bottom: 6px;
-}
-
-.pd-typography__row-fields {
-  display: flex;
-  gap: 6px;
-  align-items: flex-start;
-}
-
-.pd-typography__row-fields > * {
-  flex: 1;
-  min-width: 0;
 }
 
 /* Button group (alignment / transform / decoration) */
@@ -43,6 +14,7 @@
   background: var(--pd-border);
   border-radius: var(--pd-radius);
   overflow: hidden;
+  flex: 1;
 }
 
 .pd-typography__btn {
@@ -79,13 +51,87 @@
   color: var(--pd-accent);
 }
 
-/* Color row — inline with label */
-.pd-typography__color-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+/* Small button group variant for popover */
+.pd-typography__btn-group--sm {
+  flex: none;
 }
 
-.pd-typography__color-row .pd-color-picker {
+.pd-typography__btn--sm {
+  height: 24px;
+  min-width: 28px;
+  font-size: 10px;
+}
+
+/* ── Details popover ── */
+.pd-typography__popover {
+  position: absolute;
+  top: 100%;
+  right: 12px;
+  z-index: 1000;
+  width: 240px;
+  background: var(--pd-bg-raised);
+  border: 1px solid var(--pd-border);
+  border-radius: 6px;
+  box-shadow: var(--pd-shadow);
+  padding: 0;
+  margin-top: 4px;
+}
+
+.pd-typography__popover-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--pd-border);
+}
+
+.pd-typography__popover-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--pd-text);
+}
+
+.pd-typography__popover-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border: none;
+  border-radius: var(--pd-radius);
+  background: none;
+  color: var(--pd-text-muted);
+  font-size: 16px;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.pd-typography__popover-close:hover {
+  background: var(--pd-bg-hover);
+  color: var(--pd-text);
+}
+
+/* Popover rows */
+.pd-typography__popover-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--pd-border);
+}
+
+.pd-typography__popover-row:last-child {
+  border-bottom: none;
+}
+
+.pd-typography__popover-label {
+  font-size: 11px;
+  color: var(--pd-text-dim);
+  flex-shrink: 0;
+  min-width: 70px;
+}
+
+.pd-typography__popover-color {
   flex: 1;
+  min-width: 0;
 }

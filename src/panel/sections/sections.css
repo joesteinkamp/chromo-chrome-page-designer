@@ -2,6 +2,7 @@
 
 .pd-section {
   border-top: 1px solid var(--pd-border);
+  position: relative;
 }
 
 .pd-section__header {
@@ -115,6 +116,11 @@
 .pd-section__icon-btn:hover {
   background: var(--pd-bg-hover);
   color: var(--pd-text);
+}
+
+.pd-section__icon-btn--active {
+  color: var(--pd-accent);
+  background: var(--pd-accent-dim);
 }
 
 .pd-section__icon-btn--disabled {

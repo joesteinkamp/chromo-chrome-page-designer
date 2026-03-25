@@ -174,8 +174,34 @@
 }
 
 /* ── Spacing compact / expanded ── */
-.pd-spacing__compact-row {
-  gap: 6px;
+.pd-spacing__compact {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.pd-spacing__col {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.pd-spacing__col-row {
+  display: flex;
+  gap: 4px;
+}
+
+.pd-spacing__col-row > * {
+  flex: 1;
+  min-width: 0;
+}
+
+.pd-spacing__col-label {
+  font-size: 9px;
+  color: var(--pd-text-muted);
+  padding-left: 2px;
 }
 
 .pd-spacing__expand-btn {
@@ -193,29 +219,12 @@
   padding: 0;
   flex-shrink: 0;
   line-height: 1;
+  margin-top: 1px;
 }
 
 .pd-spacing__expand-btn:hover {
   background: var(--pd-bg-hover);
   color: var(--pd-text);
-}
-
-.pd-spacing__expand-placeholder {
-  width: 22px;
-  flex-shrink: 0;
-}
-
-.pd-spacing__compact-labels {
-  display: flex;
-  gap: 6px;
-  font-size: 9px;
-  color: var(--pd-text-muted);
-  margin-top: -2px;
-  padding-left: 2px;
-}
-
-.pd-spacing__compact-labels span {
-  flex: 1;
 }
 
 .pd-spacing__group {

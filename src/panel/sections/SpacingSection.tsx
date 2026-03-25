@@ -30,7 +30,6 @@ export const SpacingSection: React.FC<SpacingSectionProps> = ({
   const [expanded, setExpanded] = useState(false);
   useEffect(() => { setCollapsed(!hasValue); }, [hasValue]);
 
-  // Auto-expand if sides differ
   const padT = px(computedStyles["padding-top"]);
   const padR = px(computedStyles["padding-right"]);
   const padB = px(computedStyles["padding-bottom"]);
@@ -40,17 +39,14 @@ export const SpacingSection: React.FC<SpacingSectionProps> = ({
   const marB = px(computedStyles["margin-bottom"]);
   const marL = px(computedStyles["margin-left"]);
 
-  const padHorizSame = padL === padR;
-  const padVertSame = padT === padB;
-  const marHorizSame = marL === marR;
-  const marVertSame = marT === marB;
-  const sidesMatch = padHorizSame && padVertSame && marHorizSame && marVertSame;
+  const sidesMatch =
+    padL === padR && padT === padB && marL === marR && marT === marB;
 
   useEffect(() => {
     if (!sidesMatch) setExpanded(true);
   }, [sidesMatch]);
 
-  // Compact handlers: set both sides at once
+  // Compact: set both sides at once
   const handlePadHoriz = useCallback(
     (v: number) => { onStyleChange("padding-left", `${v}px`); onStyleChange("padding-right", `${v}px`); },
     [onStyleChange]
@@ -68,7 +64,7 @@ export const SpacingSection: React.FC<SpacingSectionProps> = ({
     [onStyleChange]
   );
 
-  // Expanded handlers: individual sides
+  // Expanded: individual sides
   const handle = useCallback(
     (prop: string) => (v: number) => onStyleChange(prop, `${v}px`),
     [onStyleChange]
@@ -87,44 +83,39 @@ export const SpacingSection: React.FC<SpacingSectionProps> = ({
       {!collapsed && (
         <div className="pd-section__content">
           {!expanded ? (
-            <>
-              {/* Compact: horiz + vert per group */}
-              <div className="pd-section__row pd-spacing__compact-row">
-                <NumberInput label={"\u2194"} value={padL} onChange={handlePadHoriz} min={0} suffix="px" />
-                <NumberInput label={"\u2195"} value={padT} onChange={handlePadVert} min={0} suffix="px" />
-                <button
-                  className="pd-spacing__expand-btn"
-                  type="button"
-                  title="Show all sides"
-                  onClick={() => setExpanded(true)}
-                >
-                  &#x25A1;
-                </button>
+            <div className="pd-spacing__compact">
+              {/* Padding column */}
+              <div className="pd-spacing__col">
+                <div className="pd-spacing__col-row">
+                  <NumberInput label={"\u2194"} value={padL} onChange={handlePadHoriz} min={0} suffix="px" />
+                  <NumberInput label={"\u2195"} value={padT} onChange={handlePadVert} min={0} suffix="px" />
+                </div>
+                <span className="pd-spacing__col-label">Padding</span>
               </div>
-              <div className="pd-section__row pd-spacing__compact-row">
-                <NumberInput label={"\u2194"} value={marL} onChange={handleMarHoriz} suffix="px" />
-                <NumberInput label={"\u2195"} value={marT} onChange={handleMarVert} suffix="px" />
-                <div className="pd-spacing__expand-placeholder" />
+              {/* Margin column */}
+              <div className="pd-spacing__col">
+                <div className="pd-spacing__col-row">
+                  <NumberInput label={"\u2194"} value={marL} onChange={handleMarHoriz} suffix="px" />
+                  <NumberInput label={"\u2195"} value={marT} onChange={handleMarVert} suffix="px" />
+                </div>
+                <span className="pd-spacing__col-label">Margin</span>
               </div>
-              <div className="pd-spacing__compact-labels">
-                <span>Padding</span>
-                <span>Margin</span>
-              </div>
-            </>
+              {/* Expand button */}
+              <button
+                className="pd-spacing__expand-btn"
+                type="button"
+                title="Show all sides"
+                onClick={() => setExpanded(true)}
+              >
+                &#x25A1;
+              </button>
+            </div>
           ) : (
             <>
-              {/* Expanded: all 4 sides */}
+              {/* Expanded: Padding */}
               <div className="pd-spacing__group">
                 <div className="pd-spacing__group-header">
                   <span className="pd-section__label">Padding</span>
-                  <button
-                    className="pd-spacing__expand-btn"
-                    type="button"
-                    title="Compact view"
-                    onClick={() => setExpanded(false)}
-                  >
-                    &#x25A0;
-                  </button>
                 </div>
                 <div className="pd-section__row pd-section__row--half">
                   <NumberInput label="T" value={padT} onChange={handle("padding-top")} min={0} suffix="px" />
@@ -135,8 +126,19 @@ export const SpacingSection: React.FC<SpacingSectionProps> = ({
                   <NumberInput label="L" value={padL} onChange={handle("padding-left")} min={0} suffix="px" />
                 </div>
               </div>
+              {/* Expanded: Margin */}
               <div className="pd-spacing__group">
-                <span className="pd-section__label">Margin</span>
+                <div className="pd-spacing__group-header">
+                  <span className="pd-section__label">Margin</span>
+                  <button
+                    className="pd-spacing__expand-btn"
+                    type="button"
+                    title="Compact view"
+                    onClick={() => setExpanded(false)}
+                  >
+                    &#x25A0;
+                  </button>
+                </div>
                 <div className="pd-section__row pd-section__row--half">
                   <NumberInput label="T" value={marT} onChange={handle("margin-top")} suffix="px" />
                   <NumberInput label="R" value={marR} onChange={handle("margin-right")} suffix="px" />

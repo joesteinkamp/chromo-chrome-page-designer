@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import { NumberInput } from "../controls";
 import "./sections.css";
 
@@ -6,6 +6,8 @@ interface SpacingSectionProps {
   computedStyles: Record<string, string>;
   onStyleChange: (property: string, value: string) => void;
 }
+
+type SpacingMode = "single" | "hv" | "sides";
 
 const ALL_PROPS = [
   "padding-top", "padding-right", "padding-bottom", "padding-left",
@@ -18,6 +20,124 @@ function px(val: string | undefined): number {
   return isNaN(n) ? 0 : n;
 }
 
+function detectMode(t: number, r: number, b: number, l: number): SpacingMode {
+  if (t === b && l === r && t === l) return "single";
+  if (t === b && l === r) return "hv";
+  return "sides";
+}
+
+interface SpacingGroupProps {
+  label: string;
+  top: number;
+  right: number;
+  bottom: number;
+  left: number;
+  min?: number;
+  onChangeAll: (v: number) => void;
+  onChangeHoriz: (v: number) => void;
+  onChangeVert: (v: number) => void;
+  onChangeSide: (side: string, v: number) => void;
+  sidePrefix: string;
+}
+
+function SpacingGroup({
+  label, top, right, bottom, left, min,
+  onChangeAll, onChangeHoriz, onChangeVert, onChangeSide, sidePrefix,
+}: SpacingGroupProps) {
+  const [mode, setMode] = useState<SpacingMode>(() => detectMode(top, right, bottom, left));
+  const [popoverOpen, setPopoverOpen] = useState(false);
+  const popoverRef = useRef<HTMLDivElement>(null);
+  const gearRef = useRef<HTMLButtonElement>(null);
+
+  // Auto-upgrade mode if values diverge
+  useEffect(() => {
+    const needed = detectMode(top, right, bottom, left);
+    if (needed === "sides" && mode !== "sides") setMode("sides");
+    else if (needed === "hv" && mode === "single") setMode("hv");
+  }, [top, right, bottom, left]);
+
+  // Close popover on outside click
+  useEffect(() => {
+    if (!popoverOpen) return;
+    function handleClick(e: MouseEvent) {
+      if (
+        popoverRef.current && !popoverRef.current.contains(e.target as Node) &&
+        gearRef.current && !gearRef.current.contains(e.target as Node)
+      ) {
+        setPopoverOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [popoverOpen]);
+
+  const selectMode = (m: SpacingMode) => {
+    setMode(m);
+    setPopoverOpen(false);
+  };
+
+  return (
+    <div className="pd-spacing__group">
+      <div className="pd-spacing__group-header">
+        <span className="pd-spacing__group-label">{label}</span>
+        <button
+          ref={gearRef}
+          className={`pd-section__icon-btn${popoverOpen ? " pd-section__icon-btn--active" : ""}`}
+          type="button"
+          title={`${label} options`}
+          onClick={() => setPopoverOpen((o) => !o)}
+        >
+          &#x2699;
+        </button>
+      </div>
+
+      {mode === "single" && (
+        <div className="pd-section__row">
+          <NumberInput value={top} onChange={onChangeAll} min={min} suffix="px" />
+        </div>
+      )}
+
+      {mode === "hv" && (
+        <div className="pd-section__row pd-section__row--half">
+          <NumberInput label={"\u2194"} value={left} onChange={onChangeHoriz} min={min} suffix="px" />
+          <NumberInput label={"\u2195"} value={top} onChange={onChangeVert} min={min} suffix="px" />
+        </div>
+      )}
+
+      {mode === "sides" && (
+        <>
+          <div className="pd-section__row pd-section__row--half">
+            <NumberInput label="T" value={top} onChange={(v) => onChangeSide(`${sidePrefix}-top`, v)} min={min} suffix="px" />
+            <NumberInput label="R" value={right} onChange={(v) => onChangeSide(`${sidePrefix}-right`, v)} min={min} suffix="px" />
+          </div>
+          <div className="pd-section__row pd-section__row--half">
+            <NumberInput label="B" value={bottom} onChange={(v) => onChangeSide(`${sidePrefix}-bottom`, v)} min={min} suffix="px" />
+            <NumberInput label="L" value={left} onChange={(v) => onChangeSide(`${sidePrefix}-left`, v)} min={min} suffix="px" />
+          </div>
+        </>
+      )}
+
+      {popoverOpen && (
+        <div className="pd-spacing__popover" ref={popoverRef}>
+          <div className="pd-spacing__popover-title">{label} Values</div>
+          <label className="pd-spacing__popover-option" onClick={() => selectMode("single")}>
+            <span className={`pd-spacing__radio${mode === "single" ? " pd-spacing__radio--active" : ""}`} />
+            One value for all sides
+          </label>
+          <label className="pd-spacing__popover-option" onClick={() => selectMode("hv")}>
+            <span className={`pd-spacing__radio${mode === "hv" ? " pd-spacing__radio--active" : ""}`} />
+            Horizontal/Vertical
+          </label>
+          <label className="pd-spacing__popover-option" onClick={() => selectMode("sides")}>
+            <span className={`pd-spacing__radio${mode === "sides" ? " pd-spacing__radio--active" : ""}`} />
+            Top/Right/Bottom/Left
+          </label>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export const SpacingSection: React.FC<SpacingSectionProps> = ({
   computedStyles,
   onStyleChange,
@@ -27,7 +147,6 @@ export const SpacingSection: React.FC<SpacingSectionProps> = ({
     return v !== "0px" && v !== "0";
   });
   const [collapsed, setCollapsed] = useState(!hasValue);
-  const [expanded, setExpanded] = useState(false);
   useEffect(() => { setCollapsed(!hasValue); }, [hasValue]);
 
   const padT = px(computedStyles["padding-top"]);
@@ -39,20 +158,20 @@ export const SpacingSection: React.FC<SpacingSectionProps> = ({
   const marB = px(computedStyles["margin-bottom"]);
   const marL = px(computedStyles["margin-left"]);
 
-  const sidesMatch =
-    padL === padR && padT === padB && marL === marR && marT === marB;
-
-  useEffect(() => {
-    if (!sidesMatch) setExpanded(true);
-  }, [sidesMatch]);
-
-  // Compact: set both sides at once
+  const handlePadAll = useCallback(
+    (v: number) => { const s = `${v}px`; onStyleChange("padding-top", s); onStyleChange("padding-right", s); onStyleChange("padding-bottom", s); onStyleChange("padding-left", s); },
+    [onStyleChange]
+  );
   const handlePadHoriz = useCallback(
     (v: number) => { onStyleChange("padding-left", `${v}px`); onStyleChange("padding-right", `${v}px`); },
     [onStyleChange]
   );
   const handlePadVert = useCallback(
     (v: number) => { onStyleChange("padding-top", `${v}px`); onStyleChange("padding-bottom", `${v}px`); },
+    [onStyleChange]
+  );
+  const handleMarAll = useCallback(
+    (v: number) => { const s = `${v}px`; onStyleChange("margin-top", s); onStyleChange("margin-right", s); onStyleChange("margin-bottom", s); onStyleChange("margin-left", s); },
     [onStyleChange]
   );
   const handleMarHoriz = useCallback(
@@ -63,10 +182,8 @@ export const SpacingSection: React.FC<SpacingSectionProps> = ({
     (v: number) => { onStyleChange("margin-top", `${v}px`); onStyleChange("margin-bottom", `${v}px`); },
     [onStyleChange]
   );
-
-  // Expanded: individual sides
-  const handle = useCallback(
-    (prop: string) => (v: number) => onStyleChange(prop, `${v}px`),
+  const handleSide = useCallback(
+    (prop: string, v: number) => onStyleChange(prop, `${v}px`),
     [onStyleChange]
   );
 
@@ -82,74 +199,25 @@ export const SpacingSection: React.FC<SpacingSectionProps> = ({
       </div>
       {!collapsed && (
         <div className="pd-section__content">
-          {!expanded ? (
-            <div className="pd-spacing__compact">
-              {/* Padding column */}
-              <div className="pd-spacing__col">
-                <div className="pd-spacing__col-row">
-                  <NumberInput label={"\u2194"} value={padL} onChange={handlePadHoriz} min={0} suffix="px" />
-                  <NumberInput label={"\u2195"} value={padT} onChange={handlePadVert} min={0} suffix="px" />
-                </div>
-                <span className="pd-spacing__col-label">Padding</span>
-              </div>
-              {/* Margin column */}
-              <div className="pd-spacing__col">
-                <div className="pd-spacing__col-row">
-                  <NumberInput label={"\u2194"} value={marL} onChange={handleMarHoriz} suffix="px" />
-                  <NumberInput label={"\u2195"} value={marT} onChange={handleMarVert} suffix="px" />
-                </div>
-                <span className="pd-spacing__col-label">Margin</span>
-              </div>
-              {/* Expand button */}
-              <button
-                className="pd-spacing__expand-btn"
-                type="button"
-                title="Show all sides"
-                onClick={() => setExpanded(true)}
-              >
-                &#x25A1;
-              </button>
-            </div>
-          ) : (
-            <>
-              {/* Expanded: Padding */}
-              <div className="pd-spacing__group">
-                <div className="pd-spacing__group-header">
-                  <span className="pd-section__label">Padding</span>
-                </div>
-                <div className="pd-section__row pd-section__row--half">
-                  <NumberInput label="T" value={padT} onChange={handle("padding-top")} min={0} suffix="px" />
-                  <NumberInput label="R" value={padR} onChange={handle("padding-right")} min={0} suffix="px" />
-                </div>
-                <div className="pd-section__row pd-section__row--half">
-                  <NumberInput label="B" value={padB} onChange={handle("padding-bottom")} min={0} suffix="px" />
-                  <NumberInput label="L" value={padL} onChange={handle("padding-left")} min={0} suffix="px" />
-                </div>
-              </div>
-              {/* Expanded: Margin */}
-              <div className="pd-spacing__group">
-                <div className="pd-spacing__group-header">
-                  <span className="pd-section__label">Margin</span>
-                  <button
-                    className="pd-spacing__expand-btn"
-                    type="button"
-                    title="Compact view"
-                    onClick={() => setExpanded(false)}
-                  >
-                    &#x25A0;
-                  </button>
-                </div>
-                <div className="pd-section__row pd-section__row--half">
-                  <NumberInput label="T" value={marT} onChange={handle("margin-top")} suffix="px" />
-                  <NumberInput label="R" value={marR} onChange={handle("margin-right")} suffix="px" />
-                </div>
-                <div className="pd-section__row pd-section__row--half">
-                  <NumberInput label="B" value={marB} onChange={handle("margin-bottom")} suffix="px" />
-                  <NumberInput label="L" value={marL} onChange={handle("margin-left")} suffix="px" />
-                </div>
-              </div>
-            </>
-          )}
+          <SpacingGroup
+            label="Padding"
+            top={padT} right={padR} bottom={padB} left={padL}
+            min={0}
+            onChangeAll={handlePadAll}
+            onChangeHoriz={handlePadHoriz}
+            onChangeVert={handlePadVert}
+            onChangeSide={handleSide}
+            sidePrefix="padding"
+          />
+          <SpacingGroup
+            label="Margin"
+            top={marT} right={marR} bottom={marB} left={marL}
+            onChangeAll={handleMarAll}
+            onChangeHoriz={handleMarHoriz}
+            onChangeVert={handleMarVert}
+            onChangeSide={handleSide}
+            sidePrefix="margin"
+          />
         </div>
       )}
     </div>

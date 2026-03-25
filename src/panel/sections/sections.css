@@ -173,62 +173,10 @@
   color: var(--pd-text);
 }
 
-/* ── Spacing compact / expanded ── */
-.pd-spacing__compact {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-}
-
-.pd-spacing__col {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.pd-spacing__col-row {
-  display: flex;
-  gap: 4px;
-}
-
-.pd-spacing__col-row > * {
-  flex: 1;
-  min-width: 0;
-}
-
-.pd-spacing__col-label {
-  font-size: 9px;
-  color: var(--pd-text-muted);
-  padding-left: 2px;
-}
-
-.pd-spacing__expand-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 22px;
-  height: 22px;
-  border: 1px solid var(--pd-border);
-  border-radius: var(--pd-radius);
-  background: var(--pd-bg);
-  color: var(--pd-text-muted);
-  font-size: 12px;
-  cursor: pointer;
-  padding: 0;
-  flex-shrink: 0;
-  line-height: 1;
-  margin-top: 1px;
-}
-
-.pd-spacing__expand-btn:hover {
-  background: var(--pd-bg-hover);
-  color: var(--pd-text);
-}
-
+/* ── Spacing groups & popover ── */
 .pd-spacing__group {
-  margin-bottom: 6px;
+  margin-bottom: 8px;
+  position: relative;
 }
 
 .pd-spacing__group:last-child {
@@ -240,6 +188,60 @@
   align-items: center;
   justify-content: space-between;
   margin-bottom: 4px;
+}
+
+.pd-spacing__group-label {
+  font-size: 11px;
+  color: var(--pd-text-dim);
+}
+
+/* Spacing mode popover */
+.pd-spacing__popover {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 1000;
+  width: 200px;
+  background: var(--pd-bg-raised);
+  border: 1px solid var(--pd-border);
+  border-radius: 6px;
+  box-shadow: var(--pd-shadow);
+  padding: 10px;
+}
+
+.pd-spacing__popover-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--pd-text);
+  margin-bottom: 8px;
+}
+
+.pd-spacing__popover-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 0;
+  font-size: 11px;
+  color: var(--pd-text);
+  cursor: pointer;
+}
+
+.pd-spacing__popover-option:hover {
+  color: var(--pd-accent);
+}
+
+.pd-spacing__radio {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid var(--pd-text-muted);
+  flex-shrink: 0;
+}
+
+.pd-spacing__radio--active {
+  border-color: var(--pd-accent);
+  background: radial-gradient(circle, var(--pd-accent) 40%, transparent 40%);
 }
 
 /* ── Stroke per-side controls ── */

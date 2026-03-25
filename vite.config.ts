@@ -17,6 +17,17 @@ function copyContentCss(): Plugin {
   };
 }
 
+/** Strip crossorigin attributes from HTML — they can break Chrome extension CSP */
+function stripCrossorigin(): Plugin {
+  return {
+    name: "strip-crossorigin",
+    enforce: "post",
+    transformIndexHtml(html) {
+      return html.replace(/ crossorigin/g, "");
+    },
+  };
+}
+
 // Chrome extension multi-entry build.
 // HTML entries (panel, popup, options) are at project root.
 // Content script and service worker are JS-only entries.
@@ -27,10 +38,12 @@ export default defineConfig({
       "@shared": resolve(__dirname, "src/shared"),
     },
   },
-  plugins: [copyContentCss()],
+  plugins: [copyContentCss(), stripCrossorigin()],
   build: {
     outDir: "dist",
     emptyOutDir: true,
+    // Disable module preload — the polyfill can interfere with Chrome extensions
+    modulePreload: false,
     rollupOptions: {
       input: {
         panel: resolve(__dirname, "panel.html"),

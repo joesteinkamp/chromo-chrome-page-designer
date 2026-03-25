@@ -295,7 +295,7 @@ function onElementSelected(element: Element | null): void {
 
   if (element) {
     sendElementData(element);
-    showSpacing(element);
+    try { showSpacing(element); } catch { /* spacing overlay is optional */ }
     if (element.tagName.toLowerCase() === "img") {
       showImageToolbar(element);
     }

@@ -11,15 +11,18 @@ interface AlignmentGridProps {
 const JUSTIFY_VALUES = ["flex-start", "center", "flex-end"] as const;
 const ALIGN_VALUES = ["flex-start", "center", "flex-end"] as const;
 
-function normalizeValue(
-  val: string,
-  allowed: readonly string[]
-): string {
-  // Map shorthand values
-  if (val === "start") return "flex-start";
-  if (val === "end") return "flex-end";
-  if (allowed.includes(val)) return val;
-  return allowed[0];
+function normalizeJustify(val: string): string {
+  if (val === "center") return "center";
+  if (val === "flex-end" || val === "end" || val === "right") return "flex-end";
+  // normal, flex-start, start, left, space-between, space-around, space-evenly
+  return "flex-start";
+}
+
+function normalizeAlign(val: string): string {
+  if (val === "center") return "center";
+  if (val === "flex-end" || val === "end") return "flex-end";
+  // normal (stretch), flex-start, start, baseline, stretch
+  return "flex-start";
 }
 
 export const AlignmentGrid: React.FC<AlignmentGridProps> = ({
@@ -28,8 +31,8 @@ export const AlignmentGrid: React.FC<AlignmentGridProps> = ({
   onChange,
   className,
 }) => {
-  const normJustify = normalizeValue(justifyContent, JUSTIFY_VALUES);
-  const normAlign = normalizeValue(alignItems, ALIGN_VALUES);
+  const normJustify = normalizeJustify(justifyContent);
+  const normAlign = normalizeAlign(alignItems);
 
   const handleClick = useCallback(
     (justify: string, align: string) => {

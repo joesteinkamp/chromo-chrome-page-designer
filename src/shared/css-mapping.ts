@@ -41,6 +41,10 @@ export const FIGMA_LABELS: Record<string, string> = {
   // Stroke
   "Stroke color": "border-color",
   "Stroke width": "border-width",
+  "Stroke top width": "border-top-width",
+  "Stroke right width": "border-right-width",
+  "Stroke bottom width": "border-bottom-width",
+  "Stroke left width": "border-left-width",
   "Stroke style": "border-style",
 
   // Corner Radius

@@ -5,6 +5,7 @@ import "./sections.css";
 interface ShadowSectionProps {
   computedStyles: Record<string, string>;
   onStyleChange: (property: string, value: string) => void;
+  disabled?: boolean;
 }
 
 interface ShadowValues {
@@ -102,6 +103,7 @@ function composeShadow(s: ShadowValues): string {
 export const ShadowSection: React.FC<ShadowSectionProps> = ({
   computedStyles,
   onStyleChange,
+  disabled: sectionDisabled,
 }) => {
   const [collapsed, setCollapsed] = useState(false);
 
@@ -143,12 +145,12 @@ export const ShadowSection: React.FC<ShadowSectionProps> = ({
   );
 
   return (
-    <div className="pd-section">
+    <div className={`pd-section${sectionDisabled ? " pd-section--disabled" : ""}`}>
       <div
         className="pd-section__header"
         onClick={() => setCollapsed((c) => !c)}
       >
-        <span className="pd-section__title">Shadow</span>
+        <span className="pd-section__title">Shadow{sectionDisabled ? " (N/A)" : ""}</span>
         <span
           className={`pd-section__arrow${collapsed ? " pd-section__arrow--collapsed" : ""}`}
         >

@@ -143,3 +143,9 @@
   color: var(--pd-accent);
   background: var(--pd-accent-dim);
 }
+
+/* Disabled / not-applicable section */
+.pd-section--disabled {
+  opacity: 0.35;
+  pointer-events: none;
+}

@@ -17,12 +17,14 @@ import {
 let isActive = false;
 let hoveredElement: Element | null = null;
 let selectedElement: Element | null = null;
+let multiSelectedElements: Element[] = [];
 let rafId: number | null = null;
 /** When true, the picker ignores events (another mode is in control) */
 let suspended = false;
 
 export type PickerCallbacks = {
   onSelect: (element: Element | null) => void;
+  onMultiSelect: (elements: Element[], primary: Element) => void;
   onDoubleClick: (element: Element, e: MouseEvent) => void;
   onMouseDown: (element: Element, target: Element, e: MouseEvent) => void;
 };
@@ -67,8 +69,13 @@ export function getSelectedElement(): Element | null {
 
 export function clearSelection(): void {
   selectedElement = null;
+  multiSelectedElements = [];
   hideSelection();
   callbacks?.onSelect(null);
+}
+
+export function getMultiSelectedElements(): Element[] {
+  return [...multiSelectedElements];
 }
 
 /** Pause the picker while another interaction mode is active */
@@ -87,6 +94,15 @@ export function refreshSelection(): void {
   if (selectedElement) {
     updateSelection(selectedElement);
   }
+}
+
+/** Programmatically select an element (used by keyboard nav, breadcrumbs) */
+export function selectElementDirectly(element: Element): void {
+  selectedElement = element;
+  hoveredElement = null;
+  hideHover();
+  showSelection(element);
+  callbacks?.onSelect(element);
 }
 
 // --- Event handlers ---
@@ -141,8 +157,30 @@ function onClick(e: MouseEvent): void {
   }
 
   // If clicking the same element, don't deselect (allow double-click to work)
-  if (target === selectedElement) return;
+  if (target === selectedElement && !e.shiftKey) return;
 
+  // Shift+Click: add/remove from multi-selection
+  if (e.shiftKey && selectedElement) {
+    const idx = multiSelectedElements.indexOf(target);
+    if (idx >= 0) {
+      // Remove from multi-selection
+      multiSelectedElements.splice(idx, 1);
+    } else {
+      // Ensure primary is in multi-select list
+      if (!multiSelectedElements.includes(selectedElement)) {
+        multiSelectedElements.push(selectedElement);
+      }
+      multiSelectedElements.push(target);
+    }
+
+    if (multiSelectedElements.length > 0) {
+      callbacks?.onMultiSelect(multiSelectedElements, selectedElement);
+    }
+    return;
+  }
+
+  // Single select — clear multi-selection
+  multiSelectedElements = [];
   selectedElement = target;
   hoveredElement = null;
   hideHover();

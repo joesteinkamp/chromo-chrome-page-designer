@@ -278,6 +278,48 @@
   border-color: var(--pd-accent);
 }
 
+/* Design tokens */
+.pd-color-picker__tokens,
+.pd-color-picker__recent {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--pd-border);
+}
+
+.pd-color-picker__tokens-label,
+.pd-color-picker__recent-label {
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--pd-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 4px;
+}
+
+.pd-color-picker__tokens-grid,
+.pd-color-picker__recent-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+}
+
+.pd-color-picker__token-swatch,
+.pd-color-picker__recent-swatch {
+  width: 18px;
+  height: 18px;
+  border-radius: 3px;
+  border: 1px solid var(--pd-border);
+  cursor: pointer;
+  padding: 0;
+  transition: transform 0.1s;
+}
+
+.pd-color-picker__token-swatch:hover,
+.pd-color-picker__recent-swatch:hover {
+  transform: scale(1.2);
+  border-color: var(--pd-accent);
+}
+
 /* ── AlignmentGrid ── */
 .pd-alignment-grid {
   display: flex;

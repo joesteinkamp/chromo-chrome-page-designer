@@ -1,3 +1,4 @@
+import React, { useCallback } from "react";
 import type { ElementData } from "../../shared/types";
 import type { Message } from "../../shared/messages";
 
@@ -5,11 +6,28 @@ interface Props {
   data: ElementData;
   multiEdit: boolean;
   onToggleMultiEdit: () => void;
+  multiSelectCount?: number;
 }
 
-export function ElementInfo({ data, multiEdit, onToggleMultiEdit }: Props) {
+export function ElementInfo({ data, multiEdit, onToggleMultiEdit, multiSelectCount }: Props) {
   const dimensions = `${Math.round(data.rect.width)} × ${Math.round(data.rect.height)}`;
   const hasMatches = data.matchCount > 0;
+
+  const handleBreadcrumbClick = useCallback(
+    (e: React.MouseEvent<HTMLSpanElement>) => {
+      const selector = e.currentTarget.dataset.selector;
+      if (selector) {
+        chrome.runtime.sendMessage({
+          type: "SELECT_ELEMENT",
+          selector,
+        } satisfies Message);
+      }
+    },
+    []
+  );
+
+  // Parse breadcrumb into clickable segments
+  const breadcrumbParts = data.breadcrumb.split(" > ");
 
   return (
     <div className="pd-element-info">
@@ -18,6 +36,12 @@ export function ElementInfo({ data, multiEdit, onToggleMultiEdit }: Props) {
         {data.id && <span className="pd-element-info__id">#{data.id}</span>}
         <span className="pd-element-info__dims">{dimensions}</span>
       </div>
+
+      {multiSelectCount ? (
+        <div className="pd-element-info__multi-badge">
+          {multiSelectCount} elements selected (Shift+Click to add)
+        </div>
+      ) : null}
 
       {data.classes.length > 0 && (
         <div className="pd-element-info__classes">
@@ -30,13 +54,45 @@ export function ElementInfo({ data, multiEdit, onToggleMultiEdit }: Props) {
         </div>
       )}
 
-      <div className="pd-element-info__breadcrumb">{data.breadcrumb}</div>
+      <div className="pd-element-info__breadcrumb">
+        {breadcrumbParts.map((part, i) => (
+          <React.Fragment key={i}>
+            {i > 0 && <span className="pd-element-info__breadcrumb-sep"> &gt; </span>}
+            <span
+              className="pd-element-info__breadcrumb-part"
+              data-selector={part}
+              onClick={i < breadcrumbParts.length - 1 ? handleBreadcrumbClick : undefined}
+              role={i < breadcrumbParts.length - 1 ? "button" : undefined}
+              tabIndex={i < breadcrumbParts.length - 1 ? 0 : undefined}
+              title={i < breadcrumbParts.length - 1 ? `Select ${part}` : undefined}
+            >
+              {part}
+            </span>
+          </React.Fragment>
+        ))}
+      </div>
 
       <div className="pd-element-info__badges">
-        {data.isFlex && <span className="pd-element-info__badge pd-element-info__badge--flex">Auto layout</span>}
-        {data.isGrid && <span className="pd-element-info__badge pd-element-info__badge--grid">Grid</span>}
-        {data.isImage && <span className="pd-element-info__badge pd-element-info__badge--img">Image</span>}
-        {data.hasTextContent && <span className="pd-element-info__badge pd-element-info__badge--text">Text</span>}
+        {data.isFlex && (
+          <span className="pd-element-info__badge pd-element-info__badge--flex">
+            Auto layout
+          </span>
+        )}
+        {data.isGrid && (
+          <span className="pd-element-info__badge pd-element-info__badge--grid">
+            Grid
+          </span>
+        )}
+        {data.isImage && (
+          <span className="pd-element-info__badge pd-element-info__badge--img">
+            Image
+          </span>
+        )}
+        {data.hasTextContent && (
+          <span className="pd-element-info__badge pd-element-info__badge--text">
+            Text
+          </span>
+        )}
       </div>
 
       {hasMatches && (

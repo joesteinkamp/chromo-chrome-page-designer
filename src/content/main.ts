@@ -9,22 +9,27 @@ import {
   startPicker,
   stopPicker,
   getSelectedElement,
+  getMultiSelectedElements,
   clearSelection,
   suspendPicker,
   resumePicker,
   refreshSelection,
+  selectElementDirectly,
 } from "./element-picker";
 import { extractElementData, applyStyleToElement, findMatchingElements } from "./style-bridge";
 import { startInlineEdit, stopInlineEdit, isEditing } from "./inline-edit";
 import { initDragDrop, isDragActive, cancelDrag } from "./drag-drop";
 import { tryStartResize, isResizeActive } from "./resize";
 import { showImageToolbar, hideImageToolbar } from "./image-replace";
+import { initKeyboard, destroyKeyboard } from "./keyboard";
+import { showSpacing, hideSpacing } from "./spacing-overlay";
 import {
   recordStyleChange,
   recordTextChange,
   undoChange,
   undoAll,
   redoChange,
+  redoLast,
   getChanges,
   canRedo,
   clearChanges,
@@ -73,6 +78,7 @@ chrome.runtime.onMessage.addListener(
       case "APPLY_STYLE": {
         const el = getSelectedElement();
         if (el && el instanceof HTMLElement) {
+          // Apply to primary element
           const computed = window.getComputedStyle(el);
           const oldValue = computed.getPropertyValue(message.property);
 
@@ -90,54 +96,52 @@ chrome.runtime.onMessage.addListener(
             updateMultiEditOverlays(matches);
           }
 
-          refreshSelection();
-
           if (oldValue !== message.value) {
             recordStyleChange(el, message.property, oldValue, message.value);
           }
+
+          // Apply to multi-selected elements too
+          const multiEls = getMultiSelectedElements();
+          for (const multiEl of multiEls) {
+            if (multiEl !== el && multiEl instanceof HTMLElement) {
+              const mc = window.getComputedStyle(multiEl);
+              const mv = mc.getPropertyValue(message.property);
+              applyStyleToElement(multiEl, message.property, message.value);
+              if (mv !== message.value) {
+                recordStyleChange(multiEl, message.property, mv, message.value);
+              }
+            }
+          }
+
+          refreshSelection();
+
+          // Visual flash feedback
+          el.classList.remove("__pd-flash");
+          void el.offsetWidth;
+          el.classList.add("__pd-flash");
+          setTimeout(() => el.classList.remove("__pd-flash"), 400);
 
           sendElementData(el);
         }
         break;
       }
 
-      case "APPLY_AI_CHANGES": {
-        const el = getSelectedElement();
-        if (el && el instanceof HTMLElement) {
-          let appliedCount = 0;
-
-          // Apply style changes
-          if (message.styleChanges) {
-            for (const { property, value } of message.styleChanges) {
-              const computed = window.getComputedStyle(el);
-              const oldValue = computed.getPropertyValue(property);
-              applyStyleToElement(el, property, value);
-              if (oldValue !== value) {
-                recordStyleChange(el, property, oldValue, value);
-                appliedCount++;
-              }
+      case "APPLY_STYLE_TO_MATCHING": {
+        const elements = document.querySelectorAll(`.${CSS.escape(message.className)}`);
+        elements.forEach((el) => {
+          if (el instanceof HTMLElement) {
+            const computed = window.getComputedStyle(el);
+            const oldValue = computed.getPropertyValue(message.property);
+            applyStyleToElement(el, message.property, message.value);
+            if (oldValue !== message.value) {
+              recordStyleChange(el, message.property, oldValue, message.value);
             }
           }
-
-          // Apply text change
-          if (message.textContent !== undefined) {
-            const oldText = el.textContent || "";
-            el.textContent = message.textContent;
-            if (oldText !== message.textContent) {
-              recordTextChange(el, oldText, message.textContent);
-              appliedCount++;
-            }
-          }
-
-          refreshSelection();
-          sendElementData(el);
-
-          sendResponse({
-            type: "AI_CHANGES_APPLIED",
-            appliedCount,
-          } as any);
-        }
-        return true;
+        });
+        refreshSelection();
+        const selEl = getSelectedElement();
+        if (selEl) sendElementData(selEl);
+        break;
       }
 
       // Note: TEXT_CHANGED, ELEMENT_MOVED, ELEMENT_RESIZED, IMAGE_REPLACED
@@ -162,11 +166,22 @@ chrome.runtime.onMessage.addListener(
         break;
 
       case "REDO":
-        redoChange();
+      case "REDO_CHANGE":
+        redoLast();
         refreshSelection();
         const sel3 = getSelectedElement();
         if (sel3) sendElementData(sel3);
         break;
+
+      case "SELECT_ELEMENT": {
+        const target = document.querySelector(message.selector);
+        if (target) {
+          selectElementDirectly(target);
+          onElementSelected(target);
+        }
+        break;
+      }
+
 
       case "GET_CHANGES":
         sendResponse({
@@ -224,8 +239,20 @@ function activate(): void {
   initOverlay();
   startPicker({
     onSelect: onElementSelected,
+    onMultiSelect: onMultiSelect,
     onDoubleClick: onElementDoubleClick,
     onMouseDown: onElementMouseDown,
+  });
+  initKeyboard({
+    getSelectedElement,
+    clearSelection,
+    selectElement: (el) => {
+      selectElementDirectly(el);
+      onElementSelected(el);
+    },
+    startInlineEdit: (el) => onElementDoubleClick(el, new MouseEvent("dblclick")),
+    refreshSelection,
+    sendElementData,
   });
 
   // Check for saved edits
@@ -252,8 +279,10 @@ function deactivate(): void {
   hideImageToolbar();
   hideMultiEditOverlays();
   multiEditEnabled = false;
+  hideSpacing();
 
   stopPicker();
+  destroyKeyboard();
   destroyOverlay();
 }
 
@@ -262,9 +291,11 @@ function deactivate(): void {
 function onElementSelected(element: Element | null): void {
   hideImageToolbar();
   hideMultiEditOverlays();
+  hideSpacing();
 
   if (element) {
     sendElementData(element);
+    showSpacing(element);
     if (element.tagName.toLowerCase() === "img") {
       showImageToolbar(element);
     }
@@ -280,6 +311,18 @@ function onElementSelected(element: Element | null): void {
       type: "ELEMENT_DESELECTED",
     } satisfies Message);
   }
+}
+
+// --- Multi-select callback ---
+
+function onMultiSelect(elements: Element[], primary: Element): void {
+  hideImageToolbar();
+  sendElementData(primary);
+  chrome.runtime.sendMessage({
+    type: "MULTI_ELEMENT_SELECTED",
+    count: elements.length,
+    data: extractElementData(primary),
+  } satisfies Message);
 }
 
 // --- Double-click → inline text edit ---

@@ -145,6 +145,22 @@ function hslaToCSS(hsla: HSLA): string {
   return rgbaToHex(rgba);
 }
 
+// ── Recent colors store ──
+const MAX_RECENT_COLORS = 10;
+let recentColors: string[] = [];
+
+function addRecentColor(hex: string): void {
+  const normalized = hex.toLowerCase();
+  recentColors = [normalized, ...recentColors.filter((c) => c !== normalized)].slice(
+    0,
+    MAX_RECENT_COLORS
+  );
+}
+
+function getRecentColors(): string[] {
+  return [...recentColors];
+}
+
 // ── Component ──
 
 interface ColorPickerProps {
@@ -152,6 +168,8 @@ interface ColorPickerProps {
   onChange: (v: string) => void;
   label?: string;
   className?: string;
+  /** CSS custom properties (design tokens) detected on the page */
+  designTokens?: Array<{ name: string; value: string }>;
 }
 
 export const ColorPicker: React.FC<ColorPickerProps> = ({
@@ -159,6 +177,7 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({
   onChange,
   label,
   className,
+  designTokens,
 }) => {
   const rgba = useMemo(() => parseCSSColor(value), [value]);
   const hsla = useMemo(() => rgbaToHsla(rgba), [rgba]);
@@ -225,7 +244,9 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({
 
   const emitColor = useCallback(
     (newHsla: HSLA) => {
-      onChange(hslaToCSS(newHsla));
+      const css = hslaToCSS(newHsla);
+      addRecentColor(css);
+      onChange(css);
     },
     [onChange]
   );
@@ -427,6 +448,46 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({
               onKeyDown={handleHexInputKeyDown}
             />
           </div>
+
+          {/* Design tokens */}
+          {designTokens && designTokens.length > 0 && (
+            <div className="pd-color-picker__tokens">
+              <div className="pd-color-picker__tokens-label">Design Tokens</div>
+              <div className="pd-color-picker__tokens-grid">
+                {designTokens.map((token) => (
+                  <button
+                    key={token.name}
+                    type="button"
+                    className="pd-color-picker__token-swatch"
+                    title={`${token.name}: ${token.value}`}
+                    style={{ background: token.value }}
+                    onClick={() => {
+                      addRecentColor(token.value);
+                      onChange(token.value);
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Recent colors */}
+          {getRecentColors().length > 0 && (
+            <div className="pd-color-picker__recent">
+              <div className="pd-color-picker__recent-label">Recent</div>
+              <div className="pd-color-picker__recent-grid">
+                {getRecentColors().map((color, i) => (
+                  <button
+                    key={`${color}-${i}`}
+                    type="button"
+                    className="pd-color-picker__recent-swatch"
+                    style={{ background: color }}
+                    onClick={() => onChange(color)}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

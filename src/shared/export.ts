@@ -1,24 +1,57 @@
 /**
  * Export functions for change tracking data.
  * Produces JSON changesets (for Claude Code / Codex) and human-readable summaries.
+ * Supports grouping changes by element and optional session notes.
  */
 
 import type { Change, Changeset } from "./types";
 import { CSS_TO_FIGMA } from "./css-mapping";
 
+/** Group changes by selector for cleaner export */
+interface GroupedChanges {
+  selector: string;
+  changes: Change[];
+}
+
+function groupBySelector(changes: Change[]): GroupedChanges[] {
+  const map = new Map<string, Change[]>();
+  for (const c of changes) {
+    const existing = map.get(c.selector) || [];
+    existing.push(c);
+    map.set(c.selector, existing);
+  }
+  return Array.from(map.entries()).map(([selector, changes]) => ({
+    selector,
+    changes,
+  }));
+}
+
 /** Create a structured JSON changeset suitable for AI coding tools */
-export function exportAsJSON(url: string, changes: Change[]): string {
-  const changeset: Changeset = {
+export function exportAsJSON(
+  url: string,
+  changes: Change[],
+  sessionNote?: string
+): string {
+  const changeset: Changeset & { sessionNote?: string; groups?: GroupedChanges[] } = {
     url,
     timestamp: new Date().toISOString(),
     description: summarizeChanges(changes),
     changes,
   };
+  if (sessionNote) {
+    changeset.sessionNote = sessionNote;
+  }
+  // Add grouped view for developer convenience
+  changeset.groups = groupBySelector(changes);
   return JSON.stringify(changeset, null, 2);
 }
 
-/** Create a human-readable markdown summary */
-export function exportAsSummary(url: string, changes: Change[]): string {
+/** Create a human-readable markdown summary with grouped changes */
+export function exportAsSummary(
+  url: string,
+  changes: Change[],
+  sessionNote?: string
+): string {
   if (changes.length === 0) {
     return `No changes recorded for ${url}`;
   }
@@ -28,41 +61,57 @@ export function exportAsSummary(url: string, changes: Change[]): string {
     `**URL:** ${url}`,
     `**Date:** ${new Date().toLocaleString()}`,
     `**Changes:** ${changes.length}`,
-    ``,
   ];
 
-  changes.forEach((change, i) => {
-    const num = i + 1;
-    switch (change.type) {
-      case "style": {
-        const label = CSS_TO_FIGMA[change.property] || change.property;
-        lines.push(
-          `${num}. Changed **${label}** on \`${change.selector}\` from \`${change.from}\` → \`${change.to}\``
-        );
-        break;
+  if (sessionNote) {
+    lines.push(`**Note:** ${sessionNote}`);
+  }
+  lines.push(``);
+
+  // Group by selector
+  const groups = groupBySelector(changes);
+
+  for (const group of groups) {
+    lines.push(`### \`${group.selector}\` (${group.changes.length} change${group.changes.length > 1 ? "s" : ""})`);
+
+    for (const change of group.changes) {
+      switch (change.type) {
+        case "style": {
+          const label = CSS_TO_FIGMA[change.property] || change.property;
+          lines.push(
+            `- Changed **${label}**: \`${change.from}\` → \`${change.to}\``
+          );
+          break;
+        }
+        case "text":
+          lines.push(
+            `- Changed **text**: "${truncate(change.from, 40)}" → "${truncate(change.to, 40)}"`
+          );
+          break;
+        case "move":
+          lines.push(
+            `- **Moved** from position ${change.fromIndex} → ${change.toIndex}`
+          );
+          break;
+        case "resize":
+          lines.push(
+            `- **Resized**: ${change.from.width} × ${change.from.height} → ${change.to.width} × ${change.to.height}`
+          );
+          break;
+        case "image":
+          lines.push(`- **Replaced image**`);
+          break;
+        case "delete":
+          lines.push(`- **Deleted** element`);
+          break;
+        case "hide":
+          lines.push(`- **Hidden** element`);
+          break;
       }
-      case "text":
-        lines.push(
-          `${num}. Changed **text** on \`${change.selector}\`: "${truncate(change.from, 40)}" → "${truncate(change.to, 40)}"`
-        );
-        break;
-      case "move":
-        lines.push(
-          `${num}. **Moved** \`${change.selector}\` from position ${change.fromIndex} in \`${change.fromParent}\` → position ${change.toIndex} in \`${change.toParent}\``
-        );
-        break;
-      case "resize":
-        lines.push(
-          `${num}. **Resized** \`${change.selector}\` from ${change.from.width} × ${change.from.height} → ${change.to.width} × ${change.to.height}`
-        );
-        break;
-      case "image":
-        lines.push(
-          `${num}. **Replaced image** on \`${change.selector}\``
-        );
-        break;
     }
-  });
+
+    lines.push(``);
+  }
 
   return lines.join("\n");
 }
@@ -75,16 +124,45 @@ function summarizeChanges(changes: Change[]): string {
   }
 
   const parts: string[] = [];
-  if (counts.style) parts.push(`${counts.style} style change${counts.style > 1 ? "s" : ""}`);
-  if (counts.text) parts.push(`${counts.text} text edit${counts.text > 1 ? "s" : ""}`);
-  if (counts.move) parts.push(`${counts.move} move${counts.move > 1 ? "s" : ""}`);
-  if (counts.resize) parts.push(`${counts.resize} resize${counts.resize > 1 ? "s" : ""}`);
-  if (counts.image) parts.push(`${counts.image} image replacement${counts.image > 1 ? "s" : ""}`);
+  if (counts.style)
+    parts.push(`${counts.style} style change${counts.style > 1 ? "s" : ""}`);
+  if (counts.text)
+    parts.push(`${counts.text} text edit${counts.text > 1 ? "s" : ""}`);
+  if (counts.move)
+    parts.push(`${counts.move} move${counts.move > 1 ? "s" : ""}`);
+  if (counts.resize)
+    parts.push(`${counts.resize} resize${counts.resize > 1 ? "s" : ""}`);
+  if (counts.image)
+    parts.push(
+      `${counts.image} image replacement${counts.image > 1 ? "s" : ""}`
+    );
+  if (counts.delete)
+    parts.push(`${counts.delete} deletion${counts.delete > 1 ? "s" : ""}`);
+  if (counts.hide)
+    parts.push(
+      `${counts.hide} hidden element${counts.hide > 1 ? "s" : ""}`
+    );
 
   return parts.join(", ") || "No changes";
 }
 
+/**
+ * Generate a visual diff screenshot description.
+ * Returns an HTML string that can be used in the side panel to show
+ * which elements were changed with highlighted outlines.
+ */
+export function generateVisualDiffAnnotations(
+  changes: Change[]
+): Array<{ selector: string; count: number; description: string }> {
+  const groups = groupBySelector(changes);
+  return groups.map((g) => ({
+    selector: g.selector,
+    count: g.changes.length,
+    description: g.changes.map((c) => c.description).join("; "),
+  }));
+}
+
 function truncate(s: string, max: number): string {
   if (s.length <= max) return s;
-  return s.slice(0, max) + "…";
+  return s.slice(0, max) + "\u2026";
 }

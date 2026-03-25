@@ -98,3 +98,97 @@
   outline: 2px solid #4f9eff !important;
   outline-offset: 2px !important;
 }
+
+/* Flash on style apply */
+@keyframes __pd-flash {
+  0% { box-shadow: 0 0 0 2px rgba(79, 158, 255, 0.6) !important; }
+  100% { box-shadow: 0 0 0 2px rgba(79, 158, 255, 0) !important; }
+}
+
+.__pd-flash {
+  animation: __pd-flash 0.4s ease-out !important;
+}
+
+/* Spacing visualization overlays */
+.__pd-spacing-margin {
+  position: fixed !important;
+  z-index: 2147483645 !important;
+  pointer-events: none !important;
+  background: rgba(255, 155, 100, 0.2) !important;
+  border: 1px dashed rgba(255, 155, 100, 0.5) !important;
+  display: none !important;
+  box-sizing: border-box !important;
+}
+
+.__pd-spacing-padding {
+  position: fixed !important;
+  z-index: 2147483645 !important;
+  pointer-events: none !important;
+  background: rgba(100, 200, 100, 0.2) !important;
+  border: 1px dashed rgba(100, 200, 100, 0.5) !important;
+  display: none !important;
+  box-sizing: border-box !important;
+}
+
+.__pd-spacing--visible {
+  display: block !important;
+}
+
+/* Spacing label */
+.__pd-spacing-label {
+  position: fixed !important;
+  z-index: 2147483647 !important;
+  pointer-events: none !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+  font-size: 9px !important;
+  font-weight: 500 !important;
+  line-height: 1 !important;
+  padding: 1px 3px !important;
+  border-radius: 2px !important;
+  white-space: nowrap !important;
+  display: none !important;
+  box-sizing: border-box !important;
+}
+
+.__pd-spacing-label--margin {
+  background: rgba(255, 155, 100, 0.8) !important;
+  color: #fff !important;
+}
+
+.__pd-spacing-label--padding {
+  background: rgba(100, 200, 100, 0.8) !important;
+  color: #fff !important;
+}
+
+.__pd-spacing-label--visible {
+  display: block !important;
+}
+
+/* Distance line to sibling */
+.__pd-distance-line {
+  position: fixed !important;
+  z-index: 2147483647 !important;
+  pointer-events: none !important;
+  background: #ff4f9e !important;
+  display: none !important;
+}
+
+.__pd-distance-label {
+  position: fixed !important;
+  z-index: 2147483647 !important;
+  pointer-events: none !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+  font-size: 9px !important;
+  font-weight: 600 !important;
+  padding: 1px 3px !important;
+  border-radius: 2px !important;
+  background: #ff4f9e !important;
+  color: #fff !important;
+  display: none !important;
+  white-space: nowrap !important;
+}
+
+.__pd-distance-line--visible,
+.__pd-distance-label--visible {
+  display: block !important;
+}

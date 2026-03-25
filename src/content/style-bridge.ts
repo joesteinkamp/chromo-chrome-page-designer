@@ -21,6 +21,9 @@ export function extractElementData(element: Element): ElementData {
   const display = computed.display;
   const tag = element.tagName.toLowerCase();
 
+  // Detect CSS custom properties (design tokens) for color properties
+  const designTokens = extractDesignTokens(element);
+
   return {
     selector: generateSelector(element),
     tag,
@@ -40,6 +43,7 @@ export function extractElementData(element: Element): ElementData {
     isGrid: display === "grid" || display === "inline-grid",
     outerHTML: element.outerHTML.slice(0, 2000),
     matchCount: countMatchingElements(element),
+    designTokens,
   };
 }
 
@@ -74,6 +78,52 @@ export function findMatchingElements(element: Element): Element[] {
 /** Count elements matching the same tag + classes */
 function countMatchingElements(element: Element): number {
   return findMatchingElements(element).length;
+}
+
+/** Extract CSS custom properties (design tokens) that resolve to colors */
+function extractDesignTokens(element: Element): Array<{ name: string; value: string }> {
+  const tokens: Array<{ name: string; value: string }> = [];
+  const seen = new Set<string>();
+
+  // Walk up to :root to find custom properties
+  try {
+    const rootStyles = window.getComputedStyle(document.documentElement);
+    // Check common color-related custom property patterns
+    const styleSheets = document.styleSheets;
+    for (let i = 0; i < styleSheets.length && tokens.length < 20; i++) {
+      try {
+        const rules = styleSheets[i].cssRules;
+        for (let j = 0; j < rules.length && tokens.length < 20; j++) {
+          const rule = rules[j];
+          if (rule instanceof CSSStyleRule && rule.selectorText === ":root") {
+            for (let k = 0; k < rule.style.length; k++) {
+              const prop = rule.style[k];
+              if (prop.startsWith("--")) {
+                const value = rootStyles.getPropertyValue(prop).trim();
+                // Check if it looks like a color value
+                if (
+                  !seen.has(prop) &&
+                  (value.startsWith("#") ||
+                    value.startsWith("rgb") ||
+                    value.startsWith("hsl") ||
+                    value === "transparent")
+                ) {
+                  seen.add(prop);
+                  tokens.push({ name: prop, value });
+                }
+              }
+            }
+          }
+        }
+      } catch {
+        // Cross-origin stylesheet
+      }
+    }
+  } catch {
+    // Security restrictions
+  }
+
+  return tokens;
 }
 
 /** Check if element has direct text nodes (not just child elements) */

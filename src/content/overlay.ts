@@ -16,12 +16,32 @@ export function initOverlay(): void {
   badge = createDiv("__pd-badge");
 
   // Create 8 resize handles
+  const HANDLE_LABELS: Record<string, string> = {
+    nw: "Resize from top-left",
+    n: "Resize from top",
+    ne: "Resize from top-right",
+    e: "Resize from right",
+    se: "Resize from bottom-right",
+    s: "Resize from bottom",
+    sw: "Resize from bottom-left",
+    w: "Resize from left",
+  };
   for (const pos of HANDLE_POSITIONS) {
     const handle = createDiv(`__pd-handle __pd-handle--${pos}`);
     handle.dataset.pdHandle = pos;
+    handle.setAttribute("role", "slider");
+    handle.setAttribute("aria-label", HANDLE_LABELS[pos] || `Resize ${pos}`);
+    handle.setAttribute("tabindex", "0");
     resizeHandles.push(handle);
     document.documentElement.appendChild(handle);
   }
+
+  hoverOverlay.setAttribute("role", "presentation");
+  hoverOverlay.setAttribute("aria-hidden", "true");
+  selectionOverlay.setAttribute("role", "presentation");
+  selectionOverlay.setAttribute("aria-label", "Selected element outline");
+  badge.setAttribute("role", "status");
+  badge.setAttribute("aria-live", "polite");
 
   document.documentElement.appendChild(hoverOverlay);
   document.documentElement.appendChild(selectionOverlay);

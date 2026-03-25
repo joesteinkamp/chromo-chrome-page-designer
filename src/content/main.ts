@@ -34,6 +34,7 @@ import {
   canRedo,
   clearChanges,
   replayChanges,
+  recordWrapChange,
 } from "./change-tracker";
 import type { Message } from "../shared/messages";
 
@@ -182,6 +183,17 @@ chrome.runtime.onMessage.addListener(
         break;
       }
 
+      case "WRAP_ELEMENT": {
+        const wrapEl = getSelectedElement();
+        if (wrapEl && wrapEl instanceof HTMLElement) {
+          const wrapper = wrapElementInGroup(wrapEl);
+          if (wrapper) {
+            selectElementDirectly(wrapper);
+            onElementSelected(wrapper);
+          }
+        }
+        break;
+      }
 
       case "GET_CHANGES":
         sendResponse({
@@ -253,6 +265,13 @@ function activate(): void {
     startInlineEdit: (el) => onElementDoubleClick(el, new MouseEvent("dblclick")),
     refreshSelection,
     sendElementData,
+    wrapInGroup: (el) => {
+      const wrapper = wrapElementInGroup(el);
+      if (wrapper) {
+        selectElementDirectly(wrapper);
+        onElementSelected(wrapper);
+      }
+    },
   });
 
   // Check for saved edits
@@ -385,4 +404,16 @@ function sendElementData(element: Element): void {
     type: "ELEMENT_SELECTED",
     data,
   } satisfies Message);
+}
+
+/** Wrap an element in a new div container and record the change */
+function wrapElementInGroup(element: HTMLElement): HTMLElement | null {
+  const parent = element.parentElement;
+  if (!parent) return null;
+  const wrapper = document.createElement("div");
+  wrapper.classList.add("__pd-group");
+  parent.insertBefore(wrapper, element);
+  wrapper.appendChild(element);
+  recordWrapChange(element, wrapper);
+  return wrapper;
 }

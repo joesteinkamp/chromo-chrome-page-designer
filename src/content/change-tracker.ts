@@ -13,6 +13,7 @@ import type {
   ImageChange,
   DeleteChange,
   HideChange,
+  WrapChange,
 } from "../shared/types";
 
 let changes: Change[] = [];
@@ -231,6 +232,26 @@ export function recordHideChange(
   return change;
 }
 
+export function recordWrapChange(
+  element: Element,
+  wrapper: Element
+): Change {
+  const selector = getSelector(element);
+  const wrapperSelector = getSelector(wrapper);
+  const change: WrapChange = {
+    id: makeId(),
+    timestamp: Date.now(),
+    selector,
+    description: `Wrapped ${element.tagName.toLowerCase()} in a group`,
+    type: "wrap",
+    wrapperSelector,
+  };
+  changes.push(change);
+  redoStack = [];
+  broadcastChanges();
+  return change;
+}
+
 // --- Undo ---
 
 export function undoChange(changeId: string): boolean {
@@ -345,6 +366,20 @@ function applyUndo(change: Change): boolean {
       }
       return true;
     }
+
+    case "wrap": {
+      // Undo: unwrap the element from its wrapper
+      const wrapper = document.querySelector(change.wrapperSelector);
+      if (!wrapper) return false;
+      const parent = wrapper.parentElement;
+      if (!parent) return false;
+      // Move all children out of wrapper, then remove wrapper
+      while (wrapper.firstChild) {
+        parent.insertBefore(wrapper.firstChild, wrapper);
+      }
+      wrapper.remove();
+      return true;
+    }
   }
 }
 
@@ -401,6 +436,18 @@ function applyRedo(change: Change): boolean {
     case "hide": {
       if (!element || !(element instanceof HTMLElement)) return false;
       element.style.setProperty("display", "none", "important");
+      return true;
+    }
+
+    case "wrap": {
+      // Redo: re-wrap the element
+      if (!element) return false;
+      const parent = element.parentElement;
+      if (!parent) return false;
+      const wrapper = document.createElement("div");
+      wrapper.classList.add("__pd-group");
+      parent.insertBefore(wrapper, element);
+      wrapper.appendChild(element);
       return true;
     }
   }

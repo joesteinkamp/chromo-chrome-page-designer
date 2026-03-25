@@ -480,6 +480,25 @@ body {
   color: var(--pd-accent);
 }
 
+.pd-element-info__wrap-btn {
+  font-size: 10px;
+  color: var(--pd-text-muted);
+  background: none;
+  border: 1px solid var(--pd-border);
+  border-radius: var(--pd-radius);
+  padding: 1px 6px;
+  cursor: pointer;
+  font-family: var(--pd-font);
+  transition: all 0.12s;
+  white-space: nowrap;
+}
+
+.pd-element-info__wrap-btn:hover {
+  color: var(--pd-accent);
+  border-color: var(--pd-accent);
+  background: var(--pd-accent-dim);
+}
+
 .pd-element-info__dims {
   margin-left: auto;
   font-size: 11px;

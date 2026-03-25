@@ -13,6 +13,10 @@ export function ElementInfo({ data, multiEdit, onToggleMultiEdit, multiSelectCou
   const dimensions = `${Math.round(data.rect.width)} × ${Math.round(data.rect.height)}`;
   const hasMatches = data.matchCount > 0;
 
+  const handleWrap = useCallback(() => {
+    chrome.runtime.sendMessage({ type: "WRAP_ELEMENT" } satisfies Message);
+  }, []);
+
   const handleBreadcrumbClick = useCallback(
     (e: React.MouseEvent<HTMLSpanElement>) => {
       const selector = e.currentTarget.dataset.selector;
@@ -34,6 +38,14 @@ export function ElementInfo({ data, multiEdit, onToggleMultiEdit, multiSelectCou
       <div className="pd-element-info__header">
         <span className="pd-element-info__tag">{data.tag}</span>
         {data.id && <span className="pd-element-info__id">#{data.id}</span>}
+        <button
+          className="pd-element-info__wrap-btn"
+          onClick={handleWrap}
+          title="Wrap in group (⌘G)"
+          type="button"
+        >
+          Add Group
+        </button>
         <span className="pd-element-info__dims">{dimensions}</span>
       </div>
 

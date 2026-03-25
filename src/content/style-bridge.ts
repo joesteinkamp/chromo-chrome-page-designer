@@ -6,11 +6,20 @@
 
 import { TRACKED_PROPERTIES } from "../shared/constants";
 import { generateBreadcrumb, generateSelector } from "../shared/selector";
-import { isGoogleFont, googleFontUrl } from "../shared/google-fonts";
 import type { ElementData } from "../shared/types";
 
 /** Track which Google Fonts have been injected to avoid duplicates */
 const loadedGoogleFonts = new Set<string>();
+
+/**
+ * System/web-safe fonts that don't need Google Fonts loading.
+ * Any font NOT in this set is assumed to be a Google Font candidate.
+ */
+const SYSTEM_FONT_NAMES = new Set([
+  "arial", "helvetica", "georgia", "times new roman", "courier new",
+  "verdana", "trebuchet ms", "system-ui", "monospace", "sans-serif",
+  "serif", "cursive", "fantasy", "inherit", "initial", "unset",
+]);
 
 /** Extract Figma-relevant computed styles from an element */
 export function extractElementData(element: Element): ElementData {
@@ -68,11 +77,12 @@ export function applyStyleToElement(
 /** Inject a Google Fonts stylesheet if the font hasn't been loaded yet */
 function loadGoogleFontIfNeeded(family: string): void {
   const clean = family.replace(/^['"]|['"]$/g, "");
-  if (!isGoogleFont(clean) || loadedGoogleFonts.has(clean)) return;
+  if (SYSTEM_FONT_NAMES.has(clean.toLowerCase()) || loadedGoogleFonts.has(clean)) return;
   loadedGoogleFonts.add(clean);
+  const encoded = clean.replace(/ /g, "+");
   const link = document.createElement("link");
   link.rel = "stylesheet";
-  link.href = googleFontUrl(clean);
+  link.href = `https://fonts.googleapis.com/css2?family=${encoded}:wght@100;200;300;400;500;600;700;800;900&display=swap`;
   link.classList.add("__pd-google-font");
   document.head.appendChild(link);
 }

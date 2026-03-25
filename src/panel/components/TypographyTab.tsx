@@ -217,6 +217,11 @@ export function TypographyTab({ computedStyles, onStyleChange }: Props) {
               ))}
             </div>
           </div>
+
+          {/* Text Color */}
+          <div className="pd-section__row">
+            <ColorPicker value={textColor} onChange={handleTextColor} label="Color" />
+          </div>
         </div>
       )}
 
@@ -288,13 +293,6 @@ export function TypographyTab({ computedStyles, onStyleChange }: Props) {
             </div>
           </div>
 
-          {/* Text Color */}
-          <div className="pd-typography__popover-row">
-            <span className="pd-typography__popover-label">Color</span>
-            <div className="pd-typography__popover-color">
-              <ColorPicker value={textColor} onChange={handleTextColor} />
-            </div>
-          </div>
         </div>
       )}
     </div>

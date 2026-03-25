@@ -22,6 +22,8 @@ export function App() {
   const [multiEdit, setMultiEdit] = useState(false);
   const [sendMenuOpen, setSendMenuOpen] = useState(false);
   const sendMenuRef = useRef<HTMLDivElement>(null);
+  const [hasSavedChanges, setHasSavedChanges] = useState(false);
+  const [savedChangesDismissed, setSavedChangesDismissed] = useState(false);
 
   const handleToggleEditMode = useCallback(() => {
     const next = !editMode;
@@ -60,7 +62,12 @@ export function App() {
       if (tabs[0]?.url) {
         setPageUrl(tabs[0].url);
         chrome.runtime.sendMessage(
-          { type: "LOAD_EDITS", url: tabs[0].url } satisfies Message
+          { type: "LOAD_EDITS", url: tabs[0].url } satisfies Message,
+          (response: any) => {
+            if (response?.changes?.length > 0) {
+              setHasSavedChanges(true);
+            }
+          }
         );
       }
     });
@@ -125,6 +132,26 @@ export function App() {
   }, []);
 
   // --- Persistence ---
+
+  const handleLoadSaved = useCallback(() => {
+    chrome.runtime.sendMessage(
+      { type: "LOAD_EDITS", url: pageUrl } satisfies Message,
+      (response: any) => {
+        if (response?.changes) {
+          chrome.runtime.sendMessage({
+            type: "REPLAY_CHANGES",
+            changes: response.changes,
+          } satisfies Message);
+        }
+      }
+    );
+    setHasSavedChanges(false);
+    setSavedChangesDismissed(false);
+  }, [pageUrl]);
+
+  const handleDismissSaved = useCallback(() => {
+    setSavedChangesDismissed(true);
+  }, []);
 
   const handleLoadEdits = useCallback(() => {
     chrome.runtime.sendMessage(
@@ -339,8 +366,6 @@ export function App() {
                   onUndo={handleUndo}
                   onUndoAll={handleUndoAll}
                   onRedo={handleRedo}
-                  onExportJSON={handleExportJSON}
-                  onExportSummary={handleExportSummary}
                   onRestore={handleLoadEdits}
                   url={pageUrl}
                 />
@@ -349,6 +374,29 @@ export function App() {
           </>
         ) : (
           <div className="pd-panel__empty">
+            {hasSavedChanges && !savedChangesDismissed && (
+              <div className="pd-panel__saved-prompt">
+                <div className="pd-panel__saved-prompt-text">
+                  Previously saved changes found. Would you like to reload them?
+                </div>
+                <div className="pd-panel__saved-prompt-actions">
+                  <button
+                    className="pd-panel__saved-prompt-btn pd-panel__saved-prompt-btn--primary"
+                    onClick={handleLoadSaved}
+                    type="button"
+                  >
+                    Load Saved Changes
+                  </button>
+                  <button
+                    className="pd-panel__saved-prompt-btn"
+                    onClick={handleDismissSaved}
+                    type="button"
+                  >
+                    Dismiss
+                  </button>
+                </div>
+              </div>
+            )}
             <div className="pd-panel__empty-icon">◇</div>
             <div className="pd-panel__empty-title">Select an element</div>
             <div className="pd-panel__empty-subtitle">

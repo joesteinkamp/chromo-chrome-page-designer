@@ -1,23 +1,12 @@
 import React, { useCallback, useMemo, useState, useRef, useEffect } from "react";
-import { NumberInput, SelectDropdown, ColorPicker } from "../controls";
+import { NumberInput, SelectDropdown, ColorPicker, FontPicker } from "../controls";
+import { ALL_FONTS } from "../../shared/google-fonts";
 import "./typography.css";
 
 interface Props {
   computedStyles: Record<string, string>;
   onStyleChange: (property: string, value: string) => void;
 }
-
-const FONT_FAMILY_OPTIONS = [
-  { value: "Inter", label: "Inter" },
-  { value: "Arial", label: "Arial" },
-  { value: "Helvetica", label: "Helvetica" },
-  { value: "Georgia", label: "Georgia" },
-  { value: "'Times New Roman'", label: "Times New Roman" },
-  { value: "'Courier New'", label: "Courier New" },
-  { value: "Verdana", label: "Verdana" },
-  { value: "system-ui", label: "system-ui" },
-  { value: "monospace", label: "monospace" },
-];
 
 const FONT_WEIGHT_OPTIONS = [
   { value: "100", label: "Thin" },
@@ -60,11 +49,10 @@ function parsePx(val: string | undefined): number {
 function resolveFamily(val: string | undefined): string {
   if (!val) return "Inter";
   const first = val.split(",")[0].trim().replace(/^["']|["']$/g, "");
-  for (const opt of FONT_FAMILY_OPTIONS) {
-    const optClean = opt.value.replace(/'/g, "");
-    if (first.toLowerCase() === optClean.toLowerCase()) return opt.value;
+  for (const f of ALL_FONTS) {
+    if (first.toLowerCase() === f.value.toLowerCase()) return f.value;
   }
-  return FONT_FAMILY_OPTIONS[0].value;
+  return first || "Inter";
 }
 
 function resolveWeight(val: string | undefined): string {
@@ -172,9 +160,8 @@ export function TypographyTab({ computedStyles, onStyleChange }: Props) {
         <div className="pd-section__content">
           {/* Font family — full width */}
           <div className="pd-section__row">
-            <SelectDropdown
+            <FontPicker
               value={fontFamily}
-              options={FONT_FAMILY_OPTIONS}
               onChange={handleFontFamily}
             />
           </div>

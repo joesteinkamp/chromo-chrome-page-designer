@@ -6,3 +6,4 @@ export { DirectionToggle } from "./DirectionToggle";
 export { SliderInput } from "./SliderInput";
 export { CornerRadiusInput } from "./CornerRadiusInput";
 export { SelectDropdown } from "./SelectDropdown";
+export { FontPicker } from "./FontPicker";

@@ -6,7 +6,11 @@
 
 import { TRACKED_PROPERTIES } from "../shared/constants";
 import { generateBreadcrumb, generateSelector } from "../shared/selector";
+import { isGoogleFont, googleFontUrl } from "../shared/google-fonts";
 import type { ElementData } from "../shared/types";
+
+/** Track which Google Fonts have been injected to avoid duplicates */
+const loadedGoogleFonts = new Set<string>();
 
 /** Extract Figma-relevant computed styles from an element */
 export function extractElementData(element: Element): ElementData {
@@ -54,7 +58,23 @@ export function applyStyleToElement(
   property: string,
   value: string
 ): void {
+  // Auto-load Google Font when font-family is changed
+  if (property === "font-family") {
+    loadGoogleFontIfNeeded(value);
+  }
   element.style.setProperty(property, value, "important");
+}
+
+/** Inject a Google Fonts stylesheet if the font hasn't been loaded yet */
+function loadGoogleFontIfNeeded(family: string): void {
+  const clean = family.replace(/^['"]|['"]$/g, "");
+  if (!isGoogleFont(clean) || loadedGoogleFonts.has(clean)) return;
+  loadedGoogleFonts.add(clean);
+  const link = document.createElement("link");
+  link.rel = "stylesheet";
+  link.href = googleFontUrl(clean);
+  link.classList.add("__pd-google-font");
+  document.head.appendChild(link);
 }
 
 /** Find all elements matching the same tag and classes as the given element */

@@ -144,50 +144,27 @@
   background: var(--pd-accent-dim);
 }
 
-/* ── Stroke per-side controls ── */
-.pd-stroke {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.pd-stroke__linked-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.pd-stroke__link-btn {
-  display: flex;
+/* Plus button for collapsed empty sections (Figma-style) */
+.pd-section__plus-btn {
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 22px;
-  height: 22px;
-  border: 1px solid var(--pd-border);
+  width: 20px;
+  height: 20px;
+  border: none;
   border-radius: var(--pd-radius);
-  background: var(--pd-bg);
+  background: none;
   color: var(--pd-text-muted);
-  font-size: 11px;
+  font-size: 16px;
+  font-weight: 300;
   cursor: pointer;
-  padding: 0;
   flex-shrink: 0;
+  line-height: 1;
 }
 
-.pd-stroke__link-btn:hover {
+.pd-section__plus-btn:hover {
   background: var(--pd-bg-hover);
   color: var(--pd-text);
-}
-
-.pd-stroke__link-btn--active {
-  color: var(--pd-accent);
-  border-color: var(--pd-accent);
-  background: var(--pd-accent-dim);
-}
-
-.pd-stroke__unlinked {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 4px;
 }
 
 /* Disabled / not-applicable section */

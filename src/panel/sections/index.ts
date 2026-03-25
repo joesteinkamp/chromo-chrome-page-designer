@@ -6,3 +6,4 @@ export { CornerRadiusSection } from "./CornerRadiusSection";
 export { ShadowSection } from "./ShadowSection";
 export { OpacitySection } from "./OpacitySection";
 export { BlurSection } from "./BlurSection";
+export { SpacingSection } from "./SpacingSection";

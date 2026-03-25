@@ -22,9 +22,8 @@ export function App() {
   const [multiEdit, setMultiEdit] = useState(false);
   const [sendMenuOpen, setSendMenuOpen] = useState(false);
   const sendMenuRef = useRef<HTMLDivElement>(null);
-  const [lastSaved, setLastSaved] = useState<number | null>(null);
-  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
-  const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [hasSavedChanges, setHasSavedChanges] = useState(false);
+  const [savedChangesDismissed, setSavedChangesDismissed] = useState(false);
 
   const handleToggleEditMode = useCallback(() => {
     const next = !editMode;
@@ -53,7 +52,6 @@ export function App() {
         case "CHANGES_RESPONSE":
           setChanges(message.changes);
           setCanRedo(message.canRedo);
-          setHasUnsavedChanges(true);
           break;
       }
     };
@@ -61,7 +59,17 @@ export function App() {
     chrome.runtime.onMessage.addListener(listener);
 
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-      if (tabs[0]?.url) setPageUrl(tabs[0].url);
+      if (tabs[0]?.url) {
+        setPageUrl(tabs[0].url);
+        chrome.runtime.sendMessage(
+          { type: "LOAD_EDITS", url: tabs[0].url } satisfies Message,
+          (response: any) => {
+            if (response?.changes?.length > 0) {
+              setHasSavedChanges(true);
+            }
+          }
+        );
+      }
     });
 
     chrome.runtime.sendMessage({ type: "GET_CHANGES" } satisfies Message);
@@ -123,47 +131,27 @@ export function App() {
     chrome.runtime.sendMessage({ type: "UNDO_ALL" } satisfies Message);
   }, []);
 
-  // --- Export ---
-
-  const handleExportJSON = useCallback(
-    (note?: string) => {
-      const json = exportAsJSON(pageUrl, changes, note);
-      navigator.clipboard.writeText(json);
-    },
-    [pageUrl, changes]
-  );
-
-  const handleExportSummary = useCallback(
-    (note?: string) => {
-      const summary = exportAsSummary(pageUrl, changes, note);
-      navigator.clipboard.writeText(summary);
-    },
-    [pageUrl, changes]
-  );
-
   // --- Persistence ---
 
-  const handleSaveEdits = useCallback(() => {
-    chrome.runtime.sendMessage({
-      type: "SAVE_EDITS",
-      url: pageUrl,
-      changes,
-    } satisfies Message);
-    setLastSaved(Date.now());
-    setHasUnsavedChanges(false);
-  }, [pageUrl, changes]);
+  const handleLoadSaved = useCallback(() => {
+    chrome.runtime.sendMessage(
+      { type: "LOAD_EDITS", url: pageUrl } satisfies Message,
+      (response: any) => {
+        if (response?.changes) {
+          chrome.runtime.sendMessage({
+            type: "REPLAY_CHANGES",
+            changes: response.changes,
+          } satisfies Message);
+        }
+      }
+    );
+    setHasSavedChanges(false);
+    setSavedChangesDismissed(false);
+  }, [pageUrl]);
 
-  // Auto-save every 30 seconds when there are unsaved changes
-  useEffect(() => {
-    if (!hasUnsavedChanges || changes.length === 0 || !pageUrl) return;
-    if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
-    autoSaveTimer.current = setTimeout(() => {
-      handleSaveEdits();
-    }, 30000);
-    return () => {
-      if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
-    };
-  }, [hasUnsavedChanges, changes, pageUrl, handleSaveEdits]);
+  const handleDismissSaved = useCallback(() => {
+    setSavedChangesDismissed(true);
+  }, []);
 
   const handleLoadEdits = useCallback(() => {
     chrome.runtime.sendMessage(
@@ -253,7 +241,7 @@ export function App() {
     {
       label: "Copy Change Instructions",
       action: () => {
-        handleExportSummary();
+        navigator.clipboard.writeText(exportAsSummary(pageUrl, changes));
         setSendMenuOpen(false);
       },
     },
@@ -286,8 +274,8 @@ export function App() {
             title="Undo"
           >
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-              <path d="M2.5 8.5C2.5 8.5 4 4 9 4c3 0 4.5 2 4.5 4.5S12 13 9 13H5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-              <path d="M5.5 6L2.5 8.5 5.5 11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+              <path d="M3 7h6a4 4 0 0 1 0 8H7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M6 4L3 7l3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
           </button>
           <button
@@ -297,21 +285,14 @@ export function App() {
             title="Redo"
           >
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-              <path d="M13.5 8.5C13.5 8.5 12 4 7 4c-3 0-4.5 2-4.5 4.5S4 13 7 13h4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-              <path d="M10.5 6L13.5 8.5 10.5 11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+              <path d="M13 7H7a4 4 0 0 0 0 8h2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M10 4l3 3-3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
           </button>
         </div>
 
         <div className="pd-panel__header-right">
           <div className="pd-panel__send-wrap" ref={sendMenuRef}>
-            <button
-              className={`pd-panel__header-btn${hasUnsavedChanges ? " pd-panel__header-btn--unsaved" : ""}`}
-              onClick={handleSaveEdits}
-              title={lastSaved ? `Last saved ${new Date(lastSaved).toLocaleTimeString()}` : "Save edits for this page"}
-            >
-              {hasUnsavedChanges ? "Save *" : "Saved"}
-            </button>
             <button
               className={`pd-panel__send-btn ${changes.length === 0 ? "pd-panel__send-btn--disabled" : ""}`}
               onClick={() => setSendMenuOpen(!sendMenuOpen)}
@@ -385,9 +366,6 @@ export function App() {
                   onUndo={handleUndo}
                   onUndoAll={handleUndoAll}
                   onRedo={handleRedo}
-                  onExportJSON={handleExportJSON}
-                  onExportSummary={handleExportSummary}
-                  onSave={handleSaveEdits}
                   onRestore={handleLoadEdits}
                   url={pageUrl}
                 />
@@ -396,6 +374,29 @@ export function App() {
           </>
         ) : (
           <div className="pd-panel__empty">
+            {hasSavedChanges && !savedChangesDismissed && (
+              <div className="pd-panel__saved-prompt">
+                <div className="pd-panel__saved-prompt-text">
+                  Previously saved changes found. Would you like to reload them?
+                </div>
+                <div className="pd-panel__saved-prompt-actions">
+                  <button
+                    className="pd-panel__saved-prompt-btn pd-panel__saved-prompt-btn--primary"
+                    onClick={handleLoadSaved}
+                    type="button"
+                  >
+                    Load Saved Changes
+                  </button>
+                  <button
+                    className="pd-panel__saved-prompt-btn"
+                    onClick={handleDismissSaved}
+                    type="button"
+                  >
+                    Dismiss
+                  </button>
+                </div>
+              </div>
+            )}
             <div className="pd-panel__empty-icon">◇</div>
             <div className="pd-panel__empty-title">Select an element</div>
             <div className="pd-panel__empty-subtitle">

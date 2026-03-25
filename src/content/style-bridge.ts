@@ -22,7 +22,8 @@ export function extractElementData(element: Element): ElementData {
   const tag = element.tagName.toLowerCase();
 
   // Detect CSS custom properties (design tokens) for color properties
-  const designTokens = extractDesignTokens(element);
+  let designTokens: Array<{ name: string; value: string }> = [];
+  try { designTokens = extractDesignTokens(element); } catch { /* cross-origin or security restriction */ }
 
   return {
     selector: generateSelector(element),

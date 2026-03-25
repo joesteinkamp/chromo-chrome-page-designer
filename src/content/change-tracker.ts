@@ -1,10 +1,19 @@
 /**
  * Change tracker — records all edits made during a session.
- * Provides undo support and serialization for export.
+ * Provides undo/redo support and serialization for export.
  */
 
 import { generateSelector } from "../shared/selector";
-import type { Change, StyleChange, TextChange, MoveChange, ResizeChange, ImageChange } from "../shared/types";
+import type {
+  Change,
+  StyleChange,
+  TextChange,
+  MoveChange,
+  ResizeChange,
+  ImageChange,
+  DeleteChange,
+  HideChange,
+} from "../shared/types";
 
 let changes: Change[] = [];
 let redoStack: Change[] = [];
@@ -60,7 +69,7 @@ export function recordStyleChange(
     to,
   };
   changes.push(change);
-  redoStack = [];
+  redoStack = []; // Clear redo on new action
   broadcastChanges();
   return change;
 }
@@ -181,6 +190,47 @@ export function recordImageChange(
   return change;
 }
 
+export function recordDeleteChange(
+  element: Element,
+  parentSelector: string,
+  index: number
+): Change {
+  const selector = getSelector(element);
+  const change: DeleteChange = {
+    id: makeId(),
+    timestamp: Date.now(),
+    selector,
+    description: `Deleted ${element.tagName.toLowerCase()} element`,
+    type: "delete",
+    html: element.outerHTML,
+    parentSelector,
+    index,
+  };
+  changes.push(change);
+  redoStack = [];
+  broadcastChanges();
+  return change;
+}
+
+export function recordHideChange(
+  element: Element,
+  previousDisplay: string
+): Change {
+  const selector = getSelector(element);
+  const change: HideChange = {
+    id: makeId(),
+    timestamp: Date.now(),
+    selector,
+    description: `Hidden ${element.tagName.toLowerCase()} element`,
+    type: "hide",
+    previousDisplay,
+  };
+  changes.push(change);
+  redoStack = [];
+  broadcastChanges();
+  return change;
+}
+
 // --- Undo ---
 
 export function undoChange(changeId: string): boolean {
@@ -188,45 +238,8 @@ export function undoChange(changeId: string): boolean {
   if (index === -1) return false;
 
   const change = changes[index];
-  const element = document.querySelector(change.selector);
-  if (!element || !(element instanceof HTMLElement)) return false;
-
-  switch (change.type) {
-    case "style":
-      if (change.from) {
-        element.style.setProperty(change.property, change.from, "important");
-      } else {
-        element.style.removeProperty(change.property);
-      }
-      break;
-
-    case "text":
-      element.textContent = change.from;
-      break;
-
-    case "resize":
-      element.style.setProperty("width", change.from.width, "important");
-      element.style.setProperty("height", change.from.height, "important");
-      break;
-
-    case "image":
-      if (element.tagName.toLowerCase() === "img") {
-        (element as HTMLImageElement).src = change.from;
-      } else {
-        element.style.setProperty("background-image", `url(${change.from})`, "important");
-      }
-      break;
-
-    case "move": {
-      const origParent = document.querySelector(change.fromParent);
-      if (origParent) {
-        const children = Array.from(origParent.children);
-        const refNode = children[change.fromIndex] || null;
-        origParent.insertBefore(element, refNode);
-      }
-      break;
-    }
-  }
+  const applied = applyUndo(change);
+  if (!applied) return false;
 
   changes.splice(index, 1);
   redoStack.push(change);
@@ -234,59 +247,167 @@ export function undoChange(changeId: string): boolean {
   return true;
 }
 
-/** Redo the most recently undone change */
-export function redoChange(): boolean {
-  if (redoStack.length === 0) return false;
+/** Undo the most recent change */
+export function undoLast(): boolean {
+  if (changes.length === 0) return false;
+  const change = changes[changes.length - 1];
+  return undoChange(change.id);
+}
 
-  const change = redoStack.pop()!;
-  const element = document.querySelector(change.selector);
-  if (!element || !(element instanceof HTMLElement)) return false;
-
-  switch (change.type) {
-    case "style":
-      element.style.setProperty(change.property, change.to, "important");
-      break;
-    case "text":
-      element.textContent = change.to;
-      break;
-    case "resize":
-      element.style.setProperty("width", change.to.width, "important");
-      element.style.setProperty("height", change.to.height, "important");
-      break;
-    case "image":
-      if (element.tagName.toLowerCase() === "img") {
-        (element as HTMLImageElement).src = change.to;
-      } else {
-        element.style.setProperty("background-image", `url(${change.to})`, "important");
-      }
-      break;
-    case "move": {
-      const newParent = document.querySelector(change.toParent);
-      if (newParent) {
-        const children = Array.from(newParent.children);
-        const refNode = children[change.toIndex] || null;
-        newParent.insertBefore(element, refNode);
-      }
-      break;
-    }
+export function undoAll(): void {
+  const toUndo = [...changes].reverse();
+  for (const change of toUndo) {
+    undoChange(change.id);
   }
+}
+
+// --- Redo ---
+
+export function redoLast(): boolean {
+  if (redoStack.length === 0) return false;
+  const change = redoStack.pop()!;
+  const applied = applyRedo(change);
+  if (!applied) return false;
 
   changes.push(change);
   broadcastChanges();
   return true;
 }
 
-export function canRedo(): boolean {
-  return redoStack.length > 0;
-}
+function applyUndo(change: Change): boolean {
+  const element = document.querySelector(change.selector);
 
-export function undoAll(): void {
-  // Undo in reverse order
-  const toUndo = [...changes].reverse();
-  for (const change of toUndo) {
-    undoChange(change.id);
+  switch (change.type) {
+    case "style":
+      if (!element || !(element instanceof HTMLElement)) return false;
+      if (change.from) {
+        element.style.setProperty(change.property, change.from, "important");
+      } else {
+        element.style.removeProperty(change.property);
+      }
+      return true;
+
+    case "text":
+      if (!element || !(element instanceof HTMLElement)) return false;
+      element.textContent = change.from;
+      return true;
+
+    case "resize":
+      if (!element || !(element instanceof HTMLElement)) return false;
+      element.style.setProperty("width", change.from.width, "important");
+      element.style.setProperty("height", change.from.height, "important");
+      return true;
+
+    case "image":
+      if (!element || !(element instanceof HTMLElement)) return false;
+      if (element.tagName.toLowerCase() === "img") {
+        (element as HTMLImageElement).src = change.from;
+      } else {
+        element.style.setProperty(
+          "background-image",
+          `url(${change.from})`,
+          "important"
+        );
+      }
+      return true;
+
+    case "move": {
+      if (!element) return false;
+      const origParent = document.querySelector(change.fromParent);
+      if (origParent) {
+        const children = Array.from(origParent.children);
+        const refNode = children[change.fromIndex] || null;
+        origParent.insertBefore(element, refNode);
+      }
+      return true;
+    }
+
+    case "delete": {
+      // Restore deleted element
+      const parent = document.querySelector(change.parentSelector);
+      if (!parent) return false;
+      const temp = document.createElement("div");
+      temp.innerHTML = change.html;
+      const restored = temp.firstElementChild;
+      if (!restored) return false;
+      const children = Array.from(parent.children);
+      const refNode = children[change.index] || null;
+      parent.insertBefore(restored, refNode);
+      return true;
+    }
+
+    case "hide": {
+      if (!element || !(element instanceof HTMLElement)) return false;
+      if (change.previousDisplay && change.previousDisplay !== "none") {
+        element.style.setProperty("display", change.previousDisplay, "important");
+      } else {
+        element.style.removeProperty("display");
+      }
+      return true;
+    }
   }
 }
+
+function applyRedo(change: Change): boolean {
+  const element = document.querySelector(change.selector);
+
+  switch (change.type) {
+    case "style":
+      if (!element || !(element instanceof HTMLElement)) return false;
+      element.style.setProperty(change.property, change.to, "important");
+      return true;
+
+    case "text":
+      if (!element || !(element instanceof HTMLElement)) return false;
+      element.textContent = change.to;
+      return true;
+
+    case "resize":
+      if (!element || !(element instanceof HTMLElement)) return false;
+      element.style.setProperty("width", change.to.width, "important");
+      element.style.setProperty("height", change.to.height, "important");
+      return true;
+
+    case "image":
+      if (!element || !(element instanceof HTMLElement)) return false;
+      if (element.tagName.toLowerCase() === "img") {
+        (element as HTMLImageElement).src = change.to;
+      } else {
+        element.style.setProperty(
+          "background-image",
+          `url(${change.to})`,
+          "important"
+        );
+      }
+      return true;
+
+    case "move": {
+      if (!element) return false;
+      const newParent = document.querySelector(change.toParent);
+      if (newParent) {
+        const children = Array.from(newParent.children);
+        const refNode = children[change.toIndex] || null;
+        newParent.insertBefore(element, refNode);
+      }
+      return true;
+    }
+
+    case "delete": {
+      const el = document.querySelector(change.selector);
+      if (el) el.remove();
+      return true;
+    }
+
+    case "hide": {
+      if (!element || !(element instanceof HTMLElement)) return false;
+      element.style.setProperty("display", "none", "important");
+      return true;
+    }
+  }
+}
+
+/** Alias for redoLast — kept for backward compatibility */
+export const redoChange = redoLast;
 
 // --- Query ---
 
@@ -294,13 +415,20 @@ export function getChanges(): Change[] {
   return [...changes];
 }
 
+export function canRedo(): boolean {
+  return redoStack.length > 0;
+}
+
 export function clearChanges(): void {
   changes = [];
+  redoStack = [];
   broadcastChanges();
 }
 
 /** Load changes from storage (for persistence replay) */
-export function replayChanges(savedChanges: Change[]): { applied: number; failed: number } {
+export function replayChanges(
+  savedChanges: Change[]
+): { applied: number; failed: number } {
   let applied = 0;
   let failed = 0;
 
@@ -337,6 +465,9 @@ export function replayChanges(savedChanges: Change[]): { applied: number; failed
           }
           break;
         }
+        case "hide":
+          element.style.setProperty("display", "none", "important");
+          break;
       }
       // Re-record in local state
       changes.push({ ...change, id: makeId(), timestamp: Date.now() });
@@ -377,7 +508,7 @@ function findExisting(
 
 function truncate(s: string, max = 20): string {
   if (s.length <= max) return s;
-  return s.slice(0, max) + "…";
+  return s.slice(0, max) + "\u2026";
 }
 
 function broadcastChanges(): void {

@@ -4,14 +4,15 @@ import { useStyleChange } from "./hooks/useStyleChange";
 import { ElementInfo } from "./components/ElementInfo";
 import { DesignTab } from "./components/DesignTab";
 import { ChangesTab } from "./components/ChangesTab";
+import { TypographyTab } from "./components/TypographyTab";
 import { exportAsJSON, exportAsSummary } from "../shared/export";
 import type { Change } from "../shared/types";
 import type { Message } from "../shared/messages";
 
-type Tab = "design" | "changes";
+type Tab = "design" | "typography" | "changes";
 
 export function App() {
-  const { elementData, isConnected, setElementData } = useElementData();
+  const { elementData, isConnected, setElementData, multiSelectCount } = useElementData();
   const sendStyleChange = useStyleChange();
   const [activeTab, setActiveTab] = useState<Tab>("design");
   const [changes, setChanges] = useState<Change[]>([]);
@@ -21,6 +22,9 @@ export function App() {
   const [multiEdit, setMultiEdit] = useState(false);
   const [sendMenuOpen, setSendMenuOpen] = useState(false);
   const sendMenuRef = useRef<HTMLDivElement>(null);
+  const [lastSaved, setLastSaved] = useState<number | null>(null);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleToggleEditMode = useCallback(() => {
     const next = !editMode;
@@ -42,11 +46,15 @@ export function App() {
     } satisfies Message);
   }, [multiEdit]);
 
+  // Listen for change updates
   useEffect(() => {
     const listener = (message: Message) => {
-      if (message.type === "CHANGES_RESPONSE") {
-        setChanges(message.changes);
-        setCanRedo(message.canRedo);
+      switch (message.type) {
+        case "CHANGES_RESPONSE":
+          setChanges(message.changes);
+          setCanRedo(message.canRedo);
+          setHasUnsavedChanges(true);
+          break;
       }
     };
 
@@ -92,7 +100,7 @@ export function App() {
     return () => document.removeEventListener("mousedown", handleClick);
   }, [sendMenuOpen]);
 
-  // --- Undo / Redo ---
+  // --- Undo / Redo / Change tracking handlers ---
 
   const handleUndo = useCallback((changeId: string) => {
     chrome.runtime.sendMessage({
@@ -117,15 +125,21 @@ export function App() {
 
   // --- Export ---
 
-  const handleExportJSON = useCallback(() => {
-    const json = exportAsJSON(pageUrl, changes);
-    navigator.clipboard.writeText(json);
-  }, [pageUrl, changes]);
+  const handleExportJSON = useCallback(
+    (note?: string) => {
+      const json = exportAsJSON(pageUrl, changes, note);
+      navigator.clipboard.writeText(json);
+    },
+    [pageUrl, changes]
+  );
 
-  const handleExportSummary = useCallback(() => {
-    const summary = exportAsSummary(pageUrl, changes);
-    navigator.clipboard.writeText(summary);
-  }, [pageUrl, changes]);
+  const handleExportSummary = useCallback(
+    (note?: string) => {
+      const summary = exportAsSummary(pageUrl, changes, note);
+      navigator.clipboard.writeText(summary);
+    },
+    [pageUrl, changes]
+  );
 
   // --- Persistence ---
 
@@ -135,7 +149,21 @@ export function App() {
       url: pageUrl,
       changes,
     } satisfies Message);
+    setLastSaved(Date.now());
+    setHasUnsavedChanges(false);
   }, [pageUrl, changes]);
+
+  // Auto-save every 30 seconds when there are unsaved changes
+  useEffect(() => {
+    if (!hasUnsavedChanges || changes.length === 0 || !pageUrl) return;
+    if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
+    autoSaveTimer.current = setTimeout(() => {
+      handleSaveEdits();
+    }, 30000);
+    return () => {
+      if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
+    };
+  }, [hasUnsavedChanges, changes, pageUrl, handleSaveEdits]);
 
   const handleLoadEdits = useCallback(() => {
     chrome.runtime.sendMessage(
@@ -278,6 +306,13 @@ export function App() {
         <div className="pd-panel__header-right">
           <div className="pd-panel__send-wrap" ref={sendMenuRef}>
             <button
+              className={`pd-panel__header-btn${hasUnsavedChanges ? " pd-panel__header-btn--unsaved" : ""}`}
+              onClick={handleSaveEdits}
+              title={lastSaved ? `Last saved ${new Date(lastSaved).toLocaleTimeString()}` : "Save edits for this page"}
+            >
+              {hasUnsavedChanges ? "Save *" : "Saved"}
+            </button>
+            <button
               className={`pd-panel__send-btn ${changes.length === 0 ? "pd-panel__send-btn--disabled" : ""}`}
               onClick={() => setSendMenuOpen(!sendMenuOpen)}
               disabled={changes.length === 0}
@@ -307,13 +342,19 @@ export function App() {
       <div className="pd-panel__body">
         {elementData ? (
           <>
-            <ElementInfo data={elementData} multiEdit={multiEdit} onToggleMultiEdit={handleToggleMultiEdit} />
+            <ElementInfo data={elementData} multiEdit={multiEdit} onToggleMultiEdit={handleToggleMultiEdit} multiSelectCount={multiSelectCount} />
             <div className="pd-panel__tabs">
               <button
                 className={`pd-panel__tab ${activeTab === "design" ? "pd-panel__tab--active" : ""}`}
                 onClick={() => setActiveTab("design")}
               >
                 Design
+              </button>
+              <button
+                className={`pd-panel__tab ${activeTab === "typography" ? "pd-panel__tab--active" : ""}`}
+                onClick={() => setActiveTab("typography")}
+              >
+                Type
               </button>
               <button
                 className={`pd-panel__tab ${activeTab === "changes" ? "pd-panel__tab--active" : ""}`}
@@ -332,11 +373,18 @@ export function App() {
                   onStyleChange={sendStyleChange}
                 />
               )}
+              {activeTab === "typography" && (
+                <TypographyTab
+                  computedStyles={elementData.computedStyles}
+                  onStyleChange={sendStyleChange}
+                />
+              )}
               {activeTab === "changes" && (
                 <ChangesTab
                   changes={changes}
                   onUndo={handleUndo}
                   onUndoAll={handleUndoAll}
+                  onRedo={handleRedo}
                   onExportJSON={handleExportJSON}
                   onExportSummary={handleExportSummary}
                   onSave={handleSaveEdits}
@@ -353,6 +401,44 @@ export function App() {
             <div className="pd-panel__empty-subtitle">
               Hover over the page and click an element to inspect and edit its
               properties
+            </div>
+            <div className="pd-panel__empty-hints">
+              <div className="pd-panel__empty-hint">
+                <span className="pd-panel__empty-hint-key">Click</span>
+                Select element
+              </div>
+              <div className="pd-panel__empty-hint">
+                <span className="pd-panel__empty-hint-key">Double-click</span>
+                Edit text
+              </div>
+              <div className="pd-panel__empty-hint">
+                <span className="pd-panel__empty-hint-key">Shift+Click</span>
+                Multi-select
+              </div>
+              <div className="pd-panel__empty-hint">
+                <span className="pd-panel__empty-hint-key">Tab</span>
+                Next sibling
+              </div>
+              <div className="pd-panel__empty-hint">
+                <span className="pd-panel__empty-hint-key">Arrows</span>
+                Nudge position
+              </div>
+              <div className="pd-panel__empty-hint">
+                <span className="pd-panel__empty-hint-key">{navigator.platform.includes("Mac") ? "Cmd" : "Ctrl"}+Z</span>
+                Undo
+              </div>
+              <div className="pd-panel__empty-hint">
+                <span className="pd-panel__empty-hint-key">Delete</span>
+                Remove element
+              </div>
+              <div className="pd-panel__empty-hint">
+                <span className="pd-panel__empty-hint-key">{navigator.platform.includes("Mac") ? "Cmd" : "Ctrl"}+H</span>
+                Hide element
+              </div>
+              <div className="pd-panel__empty-hint">
+                <span className="pd-panel__empty-hint-key">Esc</span>
+                Deselect
+              </div>
             </div>
           </div>
         )}

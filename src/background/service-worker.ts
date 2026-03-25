@@ -5,7 +5,6 @@
  */
 
 import type { Message } from "../shared/messages";
-import { processAIRequest } from "./ai-client";
 import { saveEdits, loadEdits, hasSavedEdits } from "./storage";
 import { captureScreenshot } from "./screenshot";
 
@@ -56,10 +55,13 @@ chrome.runtime.onMessage.addListener(
       case "DEACTIVATE":
       case "TOGGLE_MULTI_EDIT":
       case "APPLY_STYLE":
+      case "APPLY_STYLE_TO_MATCHING":
       case "UNDO_CHANGE":
       case "UNDO_ALL":
       case "REDO":
+      case "REDO_CHANGE":
       case "CLEAR_CHANGES":
+      case "SELECT_ELEMENT":
         forwardToContentScript(message);
         break;
 
@@ -92,20 +94,12 @@ chrome.runtime.onMessage.addListener(
       // --- Forward to panel (from content script) ---
       case "ELEMENT_SELECTED":
       case "ELEMENT_DESELECTED":
+      case "MULTI_ELEMENT_SELECTED":
       case "CHANGES_RESPONSE":
       case "STATE_RESPONSE":
       case "SAVED_EDITS_AVAILABLE":
         // These broadcast on the runtime channel — panel picks them up
         break;
-
-      // --- AI ---
-      case "AI_REQUEST":
-        handleAIRequest(message);
-        break;
-
-      case "APPLY_AI_CHANGES":
-        forwardToContentScript(message, sendResponse);
-        return true;
 
       // --- Persistence ---
       case "SAVE_EDITS":
@@ -137,7 +131,7 @@ chrome.runtime.onMessage.addListener(
             sendResponse({ type: "SCREENSHOT_CAPTURED", dataUrl } satisfies Message);
           })
           .catch((err) => {
-            sendResponse({ type: "AI_ERROR", error: err.message } as Message);
+            sendResponse({ error: err.message });
           });
         return true;
     }
@@ -180,31 +174,6 @@ async function ensureContentScript(tabId: number): Promise<void> {
       // Can't inject on chrome:// pages, etc.
       console.warn("Page Designer: Cannot inject into this tab:", err);
     }
-  }
-}
-
-// --- AI request handler ---
-
-async function handleAIRequest(message: Extract<Message, { type: "AI_REQUEST" }>): Promise<void> {
-  try {
-    const result = await processAIRequest({
-      prompt: message.prompt,
-      elementHTML: message.elementHTML,
-      computedStyles: message.computedStyles,
-      selector: message.selector,
-    });
-
-    chrome.runtime.sendMessage({
-      type: "AI_RESPONSE",
-      styleChanges: result.styleChanges,
-      textContent: result.textContent,
-      explanation: result.explanation,
-    } satisfies Message);
-  } catch (err: any) {
-    chrome.runtime.sendMessage({
-      type: "AI_ERROR",
-      error: err.message || "Unknown AI error",
-    } satisfies Message);
   }
 }
 

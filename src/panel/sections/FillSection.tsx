@@ -5,6 +5,8 @@ import "./sections.css";
 interface FillSectionProps {
   computedStyles: Record<string, string>;
   onStyleChange: (property: string, value: string) => void;
+  disabled?: boolean;
+  designTokens?: Array<{ name: string; value: string }>;
 }
 
 function parseOpacityFromColor(color: string): number {
@@ -35,6 +37,8 @@ function setAlphaInColor(color: string, alpha: number): string {
 export const FillSection: React.FC<FillSectionProps> = ({
   computedStyles,
   onStyleChange,
+  disabled: sectionDisabled,
+  designTokens,
 }) => {
   const [collapsed, setCollapsed] = useState(false);
   const [disabled, setDisabled] = useState(false);
@@ -72,12 +76,12 @@ export const FillSection: React.FC<FillSectionProps> = ({
   }, [disabled, bgColor, onStyleChange]);
 
   return (
-    <div className="pd-section">
+    <div className={`pd-section${sectionDisabled ? " pd-section--disabled" : ""}`}>
       <div
         className="pd-section__header"
         onClick={() => setCollapsed((c) => !c)}
       >
-        <span className="pd-section__title">Fill</span>
+        <span className="pd-section__title">Fill{sectionDisabled ? " (N/A)" : ""}</span>
         <span
           className={`pd-section__arrow${collapsed ? " pd-section__arrow--collapsed" : ""}`}
         >
@@ -91,6 +95,7 @@ export const FillSection: React.FC<FillSectionProps> = ({
               value={bgColor}
               onChange={handleColorChange}
               label="Color"
+              designTokens={designTokens}
             />
             <button
               className={`pd-section__icon-btn${disabled ? " pd-section__icon-btn--disabled" : ""}`}

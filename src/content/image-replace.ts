@@ -23,22 +23,47 @@ export function showImageToolbar(element: Element): void {
     position: fixed !important;
     z-index: 2147483647 !important;
     left: ${rect.left}px !important;
-    top: ${Math.max(0, rect.top - 36)}px !important;
+    top: ${Math.max(0, rect.top - 60)}px !important;
     display: flex !important;
+    flex-direction: column !important;
     gap: 4px !important;
     background: #2c2c2c !important;
     border: 1px solid #3e3e3e !important;
     border-radius: 6px !important;
-    padding: 4px !important;
+    padding: 6px !important;
     box-shadow: 0 4px 12px rgba(0,0,0,0.4) !important;
     font-family: -apple-system, BlinkMacSystemFont, sans-serif !important;
   `;
 
+  // Dimensions info
+  const dimInfo = document.createElement("div");
+  const img = currentImage;
+  dimInfo.style.cssText = `
+    font-size: 10px !important;
+    color: #999 !important;
+    padding: 0 2px !important;
+    white-space: nowrap !important;
+  `;
+  dimInfo.textContent = `${img.naturalWidth}×${img.naturalHeight} (displayed: ${Math.round(rect.width)}×${Math.round(rect.height)})`;
+  toolbar.appendChild(dimInfo);
+
+  // Button row
+  const btnRow = document.createElement("div");
+  btnRow.style.cssText = `display: flex !important; gap: 4px !important;`;
+
   const replaceBtn = createButton("Replace", () => openFilePicker());
   const urlBtn = createButton("URL", () => promptUrl());
 
-  toolbar.appendChild(replaceBtn);
-  toolbar.appendChild(urlBtn);
+  // Object-fit toggle
+  const computed = window.getComputedStyle(currentImage);
+  const currentFit = computed.objectFit || "fill";
+  const fitBtn = createButton(`Fit: ${currentFit}`, () => toggleObjectFit());
+
+  btnRow.appendChild(replaceBtn);
+  btnRow.appendChild(urlBtn);
+  btnRow.appendChild(fitBtn);
+  toolbar.appendChild(btnRow);
+
   document.documentElement.appendChild(toolbar);
 
   fileInput = document.createElement("input");
@@ -145,6 +170,31 @@ function promptUrl(): void {
   toolbar.appendChild(input);
   toolbar.appendChild(goBtn);
   input.focus();
+}
+
+const FIT_VALUES = ["fill", "contain", "cover", "none", "scale-down"] as const;
+
+function toggleObjectFit(): void {
+  if (!currentImage) return;
+  const computed = window.getComputedStyle(currentImage);
+  const currentFit = computed.objectFit || "fill";
+  const currentIndex = FIT_VALUES.indexOf(currentFit as any);
+  const nextFit = FIT_VALUES[(currentIndex + 1) % FIT_VALUES.length];
+  currentImage.style.setProperty("object-fit", nextFit, "important");
+
+  chrome.runtime.sendMessage({
+    type: "ELEMENT_RESIZED",
+    selector: generateSelector(currentImage),
+    from: { width: computed.width, height: computed.height },
+    to: { width: computed.width, height: computed.height },
+  } satisfies Message);
+
+  // Refresh toolbar to show new fit value
+  if (currentImage) {
+    const el = currentImage;
+    hideImageToolbar();
+    showImageToolbar(el);
+  }
 }
 
 function replaceImage(newSrc: string): void {

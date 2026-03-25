@@ -15,6 +15,8 @@ export type Message =
   | { type: "TOGGLE_MULTI_EDIT"; enabled: boolean }
   // Style changes (panel → content script)
   | { type: "APPLY_STYLE"; property: string; value: string }
+  | { type: "APPLY_STYLE_TO_MATCHING"; className: string; property: string; value: string }
+  | { type: "MULTI_ELEMENT_SELECTED"; count: number; data: ElementData }
   // Interaction events (content script → background → panel)
   | { type: "TEXT_CHANGED"; selector: string; from: string; to: string }
   | {
@@ -39,27 +41,11 @@ export type Message =
   | { type: "GET_CHANGES" }
   | { type: "CHANGES_RESPONSE"; changes: Change[]; canRedo: boolean }
   | { type: "CLEAR_CHANGES" }
-  // AI
-  | {
-      type: "AI_REQUEST";
-      prompt: string;
-      elementHTML: string;
-      computedStyles: Record<string, string>;
-      selector: string;
-    }
-  | {
-      type: "AI_RESPONSE";
-      styleChanges: Array<{ property: string; value: string }>;
-      textContent?: string;
-      explanation: string;
-    }
-  | { type: "AI_ERROR"; error: string }
-  | {
-      type: "APPLY_AI_CHANGES";
-      styleChanges: Array<{ property: string; value: string }>;
-      textContent?: string;
-    }
-  | { type: "AI_CHANGES_APPLIED"; appliedCount: number }
+  // Keyboard actions (content script → panel)
+  | { type: "ELEMENT_DELETED"; selector: string }
+  | { type: "ELEMENT_HIDDEN"; selector: string }
+  | { type: "REDO_CHANGE" }
+  | { type: "SELECT_ELEMENT"; selector: string }
   // Persistence
   | { type: "SAVE_EDITS"; url: string; changes: Change[] }
   | { type: "LOAD_EDITS"; url: string }

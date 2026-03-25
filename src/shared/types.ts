@@ -22,10 +22,12 @@ export interface ElementData {
   isFlex: boolean;
   /** Whether element uses display:grid */
   isGrid: boolean;
-  /** Truncated outerHTML for AI context */
+  /** Truncated outerHTML for context */
   outerHTML: string;
   /** Number of matching elements (same tag + classes) on the page */
   matchCount: number;
+  /** CSS custom properties (design tokens) used on this element */
+  designTokens: Array<{ name: string; value: string }>;
 }
 
 /** Editor state shared across contexts */
@@ -40,7 +42,9 @@ export type Change =
   | TextChange
   | MoveChange
   | ResizeChange
-  | ImageChange;
+  | ImageChange
+  | DeleteChange
+  | HideChange;
 
 export interface BaseChange {
   id: string;
@@ -81,6 +85,19 @@ export interface ImageChange extends BaseChange {
   type: "image";
   from: string;
   to: string;
+}
+
+export interface DeleteChange extends BaseChange {
+  type: "delete";
+  /** HTML of the removed element for undo */
+  html: string;
+  parentSelector: string;
+  index: number;
+}
+
+export interface HideChange extends BaseChange {
+  type: "hide";
+  previousDisplay: string;
 }
 
 /** Exported changeset format for Claude Code / Codex */

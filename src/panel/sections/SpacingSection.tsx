@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import { UnitInput } from "../controls";
 import "./sections.css";
 
@@ -11,7 +11,13 @@ export const SpacingSection: React.FC<SpacingSectionProps> = ({
   computedStyles,
   onStyleChange,
 }) => {
-  const [collapsed, setCollapsed] = useState(false);
+  const spacingProps = ["padding-top", "padding-right", "padding-bottom", "padding-left", "margin-top", "margin-right", "margin-bottom", "margin-left"];
+  const hasValue = spacingProps.some((p) => {
+    const v = computedStyles[p] || "0px";
+    return v !== "0px" && v !== "0";
+  });
+  const [collapsed, setCollapsed] = useState(!hasValue);
+  useEffect(() => { setCollapsed(!hasValue); }, [hasValue]);
 
   const handleChange = useCallback(
     (property: string) => (v: string) => onStyleChange(property, v),
@@ -25,11 +31,11 @@ export const SpacingSection: React.FC<SpacingSectionProps> = ({
         onClick={() => setCollapsed((c) => !c)}
       >
         <span className="pd-section__title">Spacing</span>
-        <span
-          className={`pd-section__arrow${collapsed ? " pd-section__arrow--collapsed" : ""}`}
-        >
-          &#9662;
-        </span>
+        {collapsed && !hasValue ? (
+          <button className="pd-section__plus-btn" onClick={(e) => { e.stopPropagation(); setCollapsed(false); }} type="button">+</button>
+        ) : (
+          <span className={`pd-section__arrow${collapsed ? " pd-section__arrow--collapsed" : ""}`}>&#9662;</span>
+        )}
       </div>
       {!collapsed && (
         <div className="pd-section__content">

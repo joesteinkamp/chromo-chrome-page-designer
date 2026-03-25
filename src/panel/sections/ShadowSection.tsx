@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from "react";
+import React, { useState, useCallback, useMemo, useEffect } from "react";
 import { NumberInput, ColorPicker } from "../controls";
 import "./sections.css";
 
@@ -105,7 +105,10 @@ export const ShadowSection: React.FC<ShadowSectionProps> = ({
   onStyleChange,
   disabled: sectionDisabled,
 }) => {
-  const [collapsed, setCollapsed] = useState(false);
+  const rawShadow = computedStyles["box-shadow"] || "none";
+  const hasValue = rawShadow !== "none";
+  const [collapsed, setCollapsed] = useState(!hasValue);
+  useEffect(() => { setCollapsed(!hasValue); }, [hasValue]);
 
   const shadow = useMemo(
     () => parseBoxShadow(computedStyles["box-shadow"] || "none"),
@@ -151,11 +154,11 @@ export const ShadowSection: React.FC<ShadowSectionProps> = ({
         onClick={() => setCollapsed((c) => !c)}
       >
         <span className="pd-section__title">Shadow{sectionDisabled ? " (N/A)" : ""}</span>
-        <span
-          className={`pd-section__arrow${collapsed ? " pd-section__arrow--collapsed" : ""}`}
-        >
-          &#9662;
-        </span>
+        {collapsed && !hasValue ? (
+          <button className="pd-section__plus-btn" onClick={(e) => { e.stopPropagation(); setCollapsed(false); }} type="button">+</button>
+        ) : (
+          <span className={`pd-section__arrow${collapsed ? " pd-section__arrow--collapsed" : ""}`}>&#9662;</span>
+        )}
       </div>
       {!collapsed && (
         <div className="pd-section__content">

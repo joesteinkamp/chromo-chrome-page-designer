@@ -81,11 +81,6 @@ body {
   cursor: default;
 }
 
-.pd-panel__header-btn--unsaved {
-  color: #f59e0b;
-  border: 1px solid rgba(245, 158, 11, 0.3);
-}
-
 .pd-panel__status {
   font-size: 11px;
   color: var(--pd-text-muted);

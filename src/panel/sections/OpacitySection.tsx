@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import { SliderInput } from "../controls";
 import "./sections.css";
 
@@ -11,12 +11,13 @@ export const OpacitySection: React.FC<OpacitySectionProps> = ({
   computedStyles,
   onStyleChange,
 }) => {
-  const [collapsed, setCollapsed] = useState(false);
-
   const rawOpacity = parseFloat(computedStyles["opacity"] || "1");
   const opacityPercent = Math.round(
     (isNaN(rawOpacity) ? 1 : rawOpacity) * 100
   );
+  const hasValue = opacityPercent < 100;
+  const [collapsed, setCollapsed] = useState(!hasValue);
+  useEffect(() => { setCollapsed(!hasValue); }, [hasValue]);
 
   const handleChange = useCallback(
     (v: number) => {
@@ -32,11 +33,11 @@ export const OpacitySection: React.FC<OpacitySectionProps> = ({
         onClick={() => setCollapsed((c) => !c)}
       >
         <span className="pd-section__title">Opacity</span>
-        <span
-          className={`pd-section__arrow${collapsed ? " pd-section__arrow--collapsed" : ""}`}
-        >
-          &#9662;
-        </span>
+        {collapsed && !hasValue ? (
+          <button className="pd-section__plus-btn" onClick={(e) => { e.stopPropagation(); setCollapsed(false); }} type="button">+</button>
+        ) : (
+          <span className={`pd-section__arrow${collapsed ? " pd-section__arrow--collapsed" : ""}`}>&#9662;</span>
+        )}
       </div>
       {!collapsed && (
         <div className="pd-section__content">

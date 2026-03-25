@@ -22,9 +22,6 @@ export function App() {
   const [multiEdit, setMultiEdit] = useState(false);
   const [sendMenuOpen, setSendMenuOpen] = useState(false);
   const sendMenuRef = useRef<HTMLDivElement>(null);
-  const [lastSaved, setLastSaved] = useState<number | null>(null);
-  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
-  const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleToggleEditMode = useCallback(() => {
     const next = !editMode;
@@ -53,7 +50,6 @@ export function App() {
         case "CHANGES_RESPONSE":
           setChanges(message.changes);
           setCanRedo(message.canRedo);
-          setHasUnsavedChanges(true);
           break;
       }
     };
@@ -142,28 +138,6 @@ export function App() {
   );
 
   // --- Persistence ---
-
-  const handleSaveEdits = useCallback(() => {
-    chrome.runtime.sendMessage({
-      type: "SAVE_EDITS",
-      url: pageUrl,
-      changes,
-    } satisfies Message);
-    setLastSaved(Date.now());
-    setHasUnsavedChanges(false);
-  }, [pageUrl, changes]);
-
-  // Auto-save every 30 seconds when there are unsaved changes
-  useEffect(() => {
-    if (!hasUnsavedChanges || changes.length === 0 || !pageUrl) return;
-    if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
-    autoSaveTimer.current = setTimeout(() => {
-      handleSaveEdits();
-    }, 30000);
-    return () => {
-      if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
-    };
-  }, [hasUnsavedChanges, changes, pageUrl, handleSaveEdits]);
 
   const handleLoadEdits = useCallback(() => {
     chrome.runtime.sendMessage(
@@ -306,13 +280,6 @@ export function App() {
         <div className="pd-panel__header-right">
           <div className="pd-panel__send-wrap" ref={sendMenuRef}>
             <button
-              className={`pd-panel__header-btn${hasUnsavedChanges ? " pd-panel__header-btn--unsaved" : ""}`}
-              onClick={handleSaveEdits}
-              title={lastSaved ? `Last saved ${new Date(lastSaved).toLocaleTimeString()}` : "Save edits for this page"}
-            >
-              {hasUnsavedChanges ? "Save *" : "Saved"}
-            </button>
-            <button
               className={`pd-panel__send-btn ${changes.length === 0 ? "pd-panel__send-btn--disabled" : ""}`}
               onClick={() => setSendMenuOpen(!sendMenuOpen)}
               disabled={changes.length === 0}
@@ -387,7 +354,6 @@ export function App() {
                   onRedo={handleRedo}
                   onExportJSON={handleExportJSON}
                   onExportSummary={handleExportSummary}
-                  onSave={handleSaveEdits}
                   onRestore={handleLoadEdits}
                   url={pageUrl}
                 />

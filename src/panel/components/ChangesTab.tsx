@@ -11,7 +11,6 @@ interface Props {
   onRedo: () => void;
   onExportJSON: (note?: string) => void;
   onExportSummary: (note?: string) => void;
-  onSave: () => void;
   onRestore: () => void;
   url: string;
 }
@@ -64,7 +63,6 @@ export function ChangesTab({
   onRedo,
   onExportJSON,
   onExportSummary,
-  onSave,
   onRestore,
   url,
 }: Props) {
@@ -192,14 +190,6 @@ export function ChangesTab({
       </div>
 
       <div className="pd-changes__toolbar pd-changes__toolbar--secondary">
-        <button
-          type="button"
-          className="pd-changes__btn pd-changes__btn--accent"
-          onClick={() => { onSave(); showToast("Saved!"); }}
-          disabled={!hasChanges}
-        >
-          Permanently Save Changes
-        </button>
         <button
           type="button"
           className="pd-changes__btn"

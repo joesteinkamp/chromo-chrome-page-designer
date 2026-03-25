@@ -1,9 +1,28 @@
+:root {
+  --pd-bg: #1e1e1e;
+  --pd-text: #e0e0e0;
+  --pd-text-dim: #999;
+  --pd-accent: #4f9eff;
+  --pd-accent-hover: #3a8fee;
+  --pd-font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --pd-bg: #ffffff;
+    --pd-text: #1e1e1e;
+    --pd-text-dim: #555;
+    --pd-accent: #2b7de9;
+    --pd-accent-hover: #1a6dd4;
+  }
+}
+
 .pd-popup {
   width: 260px;
   padding: 16px;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  background: #1e1e1e;
-  color: #e0e0e0;
+  font-family: var(--pd-font);
+  background: var(--pd-bg);
+  color: var(--pd-text);
 }
 
 .pd-popup__header {
@@ -14,7 +33,7 @@
 }
 
 .pd-popup__icon {
-  color: #4f9eff;
+  color: var(--pd-accent);
   font-size: 16px;
 }
 
@@ -25,7 +44,7 @@
 
 .pd-popup__desc {
   font-size: 11px;
-  color: #999;
+  color: var(--pd-text-dim);
   line-height: 1.5;
   margin-bottom: 12px;
 }
@@ -35,7 +54,7 @@
   padding: 8px 12px;
   border: none;
   border-radius: 6px;
-  background: #4f9eff;
+  background: var(--pd-accent);
   color: #fff;
   font-size: 13px;
   font-weight: 500;
@@ -45,7 +64,7 @@
 }
 
 .pd-popup__btn:hover {
-  background: #3a8fee;
+  background: var(--pd-accent-hover);
 }
 
 .pd-popup__features {
@@ -60,11 +79,11 @@
   align-items: center;
   gap: 6px;
   font-size: 11px;
-  color: #999;
+  color: var(--pd-text-dim);
 }
 
 .pd-popup__feature-icon {
-  color: #4f9eff;
+  color: var(--pd-accent);
   font-size: 10px;
   font-weight: 600;
   width: 14px;

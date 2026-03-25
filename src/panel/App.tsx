@@ -424,6 +424,10 @@ export function App() {
                 Hide element
               </div>
               <div className="pd-panel__empty-hint">
+                <span className="pd-panel__empty-hint-key">{navigator.platform.includes("Mac") ? "Cmd" : "Ctrl"}+G</span>
+                Add Group
+              </div>
+              <div className="pd-panel__empty-hint">
                 <span className="pd-panel__empty-hint-key">Esc</span>
                 Deselect
               </div>

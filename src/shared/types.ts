@@ -44,7 +44,8 @@ export type Change =
   | ResizeChange
   | ImageChange
   | DeleteChange
-  | HideChange;
+  | HideChange
+  | WrapChange;
 
 export interface BaseChange {
   id: string;
@@ -98,6 +99,12 @@ export interface DeleteChange extends BaseChange {
 export interface HideChange extends BaseChange {
   type: "hide";
   previousDisplay: string;
+}
+
+export interface WrapChange extends BaseChange {
+  type: "wrap";
+  /** Selector of the wrapper div that was created */
+  wrapperSelector: string;
 }
 
 /** Exported changeset format for Claude Code / Codex */

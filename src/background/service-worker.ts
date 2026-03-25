@@ -62,6 +62,7 @@ chrome.runtime.onMessage.addListener(
       case "REDO_CHANGE":
       case "CLEAR_CHANGES":
       case "SELECT_ELEMENT":
+      case "WRAP_ELEMENT":
         forwardToContentScript(message);
         break;
 

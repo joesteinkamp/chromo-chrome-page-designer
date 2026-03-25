@@ -9,6 +9,7 @@
  * Arrow keys — nudge position by 1px (Shift = 10px)
  * Delete/Backspace — delete selected element from DOM
  * Cmd+H / Ctrl+H — hide element (display: none)
+ * Cmd+G / Cmd+Option+G — wrap element in a group (div)
  */
 
 import { isOverlayElement } from "./overlay";
@@ -31,6 +32,7 @@ interface KeyboardCallbacks {
   startInlineEdit: (element: Element) => void;
   refreshSelection: () => void;
   sendElementData: (element: Element) => void;
+  wrapInGroup: (element: HTMLElement) => void;
 }
 
 let callbacks: KeyboardCallbacks | null = null;
@@ -95,6 +97,16 @@ function onKeyDown(e: KeyboardEvent): void {
     if (redoLast()) {
       callbacks.refreshSelection();
       if (selected) callbacks.sendElementData(selected);
+    }
+    return;
+  }
+
+  // Cmd+G / Cmd+Option+G — wrap in group
+  if (isMeta && (e.key === "g" || e.key === "G")) {
+    if (selected && selected instanceof HTMLElement) {
+      e.preventDefault();
+      e.stopPropagation();
+      callbacks.wrapInGroup(selected);
     }
     return;
   }

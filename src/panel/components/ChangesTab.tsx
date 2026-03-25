@@ -9,8 +9,6 @@ interface Props {
   onUndo: (changeId: string) => void;
   onUndoAll: () => void;
   onRedo: () => void;
-  onExportJSON: (note?: string) => void;
-  onExportSummary: (note?: string) => void;
   onRestore: () => void;
   url: string;
 }
@@ -61,13 +59,10 @@ export function ChangesTab({
   onUndo,
   onUndoAll,
   onRedo,
-  onExportJSON,
-  onExportSummary,
   onRestore,
   url,
 }: Props) {
   const [toast, setToast] = useState<string | null>(null);
-  const [sessionNote, setSessionNote] = useState("");
   const [viewMode, setViewMode] = useState<"list" | "grouped">("grouped");
   const [showDiffOverlay, setShowDiffOverlay] = useState(false);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -83,16 +78,6 @@ export function ChangesTab({
       if (toastTimer.current) clearTimeout(toastTimer.current);
     };
   }, []);
-
-  const handleCopyJSON = useCallback(() => {
-    onExportJSON(sessionNote || undefined);
-    showToast("Copied JSON!");
-  }, [onExportJSON, showToast, sessionNote]);
-
-  const handleCopySummary = useCallback(() => {
-    onExportSummary(sessionNote || undefined);
-    showToast("Copied Summary!");
-  }, [onExportSummary, showToast, sessionNote]);
 
   const handleToggleDiff = useCallback(() => {
     setShowDiffOverlay((v) => !v);
@@ -113,19 +98,6 @@ export function ChangesTab({
   return (
     <div className="pd-changes">
       {toast && <div className="pd-changes__toast">{toast}</div>}
-
-      {/* Session note */}
-      {hasChanges && (
-        <div className="pd-changes__note">
-          <input
-            type="text"
-            className="pd-changes__note-input"
-            placeholder="Add a note about these changes..."
-            value={sessionNote}
-            onChange={(e) => setSessionNote(e.target.value)}
-          />
-        </div>
-      )}
 
       <div className="pd-changes__toolbar">
         <span className="pd-changes__badge">
@@ -169,33 +141,13 @@ export function ChangesTab({
         )}
       </div>
 
-      <div className="pd-changes__toolbar">
-        <div className="pd-changes__toolbar-spacer" />
-        <button
-          type="button"
-          className="pd-changes__btn"
-          onClick={handleCopyJSON}
-          disabled={!hasChanges}
-        >
-          Copy JSON
-        </button>
-        <button
-          type="button"
-          className="pd-changes__btn"
-          onClick={handleCopySummary}
-          disabled={!hasChanges}
-        >
-          Copy Summary
-        </button>
-      </div>
-
       <div className="pd-changes__toolbar pd-changes__toolbar--secondary">
         <button
           type="button"
           className="pd-changes__btn"
           onClick={() => { onRestore(); showToast("Restoring..."); }}
         >
-          Restore Saved
+          Restore Previously Saved Changes
         </button>
       </div>
 

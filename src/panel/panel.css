@@ -81,11 +81,6 @@ body {
   cursor: default;
 }
 
-.pd-panel__header-btn--unsaved {
-  color: #f59e0b;
-  border: 1px solid rgba(245, 158, 11, 0.3);
-}
-
 .pd-panel__status {
   font-size: 11px;
   color: var(--pd-text-muted);
@@ -233,6 +228,61 @@ body {
   font-size: 12px;
   color: var(--pd-text-dim);
   line-height: 1.5;
+}
+
+/* Saved changes prompt */
+.pd-panel__saved-prompt {
+  width: 100%;
+  max-width: 260px;
+  padding: 14px 16px;
+  margin-bottom: 20px;
+  border: 1px solid var(--pd-border);
+  border-radius: 8px;
+  background: var(--pd-bg-raised);
+  text-align: center;
+}
+
+.pd-panel__saved-prompt-text {
+  font-size: 12px;
+  color: var(--pd-text);
+  line-height: 1.5;
+  margin-bottom: 12px;
+}
+
+.pd-panel__saved-prompt-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+}
+
+.pd-panel__saved-prompt-btn {
+  padding: 6px 12px;
+  border: 1px solid var(--pd-border);
+  border-radius: var(--pd-radius);
+  background: var(--pd-bg-raised);
+  color: var(--pd-text-dim);
+  font-family: var(--pd-font);
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.pd-panel__saved-prompt-btn:hover {
+  background: var(--pd-bg-hover);
+  color: var(--pd-text);
+}
+
+.pd-panel__saved-prompt-btn--primary {
+  background: var(--pd-accent);
+  border-color: var(--pd-accent);
+  color: #fff;
+}
+
+.pd-panel__saved-prompt-btn--primary:hover {
+  opacity: 0.9;
+  background: var(--pd-accent);
+  color: #fff;
 }
 
 .pd-panel__empty-hints {

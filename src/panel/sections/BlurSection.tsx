@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import { SliderInput } from "../controls";
 import "./sections.css";
 
@@ -18,9 +18,10 @@ export const BlurSection: React.FC<BlurSectionProps> = ({
   computedStyles,
   onStyleChange,
 }) => {
-  const [collapsed, setCollapsed] = useState(false);
-
   const blurValue = parseBlurFromFilter(computedStyles["filter"] || "none");
+  const hasValue = blurValue > 0;
+  const [collapsed, setCollapsed] = useState(!hasValue);
+  useEffect(() => { setCollapsed(!hasValue); }, [hasValue]);
 
   const handleChange = useCallback(
     (v: number) => {
@@ -36,11 +37,11 @@ export const BlurSection: React.FC<BlurSectionProps> = ({
         onClick={() => setCollapsed((c) => !c)}
       >
         <span className="pd-section__title">Blur</span>
-        <span
-          className={`pd-section__arrow${collapsed ? " pd-section__arrow--collapsed" : ""}`}
-        >
-          &#9662;
-        </span>
+        {collapsed && !hasValue ? (
+          <button className="pd-section__plus-btn" onClick={(e) => { e.stopPropagation(); setCollapsed(false); }} type="button">+</button>
+        ) : (
+          <span className={`pd-section__arrow${collapsed ? " pd-section__arrow--collapsed" : ""}`}>&#9662;</span>
+        )}
       </div>
       {!collapsed && (
         <div className="pd-section__content">

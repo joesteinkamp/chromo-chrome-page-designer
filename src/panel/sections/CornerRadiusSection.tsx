@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import { CornerRadiusInput } from "../controls";
 import "./sections.css";
 
@@ -18,14 +18,15 @@ export const CornerRadiusSection: React.FC<CornerRadiusSectionProps> = ({
   computedStyles,
   onStyleChange,
 }) => {
-  const [collapsed, setCollapsed] = useState(false);
-
   const values: [string, string, string, string] = [
     computedStyles["border-top-left-radius"] || "0px",
     computedStyles["border-top-right-radius"] || "0px",
     computedStyles["border-bottom-right-radius"] || "0px",
     computedStyles["border-bottom-left-radius"] || "0px",
   ];
+  const hasValue = values.some((v) => v !== "0px" && v !== "0");
+  const [collapsed, setCollapsed] = useState(!hasValue);
+  useEffect(() => { setCollapsed(!hasValue); }, [hasValue]);
 
   const handleChange = useCallback(
     (newValues: [string, string, string, string]) => {
@@ -54,11 +55,11 @@ export const CornerRadiusSection: React.FC<CornerRadiusSectionProps> = ({
         onClick={() => setCollapsed((c) => !c)}
       >
         <span className="pd-section__title">Corner Radius</span>
-        <span
-          className={`pd-section__arrow${collapsed ? " pd-section__arrow--collapsed" : ""}`}
-        >
-          &#9662;
-        </span>
+        {collapsed && !hasValue ? (
+          <button className="pd-section__plus-btn" onClick={(e) => { e.stopPropagation(); setCollapsed(false); }} type="button">+</button>
+        ) : (
+          <span className={`pd-section__arrow${collapsed ? " pd-section__arrow--collapsed" : ""}`}>&#9662;</span>
+        )}
       </div>
       {!collapsed && (
         <div className="pd-section__content">

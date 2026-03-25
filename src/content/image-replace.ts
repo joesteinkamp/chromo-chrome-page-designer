@@ -4,6 +4,8 @@
  */
 
 import { recordImageChange } from "./change-tracker";
+import { generateSelector } from "../shared/selector";
+import type { Message } from "../shared/messages";
 
 let toolbar: HTMLDivElement | null = null;
 let currentImage: HTMLImageElement | null = null;

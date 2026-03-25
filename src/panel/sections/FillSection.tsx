@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef } from "react";
+import React, { useState, useCallback, useRef, useEffect } from "react";
 import { ColorPicker, SliderInput } from "../controls";
 import "./sections.css";
 
@@ -40,11 +40,13 @@ export const FillSection: React.FC<FillSectionProps> = ({
   disabled: sectionDisabled,
   designTokens,
 }) => {
-  const [collapsed, setCollapsed] = useState(false);
   const [disabled, setDisabled] = useState(false);
   const savedColorRef = useRef<string>("");
 
   const bgColor = computedStyles["background-color"] || "rgba(0, 0, 0, 0)";
+  const hasValue = bgColor !== "transparent" && bgColor !== "rgba(0, 0, 0, 0)";
+  const [collapsed, setCollapsed] = useState(!hasValue);
+  useEffect(() => { setCollapsed(!hasValue); }, [hasValue]);
   const opacity = parseOpacityFromColor(bgColor);
 
   const handleColorChange = useCallback(
@@ -82,11 +84,11 @@ export const FillSection: React.FC<FillSectionProps> = ({
         onClick={() => setCollapsed((c) => !c)}
       >
         <span className="pd-section__title">Fill{sectionDisabled ? " (N/A)" : ""}</span>
-        <span
-          className={`pd-section__arrow${collapsed ? " pd-section__arrow--collapsed" : ""}`}
-        >
-          &#9662;
-        </span>
+        {collapsed && !hasValue ? (
+          <button className="pd-section__plus-btn" onClick={(e) => { e.stopPropagation(); setCollapsed(false); }} type="button">+</button>
+        ) : (
+          <span className={`pd-section__arrow${collapsed ? " pd-section__arrow--collapsed" : ""}`}>&#9662;</span>
+        )}
       </div>
       {!collapsed && (
         <div className="pd-section__content">

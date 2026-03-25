@@ -144,6 +144,29 @@
   background: var(--pd-accent-dim);
 }
 
+/* Plus button for collapsed empty sections (Figma-style) */
+.pd-section__plus-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border: none;
+  border-radius: var(--pd-radius);
+  background: none;
+  color: var(--pd-text-muted);
+  font-size: 16px;
+  font-weight: 300;
+  cursor: pointer;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.pd-section__plus-btn:hover {
+  background: var(--pd-bg-hover);
+  color: var(--pd-text);
+}
+
 /* Disabled / not-applicable section */
 .pd-section--disabled {
   opacity: 0.35;

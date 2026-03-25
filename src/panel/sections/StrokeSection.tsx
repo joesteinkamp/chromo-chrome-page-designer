@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import { ColorPicker, NumberInput, SelectDropdown } from "../controls";
 import "./sections.css";
 
@@ -23,11 +23,12 @@ export const StrokeSection: React.FC<StrokeSectionProps> = ({
   computedStyles,
   onStyleChange,
 }) => {
-  const [collapsed, setCollapsed] = useState(false);
-
   const borderColor = computedStyles["border-top-color"] || "rgb(0, 0, 0)";
   const borderWidth = parsePx(computedStyles["border-top-width"] || "0px");
   const borderStyle = computedStyles["border-top-style"] || "none";
+  const hasValue = borderStyle !== "none" && borderWidth > 0;
+  const [collapsed, setCollapsed] = useState(!hasValue);
+  useEffect(() => { setCollapsed(!hasValue); }, [hasValue]);
 
   const handleColorChange = useCallback(
     (v: string) => {
@@ -57,11 +58,11 @@ export const StrokeSection: React.FC<StrokeSectionProps> = ({
         onClick={() => setCollapsed((c) => !c)}
       >
         <span className="pd-section__title">Stroke</span>
-        <span
-          className={`pd-section__arrow${collapsed ? " pd-section__arrow--collapsed" : ""}`}
-        >
-          &#9662;
-        </span>
+        {collapsed && !hasValue ? (
+          <button className="pd-section__plus-btn" onClick={(e) => { e.stopPropagation(); setCollapsed(false); }} type="button">+</button>
+        ) : (
+          <span className={`pd-section__arrow${collapsed ? " pd-section__arrow--collapsed" : ""}`}>&#9662;</span>
+        )}
       </div>
       {!collapsed && (
         <div className="pd-section__content">

@@ -54,13 +54,13 @@
 }
 
 .pd-changes__btn--danger {
-  border-color: #ff453a;
-  color: #ff453a;
+  border-color: var(--pd-danger);
+  color: var(--pd-danger);
 }
 
 .pd-changes__btn--danger:hover {
-  background: rgba(255, 69, 58, 0.15);
-  color: #ff6961;
+  background: var(--pd-danger-dim);
+  color: var(--pd-danger);
 }
 
 .pd-changes__btn--accent {
@@ -284,7 +284,7 @@
 .pd-changes__diff-title {
   font-size: 10px;
   font-weight: 600;
-  color: #ff4f9e;
+  color: #d63384;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   margin-bottom: 6px;
@@ -309,6 +309,6 @@
 
 .pd-changes__diff-count {
   font-size: 10px;
-  color: #ff4f9e;
+  color: #d63384;
   font-weight: 500;
 }

@@ -124,10 +124,10 @@
   position: absolute;
   inset: 0;
   background-image:
-    linear-gradient(45deg, #444 25%, transparent 25%),
-    linear-gradient(-45deg, #444 25%, transparent 25%),
-    linear-gradient(45deg, transparent 75%, #444 75%),
-    linear-gradient(-45deg, transparent 75%, #444 75%);
+    linear-gradient(45deg, var(--pd-checker) 25%, transparent 25%),
+    linear-gradient(-45deg, var(--pd-checker) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, var(--pd-checker) 75%),
+    linear-gradient(-45deg, transparent 75%, var(--pd-checker) 75%);
   background-size: 8px 8px;
   background-position: 0 0, 0 4px, 4px -4px, -4px 0;
 }
@@ -163,7 +163,7 @@
   border: 1px solid var(--pd-border);
   border-radius: 6px;
   padding: 10px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  box-shadow: var(--pd-shadow);
   width: 200px;
 }
 
@@ -223,10 +223,10 @@
 
 .pd-color-picker__slider-track--alpha {
   background-image:
-    linear-gradient(45deg, #444 25%, transparent 25%),
-    linear-gradient(-45deg, #444 25%, transparent 25%),
-    linear-gradient(45deg, transparent 75%, #444 75%),
-    linear-gradient(-45deg, transparent 75%, #444 75%);
+    linear-gradient(45deg, var(--pd-checker) 25%, transparent 25%),
+    linear-gradient(-45deg, var(--pd-checker) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, var(--pd-checker) 75%),
+    linear-gradient(-45deg, transparent 75%, var(--pd-checker) 75%);
   background-size: 8px 8px;
   background-position: 0 0, 0 4px, 4px -4px, -4px 0;
   overflow: hidden;

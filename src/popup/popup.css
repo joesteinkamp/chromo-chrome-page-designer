@@ -10,10 +10,10 @@
 @media (prefers-color-scheme: light) {
   :root {
     --pd-bg: #ffffff;
-    --pd-text: #1e1e1e;
-    --pd-text-dim: #555;
-    --pd-accent: #2b7de9;
-    --pd-accent-hover: #1a6dd4;
+    --pd-text: #1a1a1a;
+    --pd-text-dim: #666;
+    --pd-accent: #0c8ce9;
+    --pd-accent-hover: #0a7bd4;
   }
 }
 

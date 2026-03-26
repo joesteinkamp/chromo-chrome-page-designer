@@ -8,9 +8,13 @@ interface DimensionsSectionProps {
   onStyleChange: (property: string, value: string) => void;
 }
 
-/** Use authored value if it has a non-px unit, otherwise fall back to computed */
+/** Use authored value if it has a non-px unit (%, rem, vw, etc.), otherwise fall back to computed */
 function preferAuthored(authored: string | undefined, computed: string | undefined): string {
-  if (authored && authored !== "0" && authored !== "") return authored;
+  if (!authored) return computed || "auto";
+  // Only prefer authored if it uses a non-pixel unit or is "auto"
+  if (authored === "auto") return "auto";
+  if (/(%|rem|em|vw|vh|vmin|vmax|ch|ex)$/.test(authored)) return authored;
+  // For px values or unitless, use computed (more accurate)
   return computed || "auto";
 }
 

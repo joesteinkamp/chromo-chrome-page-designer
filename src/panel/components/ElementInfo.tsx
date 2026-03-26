@@ -107,6 +107,22 @@ export function ElementInfo({ data, multiEdit, onToggleMultiEdit, multiSelectCou
         )}
       </div>
 
+      {data.componentInfo?.componentName && (
+        <div className="pd-element-info__component">
+          <span className="pd-element-info__component-badge">
+            {data.componentInfo.framework === "react" ? "React" : data.componentInfo.framework === "vue" ? "Vue" : "Svelte"}
+          </span>
+          <span className="pd-element-info__component-name">
+            {"<"}{data.componentInfo.componentName}{">"}
+          </span>
+          {data.componentInfo.sourceFile && (
+            <span className="pd-element-info__component-source" title={data.componentInfo.sourceFile}>
+              {data.componentInfo.sourceFile.replace(/^.*[/\\]/, "")}{data.componentInfo.sourceLine ? `:${data.componentInfo.sourceLine}` : ""}
+            </span>
+          )}
+        </div>
+      )}
+
       {hasMatches && (
         <button
           className={`pd-element-info__multi-btn ${multiEdit ? "pd-element-info__multi-btn--active" : ""}`}

@@ -4,16 +4,26 @@
  * Supports grouping changes by element and optional session notes.
  */
 
-import type { Change, Changeset } from "./types";
+import type { Change, Changeset, ElementData } from "./types";
 import { CSS_TO_FIGMA } from "./css-mapping";
+
+/** Component context associated with a CSS selector */
+export interface ComponentContext {
+  framework: string | null;
+  componentName: string | null;
+  componentHierarchy: string[];
+  sourceFile: string | null;
+  sourceLine: number | null;
+}
 
 /** Group changes by selector for cleaner export */
 interface GroupedChanges {
   selector: string;
+  component?: ComponentContext;
   changes: Change[];
 }
 
-function groupBySelector(changes: Change[]): GroupedChanges[] {
+function groupBySelector(changes: Change[], componentMap?: Map<string, ComponentContext>): GroupedChanges[] {
   const map = new Map<string, Change[]>();
   for (const c of changes) {
     const existing = map.get(c.selector) || [];
@@ -22,6 +32,7 @@ function groupBySelector(changes: Change[]): GroupedChanges[] {
   }
   return Array.from(map.entries()).map(([selector, changes]) => ({
     selector,
+    ...(componentMap?.get(selector) ? { component: componentMap.get(selector) } : {}),
     changes,
   }));
 }
@@ -30,7 +41,8 @@ function groupBySelector(changes: Change[]): GroupedChanges[] {
 export function exportAsJSON(
   url: string,
   changes: Change[],
-  sessionNote?: string
+  sessionNote?: string,
+  componentMap?: Map<string, ComponentContext>
 ): string {
   const changeset: Changeset & { sessionNote?: string; groups?: GroupedChanges[] } = {
     url,
@@ -41,8 +53,8 @@ export function exportAsJSON(
   if (sessionNote) {
     changeset.sessionNote = sessionNote;
   }
-  // Add grouped view for developer convenience
-  changeset.groups = groupBySelector(changes);
+  // Add grouped view with component context for developer convenience
+  changeset.groups = groupBySelector(changes, componentMap);
   return JSON.stringify(changeset, null, 2);
 }
 
@@ -50,7 +62,8 @@ export function exportAsJSON(
 export function exportAsSummary(
   url: string,
   changes: Change[],
-  sessionNote?: string
+  sessionNote?: string,
+  componentMap?: Map<string, ComponentContext>
 ): string {
   if (changes.length === 0) {
     return `No changes recorded for ${url}`;
@@ -69,10 +82,18 @@ export function exportAsSummary(
   lines.push(``);
 
   // Group by selector
-  const groups = groupBySelector(changes);
+  const groups = groupBySelector(changes, componentMap);
 
   for (const group of groups) {
-    lines.push(`### \`${group.selector}\` (${group.changes.length} change${group.changes.length > 1 ? "s" : ""})`);
+    let header = `### \`${group.selector}\``;
+    if (group.component?.componentName) {
+      header += ` — \`<${group.component.componentName}>\``;
+      if (group.component.sourceFile) {
+        header += ` (${group.component.sourceFile}${group.component.sourceLine ? `:${group.component.sourceLine}` : ""})`;
+      }
+    }
+    header += ` (${group.changes.length} change${group.changes.length > 1 ? "s" : ""})`;
+    lines.push(header);
 
     for (const change of group.changes) {
       switch (change.type) {
@@ -106,6 +127,9 @@ export function exportAsSummary(
           break;
         case "hide":
           lines.push(`- **Hidden** element`);
+          break;
+        case "wrap":
+          lines.push(`- **Wrapped** in group container`);
           break;
       }
     }
@@ -142,6 +166,8 @@ function summarizeChanges(changes: Change[]): string {
     parts.push(
       `${counts.hide} hidden element${counts.hide > 1 ? "s" : ""}`
     );
+  if (counts.wrap)
+    parts.push(`${counts.wrap} group wrap${counts.wrap > 1 ? "s" : ""}`);
 
   return parts.join(", ") || "No changes";
 }

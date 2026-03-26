@@ -38,6 +38,8 @@ export function useElementData() {
 
     return () => {
       chrome.runtime.onMessage.removeListener(listener);
+      // Deactivate when panel closes
+      chrome.runtime.sendMessage({ type: "DEACTIVATE" } satisfies Message).catch(() => {});
     };
   }, []);
 

@@ -10,20 +10,15 @@ interface DimensionsSectionProps {
 
 /**
  * Determine the display value for a dimension property.
- * If an explicit authored value with a non-px unit exists (%, rem, vw, auto),
- * show that. Otherwise show the computed px value so the user sees the
- * actual rendered size.
+ * If an explicit authored value exists (inline style set by user or CSS),
+ * use it. Otherwise show "auto" — the actual rendered size is shown in
+ * the element info header, not here.
  */
-function displayValue(authored: string | undefined, computed: string | undefined): string {
-  if (authored) {
-    const trimmed = authored.trim();
-    if (trimmed === "auto" || trimmed === "fit-content" || trimmed === "min-content" || trimmed === "max-content") return trimmed;
-    if (/(%|rem|em|vw|vh|vmin|vmax|ch|ex)/.test(trimmed)) return trimmed;
-    // Authored px value — use it directly
-    if (/\d+(\.\d+)?px$/.test(trimmed)) return trimmed;
-  }
-  // No authored value or no useful unit — show computed for display
-  return computed || "auto";
+function displayValue(authored: string | undefined): string {
+  if (!authored) return "auto";
+  const trimmed = authored.trim();
+  if (!trimmed) return "auto";
+  return trimmed;
 }
 
 export const DimensionsSection: React.FC<DimensionsSectionProps> = ({
@@ -33,8 +28,8 @@ export const DimensionsSection: React.FC<DimensionsSectionProps> = ({
 }) => {
   const [collapsed, setCollapsed] = useState(false);
 
-  const width = displayValue(authoredStyles?.["width"], computedStyles["width"]);
-  const height = displayValue(authoredStyles?.["height"], computedStyles["height"]);
+  const width = displayValue(authoredStyles?.["width"]);
+  const height = displayValue(authoredStyles?.["height"]);
 
   const handleWidthChange = useCallback(
     (v: string) => onStyleChange("width", v),

@@ -55,7 +55,8 @@ export type Change =
   | ImageChange
   | DeleteChange
   | HideChange
-  | WrapChange;
+  | WrapChange
+  | DuplicateChange;
 
 export interface BaseChange {
   id: string;
@@ -115,6 +116,12 @@ export interface WrapChange extends BaseChange {
   type: "wrap";
   /** Selector of the wrapper div that was created */
   wrapperSelector: string;
+}
+
+export interface DuplicateChange extends BaseChange {
+  type: "duplicate";
+  /** Selector of the cloned element */
+  cloneSelector: string;
 }
 
 /** Exported changeset format for Claude Code / Codex */

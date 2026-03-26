@@ -8,13 +8,21 @@ interface DimensionsSectionProps {
   onStyleChange: (property: string, value: string) => void;
 }
 
-/** Use authored value if it has a non-px unit (%, rem, vw, etc.), otherwise fall back to computed */
-function preferAuthored(authored: string | undefined, computed: string | undefined): string {
-  if (!authored) return computed || "auto";
-  // Only prefer authored if it uses a non-pixel unit or is "auto"
-  if (authored === "auto") return "auto";
-  if (/(%|rem|em|vw|vh|vmin|vmax|ch|ex)$/.test(authored)) return authored;
-  // For px values or unitless, use computed (more accurate)
+/**
+ * Determine the display value for a dimension property.
+ * If an explicit authored value with a non-px unit exists (%, rem, vw, auto),
+ * show that. Otherwise show the computed px value so the user sees the
+ * actual rendered size.
+ */
+function displayValue(authored: string | undefined, computed: string | undefined): string {
+  if (authored) {
+    const trimmed = authored.trim();
+    if (trimmed === "auto" || trimmed === "fit-content" || trimmed === "min-content" || trimmed === "max-content") return trimmed;
+    if (/(%|rem|em|vw|vh|vmin|vmax|ch|ex)/.test(trimmed)) return trimmed;
+    // Authored px value — use it directly
+    if (/\d+(\.\d+)?px$/.test(trimmed)) return trimmed;
+  }
+  // No authored value or no useful unit — show computed for display
   return computed || "auto";
 }
 
@@ -25,8 +33,8 @@ export const DimensionsSection: React.FC<DimensionsSectionProps> = ({
 }) => {
   const [collapsed, setCollapsed] = useState(false);
 
-  const width = preferAuthored(authoredStyles?.["width"], computedStyles["width"]);
-  const height = preferAuthored(authoredStyles?.["height"], computedStyles["height"]);
+  const width = displayValue(authoredStyles?.["width"], computedStyles["width"]);
+  const height = displayValue(authoredStyles?.["height"], computedStyles["height"]);
 
   const handleWidthChange = useCallback(
     (v: string) => onStyleChange("width", v),

@@ -169,40 +169,18 @@ function extractDesignTokens(element: Element): Array<{ name: string; value: str
 
 /**
  * Extract authored style values preserving original units.
- * Checks: 1) inline style, 2) matched CSS rules (highest specificity first).
- * Falls back to empty string if no authored value found.
+ * Checks inline style only — this captures values set by our extension
+ * via APPLY_STYLE, which is the only case where we need to preserve units.
+ * For values from the page's CSS, computed styles are more reliable since
+ * CSS rule matching without proper specificity resolution is error-prone.
  */
 function extractAuthoredStyles(element: Element, properties: readonly string[]): Record<string, string> {
   const result: Record<string, string> = {};
   const el = element as HTMLElement;
 
   for (const prop of properties) {
-    // 1. Check inline style first (highest priority)
     const inline = el.style?.getPropertyValue(prop);
-    if (inline) {
-      result[prop] = inline;
-      continue;
-    }
-
-    // 2. Check matched CSS rules (reverse order = highest specificity first)
-    let found = "";
-    try {
-      const sheets = document.styleSheets;
-      for (let i = sheets.length - 1; i >= 0 && !found; i--) {
-        try {
-          const rules = sheets[i].cssRules;
-          for (let j = rules.length - 1; j >= 0 && !found; j--) {
-            const rule = rules[j];
-            if (rule instanceof CSSStyleRule && element.matches(rule.selectorText)) {
-              const val = rule.style.getPropertyValue(prop);
-              if (val) found = val;
-            }
-          }
-        } catch { /* cross-origin stylesheet */ }
-      }
-    } catch { /* security restriction */ }
-
-    result[prop] = found;
+    result[prop] = inline || "";
   }
 
   return result;

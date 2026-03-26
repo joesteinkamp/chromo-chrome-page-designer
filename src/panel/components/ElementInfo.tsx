@@ -41,10 +41,10 @@ export function ElementInfo({ data, multiEdit, onToggleMultiEdit, multiSelectCou
         <button
           className="pd-element-info__wrap-btn"
           onClick={handleWrap}
-          title="Wrap in group (⌘G)"
+          title="Wrap in container (⌘G)"
           type="button"
         >
-          Add Group
+          Add container
         </button>
         <span className="pd-element-info__dims">{dimensions}</span>
       </div>

@@ -439,7 +439,7 @@ export function App() {
               </div>
               <div className="pd-panel__empty-hint">
                 <span className="pd-panel__empty-hint-key">{navigator.platform.includes("Mac") ? "Cmd" : "Ctrl"}+G</span>
-                Add Group
+                Add container
               </div>
               <div className="pd-panel__empty-hint">
                 <span className="pd-panel__empty-hint-key">Esc</span>

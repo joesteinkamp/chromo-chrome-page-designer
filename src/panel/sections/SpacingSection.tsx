@@ -159,27 +159,27 @@ export const SpacingSection: React.FC<SpacingSectionProps> = ({
   const marL = px(computedStyles["margin-left"]);
 
   const handlePadAll = useCallback(
-    (v: number) => { const s = `${v}px`; onStyleChange("padding-top", s); onStyleChange("padding-right", s); onStyleChange("padding-bottom", s); onStyleChange("padding-left", s); },
+    (v: number) => { onStyleChange("padding", `${v}px`); },
     [onStyleChange]
   );
   const handlePadHoriz = useCallback(
-    (v: number) => { onStyleChange("padding-left", `${v}px`); onStyleChange("padding-right", `${v}px`); },
+    (v: number) => { const s = `${v}px`; onStyleChange("padding-left", s); onStyleChange("padding-right", s); },
     [onStyleChange]
   );
   const handlePadVert = useCallback(
-    (v: number) => { onStyleChange("padding-top", `${v}px`); onStyleChange("padding-bottom", `${v}px`); },
+    (v: number) => { const s = `${v}px`; onStyleChange("padding-top", s); onStyleChange("padding-bottom", s); },
     [onStyleChange]
   );
   const handleMarAll = useCallback(
-    (v: number) => { const s = `${v}px`; onStyleChange("margin-top", s); onStyleChange("margin-right", s); onStyleChange("margin-bottom", s); onStyleChange("margin-left", s); },
+    (v: number) => { onStyleChange("margin", `${v}px`); },
     [onStyleChange]
   );
   const handleMarHoriz = useCallback(
-    (v: number) => { onStyleChange("margin-left", `${v}px`); onStyleChange("margin-right", `${v}px`); },
+    (v: number) => { const s = `${v}px`; onStyleChange("margin-left", s); onStyleChange("margin-right", s); },
     [onStyleChange]
   );
   const handleMarVert = useCallback(
-    (v: number) => { onStyleChange("margin-top", `${v}px`); onStyleChange("margin-bottom", `${v}px`); },
+    (v: number) => { const s = `${v}px`; onStyleChange("margin-top", s); onStyleChange("margin-bottom", s); },
     [onStyleChange]
   );
   const handleSide = useCallback(

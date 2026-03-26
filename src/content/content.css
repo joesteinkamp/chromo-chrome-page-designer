@@ -27,6 +27,12 @@
   background: rgba(167, 139, 250, 0.06) !important;
 }
 
+.__pd-overlay--multi-select {
+  border: 2px solid #4f9eff !important;
+  border-style: dashed !important;
+  background: rgba(79, 158, 255, 0.06) !important;
+}
+
 .__pd-overlay--visible {
   display: block !important;
 }

@@ -595,6 +595,46 @@ body {
   background: rgba(96, 165, 250, 0.15);
 }
 
+/* Component info */
+.pd-element-info__component {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  font-size: 11px;
+}
+
+.pd-element-info__component-badge {
+  font-size: 9px;
+  font-weight: 600;
+  padding: 1px 5px;
+  border-radius: 3px;
+  color: #38bdf8;
+  background: rgba(56, 189, 248, 0.15);
+  flex-shrink: 0;
+}
+
+.pd-element-info__component-name {
+  color: var(--pd-accent);
+  font-family: "SF Mono", "Fira Code", monospace;
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pd-element-info__component-source {
+  color: var(--pd-text-muted);
+  font-family: "SF Mono", "Fira Code", monospace;
+  font-size: 10px;
+  margin-left: auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex-shrink: 0;
+  max-width: 120px;
+}
+
 /* Multi-edit button */
 .pd-element-info__multi-btn {
   display: block;

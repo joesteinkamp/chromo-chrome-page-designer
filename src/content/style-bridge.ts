@@ -6,6 +6,7 @@
 
 import { TRACKED_PROPERTIES } from "../shared/constants";
 import { generateBreadcrumb, generateSelector } from "../shared/selector";
+import { extractComponentInfo } from "./framework-detect";
 import type { ElementData } from "../shared/types";
 
 /** Track which Google Fonts have been injected to avoid duplicates */
@@ -38,6 +39,10 @@ export function extractElementData(element: Element): ElementData {
   let designTokens: Array<{ name: string; value: string }> = [];
   try { designTokens = extractDesignTokens(element); } catch { /* cross-origin or security restriction */ }
 
+  // Extract framework component info (React/Vue/Svelte)
+  let componentInfo: ElementData["componentInfo"];
+  try { componentInfo = extractComponentInfo(element); } catch { /* */ }
+
   return {
     selector: generateSelector(element),
     tag,
@@ -58,6 +63,7 @@ export function extractElementData(element: Element): ElementData {
     outerHTML: element.outerHTML.slice(0, 2000),
     matchCount: countMatchingElements(element),
     designTokens,
+    componentInfo,
   };
 }
 

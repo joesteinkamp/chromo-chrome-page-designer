@@ -28,6 +28,14 @@ export interface ElementData {
   matchCount: number;
   /** CSS custom properties (design tokens) used on this element */
   designTokens: Array<{ name: string; value: string }>;
+  /** Component info from framework detection (React/Vue/Svelte) */
+  componentInfo?: {
+    framework: "react" | "vue" | "svelte" | null;
+    componentName: string | null;
+    componentHierarchy: string[];
+    sourceFile: string | null;
+    sourceLine: number | null;
+  };
 }
 
 /** Editor state shared across contexts */

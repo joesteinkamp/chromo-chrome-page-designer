@@ -4,7 +4,7 @@ import { useStyleChange } from "./hooks/useStyleChange";
 import { ElementInfo } from "./components/ElementInfo";
 import { DesignTab } from "./components/DesignTab";
 import { ChangesTab } from "./components/ChangesTab";
-import { exportAsJSON, exportAsSummary } from "../shared/export";
+import { exportAsJSON, exportAsSummary, type ComponentContext } from "../shared/export";
 import type { Change } from "../shared/types";
 import type { Message } from "../shared/messages";
 
@@ -23,6 +23,20 @@ export function App() {
   const sendMenuRef = useRef<HTMLDivElement>(null);
   const [hasSavedChanges, setHasSavedChanges] = useState(false);
   const [savedChangesDismissed, setSavedChangesDismissed] = useState(false);
+  const componentMapRef = useRef(new Map<string, ComponentContext>());
+
+  // Accumulate component context as elements are selected
+  useEffect(() => {
+    if (elementData?.componentInfo?.componentName && elementData.selector) {
+      componentMapRef.current.set(elementData.selector, {
+        framework: elementData.componentInfo.framework,
+        componentName: elementData.componentInfo.componentName,
+        componentHierarchy: elementData.componentInfo.componentHierarchy,
+        sourceFile: elementData.componentInfo.sourceFile,
+        sourceLine: elementData.componentInfo.sourceLine,
+      });
+    }
+  }, [elementData]);
 
   const handleToggleEditMode = useCallback(() => {
     const next = !editMode;
@@ -211,9 +225,9 @@ export function App() {
     {
       label: "Send to Claude",
       action: () => {
-        const json = exportAsJSON(pageUrl, changes);
+        const json = exportAsJSON(pageUrl, changes, undefined, componentMapRef.current);
         navigator.clipboard.writeText(
-          `Apply these visual design changes to the codebase. Each change includes a CSS selector to identify the element and the property to update. Find the matching components/styles in the source code and make the changes.\n\n${json}`
+          `Apply these visual design changes to the codebase. Each change includes a CSS selector and, when available, the React/Vue/Svelte component name and source file. Use the component context to find the right file, then apply the property changes.\n\n${json}`
         );
         chrome.tabs.create({ url: "https://claude.ai/new" });
         setSendMenuOpen(false);
@@ -222,9 +236,9 @@ export function App() {
     {
       label: "Send to ChatGPT",
       action: () => {
-        const json = exportAsJSON(pageUrl, changes);
+        const json = exportAsJSON(pageUrl, changes, undefined, componentMapRef.current);
         navigator.clipboard.writeText(
-          `Apply these visual design changes to the codebase. Each change includes a CSS selector to identify the element and the property to update. Find the matching components/styles in the source code and make the changes.\n\n${json}`
+          `Apply these visual design changes to the codebase. Each change includes a CSS selector and, when available, the React/Vue/Svelte component name and source file. Use the component context to find the right file, then apply the property changes.\n\n${json}`
         );
         chrome.tabs.create({ url: "https://chatgpt.com/" });
         setSendMenuOpen(false);
@@ -240,7 +254,7 @@ export function App() {
     {
       label: "Copy Change Instructions",
       action: () => {
-        navigator.clipboard.writeText(exportAsSummary(pageUrl, changes));
+        navigator.clipboard.writeText(exportAsSummary(pageUrl, changes, undefined, componentMapRef.current));
         setSendMenuOpen(false);
       },
     },

@@ -7,6 +7,7 @@ let hoverOverlay: HTMLDivElement;
 let selectionOverlay: HTMLDivElement;
 let badge: HTMLDivElement;
 let resizeHandles: HTMLDivElement[] = [];
+let multiSelectOverlays: HTMLDivElement[] = [];
 
 const HANDLE_POSITIONS = ["nw", "n", "ne", "e", "se", "s", "sw", "w"] as const;
 
@@ -139,6 +140,23 @@ export function updateMultiEditOverlays(elements: Element[]): void {
 export function hideMultiEditOverlays(): void {
   multiEditOverlays.forEach((o) => o.remove());
   multiEditOverlays = [];
+}
+
+export function showMultiSelectOverlays(elements: Element[]): void {
+  hideMultiSelectOverlays();
+  for (const el of elements) {
+    const rect = el.getBoundingClientRect();
+    const overlay = createDiv("__pd-overlay __pd-overlay--multi-select");
+    positionOverlay(overlay, rect);
+    overlay.classList.add("__pd-overlay--visible");
+    document.documentElement.appendChild(overlay);
+    multiSelectOverlays.push(overlay);
+  }
+}
+
+export function hideMultiSelectOverlays(): void {
+  multiSelectOverlays.forEach((o) => o.remove());
+  multiSelectOverlays = [];
 }
 
 /** Check if an element is part of our overlay */

@@ -4,7 +4,7 @@
  * tracks changes, and handles persistence replay.
  */
 
-import { initOverlay, destroyOverlay, getHandleDirection, showMultiEditOverlays, hideMultiEditOverlays, updateMultiEditOverlays } from "./overlay";
+import { initOverlay, destroyOverlay, getHandleDirection, showMultiEditOverlays, hideMultiEditOverlays, updateMultiEditOverlays, showMultiSelectOverlays, hideMultiSelectOverlays } from "./overlay";
 import {
   startPicker,
   stopPicker,
@@ -318,6 +318,7 @@ function deactivate(): void {
 function onElementSelected(element: Element | null): void {
   hideImageToolbar();
   hideMultiEditOverlays();
+  hideMultiSelectOverlays();
   hideSpacing();
 
   if (element) {
@@ -344,6 +345,9 @@ function onElementSelected(element: Element | null): void {
 
 function onMultiSelect(elements: Element[], primary: Element): void {
   hideImageToolbar();
+  // Show dashed blue overlays on all multi-selected elements (except primary which has solid overlay)
+  const nonPrimary = elements.filter((el) => el !== primary);
+  showMultiSelectOverlays(nonPrimary);
   sendElementData(primary);
   chrome.runtime.sendMessage({
     type: "MULTI_ELEMENT_SELECTED",

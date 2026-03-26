@@ -187,7 +187,8 @@ chrome.runtime.onMessage.addListener(
       case "WRAP_ELEMENT": {
         const wrapEl = getSelectedElement();
         if (wrapEl && wrapEl instanceof HTMLElement) {
-          const wrapper = wrapElementInGroup(wrapEl);
+          const allEls = collectSelectedElements(wrapEl);
+          const wrapper = wrapElementsInGroup(allEls);
           if (wrapper) {
             selectElementDirectly(wrapper);
             onElementSelected(wrapper);
@@ -267,7 +268,8 @@ function activate(): void {
     refreshSelection,
     sendElementData,
     wrapInGroup: (el) => {
-      const wrapper = wrapElementInGroup(el);
+      const allEls = collectSelectedElements(el);
+      const wrapper = wrapElementsInGroup(allEls);
       if (wrapper) {
         selectElementDirectly(wrapper);
         onElementSelected(wrapper);
@@ -418,15 +420,40 @@ function sendElementData(element: Element): void {
   } satisfies Message);
 }
 
-/** Wrap an element in a new div container and record the change */
-function wrapElementInGroup(element: HTMLElement): HTMLElement | null {
-  const parent = element.parentElement;
+/** Collect primary + multi-selected elements as HTMLElements */
+function collectSelectedElements(primary: HTMLElement): HTMLElement[] {
+  const multiEls = getMultiSelectedElements();
+  const all = new Set<HTMLElement>();
+  all.add(primary);
+  for (const el of multiEls) {
+    if (el instanceof HTMLElement) all.add(el);
+  }
+  return Array.from(all);
+}
+
+/** Wrap one or more elements in a new div container and record the change */
+function wrapElementsInGroup(elements: HTMLElement[]): HTMLElement | null {
+  if (elements.length === 0) return null;
+
+  // Sort by DOM order so the wrapper goes at the first element's position
+  elements.sort((a, b) => {
+    const pos = a.compareDocumentPosition(b);
+    return pos & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1;
+  });
+
+  const first = elements[0];
+  const parent = first.parentElement;
   if (!parent) return null;
+
   const wrapper = document.createElement("div");
   wrapper.classList.add("__pd-group");
-  parent.insertBefore(wrapper, element);
-  wrapper.appendChild(element);
-  recordWrapChange(element, wrapper);
+  parent.insertBefore(wrapper, first);
+
+  for (const el of elements) {
+    wrapper.appendChild(el);
+  }
+
+  recordWrapChange(first, wrapper);
   return wrapper;
 }
 

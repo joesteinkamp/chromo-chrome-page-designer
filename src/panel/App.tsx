@@ -4,7 +4,7 @@ import { useStyleChange } from "./hooks/useStyleChange";
 import { ElementInfo } from "./components/ElementInfo";
 import { DesignTab } from "./components/DesignTab";
 import { ChangesTab } from "./components/ChangesTab";
-import { exportAsJSON, exportAsSummary, type ComponentContext } from "../shared/export";
+import { exportAsJSON, type ComponentContext } from "../shared/export";
 import type { Change } from "../shared/types";
 import type { Message } from "../shared/messages";
 
@@ -221,23 +221,13 @@ export function App() {
 
   // --- Send menu actions ---
 
-  const changePrompt = `Apply these visual design changes to the codebase. Each change includes a CSS selector and, when available, the React/Vue/Svelte component name and source file. Use the component context to find the right file, then apply the property changes.`;
-
   const sendMenuActions = [
     {
-      label: "Send to Claude Code",
+      label: "Copy Change Instructions",
       action: () => {
         const json = exportAsJSON(pageUrl, changes, undefined, componentMapRef.current);
-        navigator.clipboard.writeText(`${changePrompt}\n\n${json}`);
-        setSendMenuOpen(false);
-      },
-    },
-    {
-      label: "Send to Codex",
-      action: () => {
-        const json = exportAsJSON(pageUrl, changes, undefined, componentMapRef.current);
-        navigator.clipboard.writeText(`${changePrompt}\n\n${json}`);
-        chrome.tabs.create({ url: "https://chatgpt.com/codex" });
+        const prompt = `Apply these visual design changes to the codebase. Each change includes a CSS selector and, when available, the React/Vue/Svelte component name and source file. Use the component context to find the right file, then apply the property changes.`;
+        navigator.clipboard.writeText(`${prompt}\n\n${json}`);
         setSendMenuOpen(false);
       },
     },
@@ -245,13 +235,6 @@ export function App() {
       label: "Copy Screenshot",
       action: () => {
         handleCopyScreenshot();
-        setSendMenuOpen(false);
-      },
-    },
-    {
-      label: "Copy Change Instructions",
-      action: () => {
-        navigator.clipboard.writeText(exportAsSummary(pageUrl, changes, undefined, componentMapRef.current));
         setSendMenuOpen(false);
       },
     },

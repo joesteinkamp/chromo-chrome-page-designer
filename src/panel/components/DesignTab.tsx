@@ -33,6 +33,7 @@ export const DesignTab = React.memo(function DesignTab({
     <div className="pd-design-tab">
       <DimensionsSection
         computedStyles={computedStyles}
+        authoredStyles={data.authoredStyles}
         onStyleChange={onStyleChange}
       />
       <SpacingSection

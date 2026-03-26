@@ -12,8 +12,10 @@ export interface ElementData {
   rect: { x: number; y: number; width: number; height: number };
   /** Breadcrumb path e.g. "body > main > .hero > h1" */
   breadcrumb: string;
-  /** Key computed styles (Figma-relevant subset) */
+  /** Key computed styles (Figma-relevant subset) — always in resolved px */
   computedStyles: Record<string, string>;
+  /** Authored style values preserving original units (%, rem, etc.) */
+  authoredStyles: Record<string, string>;
   /** Whether element contains direct text content */
   hasTextContent: boolean;
   /** Whether element is an image */

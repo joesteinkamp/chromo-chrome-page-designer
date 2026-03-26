@@ -72,7 +72,6 @@ export function exportAsSummary(
   const lines: string[] = [
     `## Page Designer Changes`,
     `**URL:** ${url}`,
-    `**Date:** ${new Date().toLocaleString()}`,
     `**Changes:** ${changes.length}`,
   ];
 

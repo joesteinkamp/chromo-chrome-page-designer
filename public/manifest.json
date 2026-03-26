@@ -3,7 +3,7 @@
   "name": "Page Designer",
   "version": "0.1.0",
   "description": "Visual webpage editor — edit any page like Figma",
-  "permissions": ["activeTab", "storage", "scripting", "sidePanel"],
+  "permissions": ["activeTab", "storage", "scripting", "sidePanel", "tabs"],
   "host_permissions": ["<all_urls>"],
   "action": {
     "default_icon": {

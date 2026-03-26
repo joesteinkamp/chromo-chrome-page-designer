@@ -182,41 +182,39 @@ export function App() {
 
   // --- Screenshot ---
 
-  const handleScreenshot = useCallback(() => {
-    chrome.runtime.sendMessage(
-      { type: "CAPTURE_SCREENSHOT" } satisfies Message,
-      (response: any) => {
-        if (response?.dataUrl) {
-          // Trigger download
-          const link = document.createElement("a");
-          link.href = response.dataUrl;
-          link.download = `page-designer-${Date.now()}.png`;
-          document.body.appendChild(link);
-          link.click();
-          link.remove();
-        }
+  const handleScreenshot = useCallback(async () => {
+    try {
+      const response: any = await chrome.runtime.sendMessage(
+        { type: "CAPTURE_SCREENSHOT" } satisfies Message
+      );
+      if (response?.dataUrl) {
+        const link = document.createElement("a");
+        link.href = response.dataUrl;
+        link.download = `page-designer-${Date.now()}.png`;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
       }
-    );
+    } catch (e) {
+      console.error("Screenshot failed:", e);
+    }
   }, []);
 
-  const handleCopyScreenshot = useCallback(() => {
-    chrome.runtime.sendMessage(
-      { type: "CAPTURE_SCREENSHOT" } satisfies Message,
-      async (response: any) => {
-        if (response?.dataUrl) {
-          try {
-            const res = await fetch(response.dataUrl);
-            const blob = await res.blob();
-            await navigator.clipboard.write([
-              new ClipboardItem({ "image/png": blob }),
-            ]);
-          } catch {
-            // Fallback: just copy the data URL
-            navigator.clipboard.writeText(response.dataUrl);
-          }
-        }
+  const handleCopyScreenshot = useCallback(async () => {
+    try {
+      const response: any = await chrome.runtime.sendMessage(
+        { type: "CAPTURE_SCREENSHOT" } satisfies Message
+      );
+      if (response?.dataUrl) {
+        const res = await fetch(response.dataUrl);
+        const blob = await res.blob();
+        await navigator.clipboard.write([
+          new ClipboardItem({ "image/png": blob }),
+        ]);
       }
-    );
+    } catch (e) {
+      console.error("Copy screenshot failed:", e);
+    }
   }, []);
 
   // --- Send menu actions ---

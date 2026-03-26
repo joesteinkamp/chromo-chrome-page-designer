@@ -32,6 +32,9 @@ export function extractElementData(element: Element): ElementData {
     computedStyles[prop] = computed.getPropertyValue(prop);
   }
 
+  // Extract authored styles preserving original units (%, rem, vw, etc.)
+  const authoredStyles = extractAuthoredStyles(element, TRACKED_PROPERTIES);
+
   const display = computed.display;
   const tag = element.tagName.toLowerCase();
 
@@ -56,6 +59,7 @@ export function extractElementData(element: Element): ElementData {
     },
     breadcrumb: generateBreadcrumb(element),
     computedStyles,
+    authoredStyles,
     hasTextContent: hasDirectText(element),
     isImage: tag === "img" || tag === "svg" || tag === "picture",
     isFlex: display === "flex" || display === "inline-flex",
@@ -161,6 +165,47 @@ function extractDesignTokens(element: Element): Array<{ name: string; value: str
   }
 
   return tokens;
+}
+
+/**
+ * Extract authored style values preserving original units.
+ * Checks: 1) inline style, 2) matched CSS rules (highest specificity first).
+ * Falls back to empty string if no authored value found.
+ */
+function extractAuthoredStyles(element: Element, properties: readonly string[]): Record<string, string> {
+  const result: Record<string, string> = {};
+  const el = element as HTMLElement;
+
+  for (const prop of properties) {
+    // 1. Check inline style first (highest priority)
+    const inline = el.style?.getPropertyValue(prop);
+    if (inline) {
+      result[prop] = inline;
+      continue;
+    }
+
+    // 2. Check matched CSS rules (reverse order = highest specificity first)
+    let found = "";
+    try {
+      const sheets = document.styleSheets;
+      for (let i = sheets.length - 1; i >= 0 && !found; i--) {
+        try {
+          const rules = sheets[i].cssRules;
+          for (let j = rules.length - 1; j >= 0 && !found; j--) {
+            const rule = rules[j];
+            if (rule instanceof CSSStyleRule && element.matches(rule.selectorText)) {
+              const val = rule.style.getPropertyValue(prop);
+              if (val) found = val;
+            }
+          }
+        } catch { /* cross-origin stylesheet */ }
+      }
+    } catch { /* security restriction */ }
+
+    result[prop] = found;
+  }
+
+  return result;
 }
 
 /** Check if element has direct text nodes (not just child elements) */

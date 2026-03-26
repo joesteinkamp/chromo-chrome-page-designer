@@ -41,6 +41,7 @@ export function startPicker(cbs: PickerCallbacks): void {
   document.addEventListener("mousedown", onMouseDown, true);
   document.addEventListener("keydown", onKeyDown, true);
   window.addEventListener("scroll", onScroll, true);
+  document.addEventListener("scroll", onScroll, true);
   window.addEventListener("resize", onResize);
 }
 
@@ -56,6 +57,7 @@ export function stopPicker(): void {
   document.removeEventListener("mousedown", onMouseDown, true);
   document.removeEventListener("keydown", onKeyDown, true);
   window.removeEventListener("scroll", onScroll, true);
+  document.removeEventListener("scroll", onScroll, true);
   window.removeEventListener("resize", onResize);
 
   hideHover();

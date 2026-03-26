@@ -103,9 +103,25 @@ export function App() {
 
     chrome.tabs.onActivated.addListener(onTabActivated);
 
+    // When the active tab navigates/reloads, clear changes
+    const onTabUpdated = (tabId: number, changeInfo: chrome.tabs.TabChangeInfo) => {
+      if (changeInfo.status === "loading") {
+        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+          if (tabs[0]?.id === tabId) {
+            setChanges([]);
+            setCanRedo(false);
+            setElementData(null);
+            if (tabs[0].url) setPageUrl(tabs[0].url);
+          }
+        });
+      }
+    };
+    chrome.tabs.onUpdated.addListener(onTabUpdated);
+
     return () => {
       chrome.runtime.onMessage.removeListener(listener);
       chrome.tabs.onActivated.removeListener(onTabActivated);
+      chrome.tabs.onUpdated.removeListener(onTabUpdated);
     };
   }, []);
 

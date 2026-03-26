@@ -42,6 +42,29 @@ import type { Message } from "../shared/messages";
 let isActive = false;
 let multiEditEnabled = false;
 
+/** Safely send a message — auto-deactivate if extension context is invalidated */
+function safeSendMessage(message: Message, responseCallback?: (response: any) => void): void {
+  try {
+    if (!chrome.runtime?.id) {
+      // Extension context already invalidated
+      deactivate();
+      return;
+    }
+    if (responseCallback) {
+      chrome.runtime.sendMessage(message, responseCallback);
+    } else {
+      chrome.runtime.sendMessage(message).catch(handleContextError);
+    }
+  } catch {
+    handleContextError();
+  }
+}
+
+function handleContextError(): void {
+  // Extension was reloaded/updated — clean up the old content script
+  if (isActive) deactivate();
+}
+
 // --- Message handling ---
 
 chrome.runtime.onMessage.addListener(
@@ -221,13 +244,13 @@ chrome.runtime.onMessage.addListener(
 
       case "SAVE_EDITS": {
         // Forward to background for storage
-        chrome.runtime.sendMessage(message);
+        safeSendMessage(message);
         break;
       }
 
       case "CAPTURE_SCREENSHOT": {
         // Forward to background
-        chrome.runtime.sendMessage(message, (response: any) => {
+        safeSendMessage(message, (response: any) => {
           if (response?.type === "SCREENSHOT_CAPTURED" && response.dataUrl) {
             // Trigger download
             const link = document.createElement("a");
@@ -285,12 +308,11 @@ function activate(): void {
   });
 
   // Check for saved edits
-  chrome.runtime.sendMessage(
+  safeSendMessage(
     { type: "CHECK_SAVED_EDITS", url: window.location.href } as any,
     (response: any) => {
       if (response?.hasSavedEdits) {
-        // Notify the panel that saved edits exist
-        chrome.runtime.sendMessage({
+        safeSendMessage({
           type: "SAVED_EDITS_AVAILABLE",
           url: window.location.href,
         } as any);
@@ -337,7 +359,7 @@ function onElementSelected(element: Element | null): void {
       }
     }
   } else {
-    chrome.runtime.sendMessage({
+    safeSendMessage({
       type: "ELEMENT_DESELECTED",
     } satisfies Message);
   }
@@ -347,11 +369,10 @@ function onElementSelected(element: Element | null): void {
 
 function onMultiSelect(elements: Element[], primary: Element): void {
   hideImageToolbar();
-  // Show dashed blue overlays on all multi-selected elements (except primary which has solid overlay)
   const nonPrimary = elements.filter((el) => el !== primary);
   showMultiSelectOverlays(nonPrimary);
   sendElementData(primary);
-  chrome.runtime.sendMessage({
+  safeSendMessage({
     type: "MULTI_ELEMENT_SELECTED",
     count: elements.length,
     data: extractElementData(primary),
@@ -414,7 +435,7 @@ function onElementMouseDown(
 
 function sendElementData(element: Element): void {
   const data = extractElementData(element);
-  chrome.runtime.sendMessage({
+  safeSendMessage({
     type: "ELEMENT_SELECTED",
     data,
   } satisfies Message);

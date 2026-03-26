@@ -595,11 +595,12 @@ function truncate(s: string, max = 20): string {
 
 function broadcastChanges(): void {
   try {
+    if (!chrome.runtime?.id) return;
     chrome.runtime.sendMessage({
       type: "CHANGES_RESPONSE",
       changes: getChanges(),
       canRedo: canRedo(),
-    });
+    }).catch(() => {});
   } catch {
     // Extension context may be invalidated
   }

@@ -221,15 +221,14 @@ export function App() {
 
   // --- Send menu actions ---
 
+  const changePrompt = `Apply these visual design changes to the codebase. Each change includes a CSS selector and, when available, the React/Vue/Svelte component name and source file. Use the component context to find the right file, then apply the property changes.`;
+
   const sendMenuActions = [
     {
       label: "Send to Claude Code",
       action: () => {
         const json = exportAsJSON(pageUrl, changes, undefined, componentMapRef.current);
-        navigator.clipboard.writeText(
-          `Apply these visual design changes to the codebase. Each change includes a CSS selector and, when available, the React/Vue/Svelte component name and source file. Use the component context to find the right file, then apply the property changes.\n\n${json}`
-        );
-        chrome.tabs.create({ url: "https://claude.ai/new" });
+        navigator.clipboard.writeText(`${changePrompt}\n\n${json}`);
         setSendMenuOpen(false);
       },
     },
@@ -237,10 +236,8 @@ export function App() {
       label: "Send to Codex",
       action: () => {
         const json = exportAsJSON(pageUrl, changes, undefined, componentMapRef.current);
-        navigator.clipboard.writeText(
-          `Apply these visual design changes to the codebase. Each change includes a CSS selector and, when available, the React/Vue/Svelte component name and source file. Use the component context to find the right file, then apply the property changes.\n\n${json}`
-        );
-        chrome.tabs.create({ url: "https://chatgpt.com/" });
+        navigator.clipboard.writeText(`${changePrompt}\n\n${json}`);
+        chrome.tabs.create({ url: "https://chatgpt.com/codex" });
         setSendMenuOpen(false);
       },
     },

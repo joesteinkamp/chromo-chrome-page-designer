@@ -223,7 +223,7 @@ export function App() {
 
   const sendMenuActions = [
     {
-      label: "Send to Claude",
+      label: "Send to Claude Code",
       action: () => {
         const json = exportAsJSON(pageUrl, changes, undefined, componentMapRef.current);
         navigator.clipboard.writeText(
@@ -234,7 +234,7 @@ export function App() {
       },
     },
     {
-      label: "Send to ChatGPT",
+      label: "Send to Codex",
       action: () => {
         const json = exportAsJSON(pageUrl, changes, undefined, componentMapRef.current);
         navigator.clipboard.writeText(

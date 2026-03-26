@@ -130,6 +130,9 @@ export function exportAsSummary(
         case "wrap":
           lines.push(`- **Wrapped** in group container`);
           break;
+        case "duplicate":
+          lines.push(`- **Duplicated** element`);
+          break;
       }
     }
 
@@ -167,6 +170,8 @@ function summarizeChanges(changes: Change[]): string {
     );
   if (counts.wrap)
     parts.push(`${counts.wrap} group wrap${counts.wrap > 1 ? "s" : ""}`);
+  if (counts.duplicate)
+    parts.push(`${counts.duplicate} duplication${counts.duplicate > 1 ? "s" : ""}`);
 
   return parts.join(", ") || "No changes";
 }

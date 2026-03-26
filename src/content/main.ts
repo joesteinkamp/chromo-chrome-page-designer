@@ -35,6 +35,7 @@ import {
   clearChanges,
   replayChanges,
   recordWrapChange,
+  recordDuplicateChange,
 } from "./change-tracker";
 import type { Message } from "../shared/messages";
 
@@ -272,6 +273,13 @@ function activate(): void {
         onElementSelected(wrapper);
       }
     },
+    duplicateElement: (el) => {
+      const clone = duplicateElement(el);
+      if (clone) {
+        selectElementDirectly(clone);
+        onElementSelected(clone);
+      }
+    },
   });
 
   // Check for saved edits
@@ -416,4 +424,12 @@ function wrapElementInGroup(element: HTMLElement): HTMLElement | null {
   wrapper.appendChild(element);
   recordWrapChange(element, wrapper);
   return wrapper;
+}
+
+/** Duplicate an element by cloning it and inserting after the original */
+function duplicateElement(element: HTMLElement): HTMLElement | null {
+  const clone = element.cloneNode(true) as HTMLElement;
+  element.after(clone);
+  recordDuplicateChange(element, clone);
+  return clone;
 }

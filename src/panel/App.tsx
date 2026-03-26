@@ -436,6 +436,10 @@ export function App() {
                 Add container
               </div>
               <div className="pd-panel__empty-hint">
+                <span className="pd-panel__empty-hint-key">{navigator.platform.includes("Mac") ? "Cmd" : "Ctrl"}+D</span>
+                Duplicate
+              </div>
+              <div className="pd-panel__empty-hint">
                 <span className="pd-panel__empty-hint-key">Esc</span>
                 Deselect
               </div>

@@ -10,6 +10,7 @@
  * Delete/Backspace — delete selected element from DOM
  * Cmd+H / Ctrl+H — hide element (display: none)
  * Cmd+G / Cmd+Option+G — wrap element in a group (div)
+ * Cmd+D — duplicate selected element
  */
 
 import { isOverlayElement } from "./overlay";
@@ -33,6 +34,7 @@ interface KeyboardCallbacks {
   refreshSelection: () => void;
   sendElementData: (element: Element) => void;
   wrapInGroup: (element: HTMLElement) => void;
+  duplicateElement: (element: HTMLElement) => void;
 }
 
 let callbacks: KeyboardCallbacks | null = null;
@@ -107,6 +109,16 @@ function onKeyDown(e: KeyboardEvent): void {
       e.preventDefault();
       e.stopPropagation();
       callbacks.wrapInGroup(selected);
+    }
+    return;
+  }
+
+  // Cmd+D / Ctrl+D — duplicate element
+  if (isMeta && (e.key === "d" || e.key === "D")) {
+    if (selected && selected instanceof HTMLElement) {
+      e.preventDefault();
+      e.stopPropagation();
+      callbacks.duplicateElement(selected);
     }
     return;
   }

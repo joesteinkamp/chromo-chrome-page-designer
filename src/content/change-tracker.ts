@@ -14,6 +14,7 @@ import type {
   DeleteChange,
   HideChange,
   WrapChange,
+  DuplicateChange,
 } from "../shared/types";
 
 let changes: Change[] = [];
@@ -252,6 +253,26 @@ export function recordWrapChange(
   return change;
 }
 
+export function recordDuplicateChange(
+  original: Element,
+  clone: Element
+): Change {
+  const selector = getSelector(original);
+  const cloneSelector = getSelector(clone);
+  const change: DuplicateChange = {
+    id: makeId(),
+    timestamp: Date.now(),
+    selector,
+    description: `Duplicated ${original.tagName.toLowerCase()} element`,
+    type: "duplicate",
+    cloneSelector,
+  };
+  changes.push(change);
+  redoStack = [];
+  broadcastChanges();
+  return change;
+}
+
 // --- Undo ---
 
 export function undoChange(changeId: string): boolean {
@@ -373,11 +394,17 @@ function applyUndo(change: Change): boolean {
       if (!wrapper) return false;
       const parent = wrapper.parentElement;
       if (!parent) return false;
-      // Move all children out of wrapper, then remove wrapper
       while (wrapper.firstChild) {
         parent.insertBefore(wrapper.firstChild, wrapper);
       }
       wrapper.remove();
+      return true;
+    }
+
+    case "duplicate": {
+      // Undo: remove the cloned element
+      const clone = document.querySelector(change.cloneSelector);
+      if (clone) clone.remove();
       return true;
     }
   }
@@ -448,6 +475,14 @@ function applyRedo(change: Change): boolean {
       wrapper.classList.add("__pd-group");
       parent.insertBefore(wrapper, element);
       wrapper.appendChild(element);
+      return true;
+    }
+
+    case "duplicate": {
+      // Redo: re-clone the element after itself
+      if (!element) return false;
+      const clone = element.cloneNode(true) as Element;
+      element.after(clone);
       return true;
     }
   }

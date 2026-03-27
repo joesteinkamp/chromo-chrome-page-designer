@@ -21,7 +21,6 @@ function parseOpacityFromColor(color: string): number {
 }
 
 function setAlphaInColor(color: string, alpha: number): string {
-  // Try to parse rgb/rgba
   const rgbMatch = color.match(
     /rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*(?:,\s*[\d.]+)?\s*\)/
   );
@@ -34,6 +33,10 @@ function setAlphaInColor(color: string, alpha: number): string {
   return color;
 }
 
+function isGradient(value: string): boolean {
+  return /gradient\(/.test(value);
+}
+
 export const FillSection: React.FC<FillSectionProps> = ({
   computedStyles,
   onStyleChange,
@@ -42,18 +45,26 @@ export const FillSection: React.FC<FillSectionProps> = ({
 }) => {
   const [disabled, setDisabled] = useState(false);
   const savedColorRef = useRef<string>("");
+  const savedGradientRef = useRef<string>("");
 
   const bgColor = computedStyles["background-color"] || "rgba(0, 0, 0, 0)";
-  const hasValue = bgColor !== "transparent" && bgColor !== "rgba(0, 0, 0, 0)";
+  const bgImage = computedStyles["background-image"] || "none";
+  const hasGradient = isGradient(bgImage);
+  const hasSolidFill = bgColor !== "transparent" && bgColor !== "rgba(0, 0, 0, 0)";
+  const hasValue = hasSolidFill || hasGradient;
   const [collapsed, setCollapsed] = useState(!hasValue);
   useEffect(() => { setCollapsed(!hasValue); }, [hasValue]);
   const opacity = parseOpacityFromColor(bgColor);
 
   const handleColorChange = useCallback(
     (v: string) => {
+      // When setting a solid color, clear gradient
+      if (hasGradient) {
+        onStyleChange("background-image", "none");
+      }
       onStyleChange("background-color", v);
     },
-    [onStyleChange]
+    [onStyleChange, hasGradient]
   );
 
   const handleOpacityChange = useCallback(
@@ -67,15 +78,19 @@ export const FillSection: React.FC<FillSectionProps> = ({
 
   const handleToggleVisibility = useCallback(() => {
     if (disabled) {
-      // Restore
+      if (savedGradientRef.current) {
+        onStyleChange("background-image", savedGradientRef.current);
+      }
       onStyleChange("background-color", savedColorRef.current || bgColor);
       setDisabled(false);
     } else {
       savedColorRef.current = bgColor;
+      savedGradientRef.current = hasGradient ? bgImage : "";
       onStyleChange("background-color", "transparent");
+      if (hasGradient) onStyleChange("background-image", "none");
       setDisabled(true);
     }
-  }, [disabled, bgColor, onStyleChange]);
+  }, [disabled, bgColor, bgImage, hasGradient, onStyleChange]);
 
   return (
     <div className={`pd-section${sectionDisabled ? " pd-section--disabled" : ""}`}>
@@ -92,33 +107,56 @@ export const FillSection: React.FC<FillSectionProps> = ({
       </div>
       {!collapsed && (
         <div className="pd-section__content">
-          <div className="pd-section__row">
-            <ColorPicker
-              value={bgColor}
-              onChange={handleColorChange}
-              label="Color"
-              designTokens={designTokens}
-            />
-            <button
-              className={`pd-section__icon-btn${disabled ? " pd-section__icon-btn--disabled" : ""}`}
-              onClick={handleToggleVisibility}
-              type="button"
-              title={disabled ? "Show fill" : "Hide fill"}
-            >
-              {disabled ? "\u{1F441}\u{200D}\u{1F5E8}" : "\u{1F441}"}
-            </button>
-          </div>
-          <div className="pd-section__row">
-            <SliderInput
-              value={opacity}
-              onChange={handleOpacityChange}
-              min={0}
-              max={100}
-              step={1}
-              label="Opacity"
-              suffix="%"
-            />
-          </div>
+          {hasGradient ? (
+            <>
+              <div className="pd-section__row">
+                <div
+                  className="pd-fill__gradient-swatch"
+                  style={{ background: bgImage }}
+                  title={bgImage}
+                />
+                <button
+                  className={`pd-section__icon-btn${disabled ? " pd-section__icon-btn--disabled" : ""}`}
+                  onClick={handleToggleVisibility}
+                  type="button"
+                  title={disabled ? "Show fill" : "Hide fill"}
+                >
+                  {disabled ? "\u{1F441}\u{200D}\u{1F5E8}" : "\u{1F441}"}
+                </button>
+              </div>
+              <div className="pd-fill__gradient-label">Gradient</div>
+            </>
+          ) : (
+            <>
+              <div className="pd-section__row">
+                <ColorPicker
+                  value={bgColor}
+                  onChange={handleColorChange}
+                  label="Color"
+                  designTokens={designTokens}
+                />
+                <button
+                  className={`pd-section__icon-btn${disabled ? " pd-section__icon-btn--disabled" : ""}`}
+                  onClick={handleToggleVisibility}
+                  type="button"
+                  title={disabled ? "Show fill" : "Hide fill"}
+                >
+                  {disabled ? "\u{1F441}\u{200D}\u{1F5E8}" : "\u{1F441}"}
+                </button>
+              </div>
+              <div className="pd-section__row">
+                <SliderInput
+                  value={opacity}
+                  onChange={handleOpacityChange}
+                  min={0}
+                  max={100}
+                  step={1}
+                  label="Opacity"
+                  suffix="%"
+                />
+              </div>
+            </>
+          )}
         </div>
       )}
     </div>

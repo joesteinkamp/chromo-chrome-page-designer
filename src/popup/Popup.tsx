@@ -12,7 +12,7 @@ export function Popup() {
     <div className="pd-popup">
       <div className="pd-popup__header">
         <span className="pd-popup__icon">◆</span>
-        <span className="pd-popup__title">Design in Chrome</span>
+        <span className="pd-popup__title">Chromo Design</span>
       </div>
       <p className="pd-popup__desc">
         Visually edit any webpage with a Figma-like interface. Changes are

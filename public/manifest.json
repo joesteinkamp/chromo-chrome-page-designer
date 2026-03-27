@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "Design in Chrome",
+  "name": "Chromo Design",
   "version": "0.1.0",
   "description": "Visual webpage editor — edit any page like Figma",
   "permissions": ["activeTab", "storage", "scripting", "sidePanel", "tabs", "contextMenus"],

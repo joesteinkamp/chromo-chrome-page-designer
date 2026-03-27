@@ -1,4 +1,4 @@
-/* Design in Chrome overlay styles — prefixed to avoid collisions with host page */
+/* Chromo Design overlay styles — prefixed to avoid collisions with host page */
 
 .__pd-overlay {
   position: fixed !important;

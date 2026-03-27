@@ -173,7 +173,7 @@ async function ensureContentScript(tabId: number): Promise<void> {
       await new Promise((r) => setTimeout(r, 100));
     } catch (err) {
       // Can't inject on chrome:// pages, etc.
-      console.warn("Design in Chrome: Cannot inject into this tab:", err);
+      console.warn("Chromo Design: Cannot inject into this tab:", err);
     }
   }
 }
@@ -206,7 +206,7 @@ function forwardToContentScript(message: Message, sendResponse?: (resp: any) => 
       chrome.tabs.sendMessage(tabId, message, (resp) => {
         // Clear lastError to prevent unchecked error
         if (chrome.runtime.lastError) {
-          console.warn("Design in Chrome:", chrome.runtime.lastError.message);
+          console.warn("Chromo Design:", chrome.runtime.lastError.message);
         }
         sendResponse(resp);
       });

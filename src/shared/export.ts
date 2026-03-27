@@ -104,7 +104,7 @@ export function exportAsSummary(
         }
         case "text":
           lines.push(
-            `- Changed **text**: "${truncate(change.from, 40)}" → "${truncate(change.to, 40)}"`
+            `- Changed **text**: "${change.from}" → "${change.to}"`
           );
           break;
         case "move":
@@ -191,7 +191,3 @@ export function generateVisualDiffAnnotations(
   }));
 }
 
-function truncate(s: string, max: number): string {
-  if (s.length <= max) return s;
-  return s.slice(0, max) + "\u2026";
-}

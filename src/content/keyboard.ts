@@ -1,5 +1,5 @@
 /**
- * Keyboard shortcuts for Page Designer.
+ * Keyboard shortcuts for Design in Chrome.
  *
  * Esc — deselect element
  * Tab / Shift+Tab — cycle through sibling elements

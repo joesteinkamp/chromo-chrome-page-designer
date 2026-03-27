@@ -173,7 +173,7 @@ async function ensureContentScript(tabId: number): Promise<void> {
       await new Promise((r) => setTimeout(r, 100));
     } catch (err) {
       // Can't inject on chrome:// pages, etc.
-      console.warn("Page Designer: Cannot inject into this tab:", err);
+      console.warn("Design in Chrome: Cannot inject into this tab:", err);
     }
   }
 }
@@ -206,7 +206,7 @@ function forwardToContentScript(message: Message, sendResponse?: (resp: any) => 
       chrome.tabs.sendMessage(tabId, message, (resp) => {
         // Clear lastError to prevent unchecked error
         if (chrome.runtime.lastError) {
-          console.warn("Page Designer:", chrome.runtime.lastError.message);
+          console.warn("Design in Chrome:", chrome.runtime.lastError.message);
         }
         sendResponse(resp);
       });
@@ -225,3 +225,18 @@ chrome.tabs.onActivated.addListener((info) => {
 chrome.sidePanel
   .setPanelBehavior({ openPanelOnActionClick: true })
   .catch(() => {});
+
+// Context menu — "Design this Page"
+chrome.runtime.onInstalled.addListener(() => {
+  chrome.contextMenus.create({
+    id: "design-this-page",
+    title: "Design this Page",
+    contexts: ["page"],
+  });
+});
+
+chrome.contextMenus.onClicked.addListener((info, tab) => {
+  if (info.menuItemId === "design-this-page" && tab?.id) {
+    chrome.sidePanel.open({ tabId: tab.id }).catch(() => {});
+  }
+});

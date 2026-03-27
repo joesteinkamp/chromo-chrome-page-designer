@@ -290,6 +290,21 @@
   gap: 4px;
 }
 
+/* ── Fill gradient swatch ── */
+.pd-fill__gradient-swatch {
+  flex: 1;
+  height: 24px;
+  border-radius: var(--pd-radius);
+  border: 1px solid var(--pd-border);
+  min-width: 0;
+}
+
+.pd-fill__gradient-label {
+  font-size: 10px;
+  color: var(--pd-text-muted);
+  margin-top: 2px;
+}
+
 /* Disabled / not-applicable section */
 .pd-section--disabled {
   opacity: 0.35;

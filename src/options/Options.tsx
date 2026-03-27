@@ -55,7 +55,7 @@ export function Options() {
   return (
     <div className="pd-options">
       <div className="pd-options__header">
-        <div className="pd-options__title">Design in Chrome Settings</div>
+        <div className="pd-options__title">Chromo Design Settings</div>
         {version && (
           <div className="pd-options__version">v{version}</div>
         )}

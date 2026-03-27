@@ -206,7 +206,7 @@ export function App() {
       if (response?.dataUrl) {
         const link = document.createElement("a");
         link.href = response.dataUrl;
-        link.download = `design-in-chrome-${Date.now()}.png`;
+        link.download = `chromo-design-${Date.now()}.png`;
         document.body.appendChild(link);
         link.click();
         link.remove();

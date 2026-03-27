@@ -1,5 +1,5 @@
 /**
- * Design in Chrome content script entry point.
+ * Chromo Design content script entry point.
  * Manages activation state, coordinates all interaction modes,
  * tracks changes, and handles persistence replay.
  */
@@ -255,7 +255,7 @@ chrome.runtime.onMessage.addListener(
             // Trigger download
             const link = document.createElement("a");
             link.href = response.dataUrl;
-            link.download = `design-in-chrome-${Date.now()}.png`;
+            link.download = `chromo-design-${Date.now()}.png`;
             document.body.appendChild(link);
             link.click();
             link.remove();

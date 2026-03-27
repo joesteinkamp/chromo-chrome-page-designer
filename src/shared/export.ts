@@ -70,7 +70,6 @@ export function exportAsSummary(
   }
 
   const lines: string[] = [
-    `## Chromo Design Changes`,
     `**URL:** ${url}`,
     `**Changes:** ${changes.length}`,
   ];

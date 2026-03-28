@@ -37,6 +37,8 @@ import {
   replayChanges,
   recordWrapChange,
   recordDuplicateChange,
+  startBatch,
+  endBatch,
 } from "./change-tracker";
 import type { Message } from "../shared/messages";
 
@@ -104,30 +106,37 @@ chrome.runtime.onMessage.addListener(
       case "APPLY_STYLE": {
         const el = getSelectedElement();
         if (el && el instanceof HTMLElement) {
-          // Apply to primary element
           const computed = window.getComputedStyle(el);
           const oldValue = computed.getPropertyValue(message.property);
 
-          // Apply to selected element
+          // Determine if this is a multi-element operation
+          const multiEls = getMultiSelectedElements();
+          const matches = multiEditEnabled ? findMatchingElements(el) : [];
+          const hasMultiple = multiEls.length > 0 || matches.length > 0;
+
+          // Start batch if applying to multiple elements
+          if (hasMultiple) startBatch();
+
+          // Apply to primary element
           applyStyleToElement(el, message.property, message.value);
-
-          // Apply to all matching elements if multi-edit is on
-          if (multiEditEnabled) {
-            const matches = findMatchingElements(el);
-            for (const match of matches) {
-              if (match instanceof HTMLElement) {
-                applyStyleToElement(match, message.property, message.value);
-              }
-            }
-            updateMultiEditOverlays(matches);
-          }
-
           if (oldValue !== message.value) {
             recordStyleChange(el, message.property, oldValue, message.value);
           }
 
+          // Apply to all matching elements if multi-edit is on
+          for (const match of matches) {
+            if (match instanceof HTMLElement) {
+              const mc = window.getComputedStyle(match);
+              const mv = mc.getPropertyValue(message.property);
+              applyStyleToElement(match, message.property, message.value);
+              if (mv !== message.value) {
+                recordStyleChange(match, message.property, mv, message.value);
+              }
+            }
+          }
+          if (matches.length > 0) updateMultiEditOverlays(matches);
+
           // Apply to multi-selected elements too
-          const multiEls = getMultiSelectedElements();
           for (const multiEl of multiEls) {
             if (multiEl !== el && multiEl instanceof HTMLElement) {
               const mc = window.getComputedStyle(multiEl);
@@ -138,6 +147,8 @@ chrome.runtime.onMessage.addListener(
               }
             }
           }
+
+          if (hasMultiple) endBatch();
 
           refreshSelection();
 

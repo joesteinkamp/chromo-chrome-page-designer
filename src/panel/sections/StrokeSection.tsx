@@ -6,6 +6,7 @@ import "./sections.css";
 interface StrokeSectionProps {
   computedStyles: Record<string, string>;
   authoredStyles?: Record<string, string>;
+  pageColors?: string[];
   onStyleChange: (property: string, value: string) => void;
 }
 
@@ -47,6 +48,7 @@ function detectMode(widths: string[]): StrokeMode {
 export const StrokeSection: React.FC<StrokeSectionProps> = ({
   computedStyles,
   authoredStyles,
+  pageColors,
   onStyleChange,
 }) => {
   const sideColors = [
@@ -164,6 +166,7 @@ export const StrokeSection: React.FC<StrokeSectionProps> = ({
               value={borderColor}
               onChange={handleColorChange}
               label="Color"
+              pageColors={pageColors}
             />
           </div>
           <VarLabel authoredStyles={authoredStyles} property={["border-color", "border-top-color"]} />

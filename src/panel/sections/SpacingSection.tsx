@@ -4,6 +4,7 @@ import "./sections.css";
 
 interface SpacingSectionProps {
   computedStyles: Record<string, string>;
+  authoredStyles?: Record<string, string>;
   onStyleChange: (property: string, value: string) => void;
 }
 

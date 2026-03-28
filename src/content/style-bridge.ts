@@ -12,6 +12,9 @@ import type { ElementData } from "../shared/types";
 /** Track which Google Fonts have been injected to avoid duplicates */
 const loadedGoogleFonts = new Set<string>();
 
+/** Cached page colors — extracted once per page load */
+let cachedPageColors: string[] | null = null;
+
 /**
  * System/web-safe fonts that don't need Google Fonts loading.
  * Any font NOT in this set is assumed to be a Google Font candidate.
@@ -42,6 +45,11 @@ export function extractElementData(element: Element): ElementData {
   let designTokens: Array<{ name: string; value: string }> = [];
   try { designTokens = extractDesignTokens(element); } catch { /* cross-origin or security restriction */ }
 
+  // Extract page colors (cached — only computed once per page)
+  if (!cachedPageColors) {
+    try { cachedPageColors = extractPageColors(); } catch { cachedPageColors = []; }
+  }
+
   // Extract framework component info (React/Vue/Svelte)
   let componentInfo: ElementData["componentInfo"];
   try { componentInfo = extractComponentInfo(element); } catch { /* */ }
@@ -67,6 +75,7 @@ export function extractElementData(element: Element): ElementData {
     outerHTML: element.outerHTML.slice(0, 2000),
     matchCount: countMatchingElements(element),
     designTokens,
+    pageColors: cachedPageColors || [],
     componentInfo,
   };
 }
@@ -218,4 +227,66 @@ function hasDirectText(element: Element): boolean {
     }
   }
   return false;
+}
+
+/** Color properties to scan in stylesheets */
+const COLOR_PROPS = [
+  "color", "background-color", "border-color",
+  "border-top-color", "border-right-color", "border-bottom-color", "border-left-color",
+  "outline-color", "box-shadow", "text-shadow",
+];
+
+const HEX_REGEX = /#(?:[0-9a-fA-F]{3,4}){1,2}\b/g;
+const RGB_REGEX = /rgba?\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*(?:,\s*[\d.]+)?\s*\)/g;
+
+/** Convert rgb/rgba to hex */
+function rgbToHex(rgb: string): string | null {
+  const m = rgb.match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/);
+  if (!m) return null;
+  const r = parseInt(m[1]), g = parseInt(m[2]), b = parseInt(m[3]);
+  return `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`;
+}
+
+/** Scan all stylesheets for unique color values used on the page */
+function extractPageColors(): string[] {
+  const colors = new Set<string>();
+  const skip = new Set(["transparent", "inherit", "currentcolor", "#000000", "#ffffff", "#000", "#fff"]);
+
+  try {
+    const sheets = document.styleSheets;
+    for (let i = 0; i < sheets.length && colors.size < 50; i++) {
+      try {
+        const rules = sheets[i].cssRules;
+        for (let j = 0; j < rules.length && colors.size < 50; j++) {
+          const rule = rules[j];
+          if (!(rule instanceof CSSStyleRule)) continue;
+
+          for (const prop of COLOR_PROPS) {
+            const val = rule.style.getPropertyValue(prop);
+            if (!val || val.includes("var(")) continue;
+
+            // Extract hex values
+            const hexMatches = val.match(HEX_REGEX);
+            if (hexMatches) {
+              for (const h of hexMatches) {
+                const norm = h.toLowerCase();
+                if (!skip.has(norm)) colors.add(norm);
+              }
+            }
+
+            // Extract rgb/rgba and convert to hex
+            const rgbMatches = val.match(RGB_REGEX);
+            if (rgbMatches) {
+              for (const rgb of rgbMatches) {
+                const hex = rgbToHex(rgb);
+                if (hex && !skip.has(hex)) colors.add(hex);
+              }
+            }
+          }
+        }
+      } catch { /* cross-origin */ }
+    }
+  } catch { /* security */ }
+
+  return Array.from(colors).slice(0, 24);
 }

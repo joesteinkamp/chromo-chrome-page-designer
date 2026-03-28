@@ -9,6 +9,7 @@ interface FillSectionProps {
   onStyleChange: (property: string, value: string) => void;
   disabled?: boolean;
   designTokens?: Array<{ name: string; value: string }>;
+  pageColors?: string[];
 }
 
 function parseOpacityFromColor(color: string): number {
@@ -45,6 +46,7 @@ export const FillSection: React.FC<FillSectionProps> = ({
   onStyleChange,
   disabled: sectionDisabled,
   designTokens,
+  pageColors,
 }) => {
   const [disabled, setDisabled] = useState(false);
   const savedColorRef = useRef<string>("");
@@ -137,6 +139,7 @@ export const FillSection: React.FC<FillSectionProps> = ({
                   onChange={handleColorChange}
                   label="Color"
                   designTokens={designTokens}
+                  pageColors={pageColors}
                 />
                 <button
                   className={`pd-section__icon-btn${disabled ? " pd-section__icon-btn--disabled" : ""}`}

@@ -278,6 +278,26 @@
   border-color: var(--pd-accent);
 }
 
+.pd-color-picker__eyedropper-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 22px;
+  border: 1px solid var(--pd-border);
+  border-radius: var(--pd-radius);
+  background: var(--pd-bg);
+  cursor: pointer;
+  font-size: 12px;
+  flex-shrink: 0;
+  padding: 0;
+}
+
+.pd-color-picker__eyedropper-btn:hover {
+  background: var(--pd-bg-hover);
+  border-color: var(--pd-accent);
+}
+
 /* Design tokens */
 .pd-color-picker__tokens,
 .pd-color-picker__recent {

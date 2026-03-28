@@ -18,6 +18,7 @@ export function App() {
   const [canRedo, setCanRedo] = useState(false);
   const [pageUrl, setPageUrl] = useState("");
   const [editMode, setEditMode] = useState(true);
+  const editModeRef = useRef(true);
   const [multiEdit, setMultiEdit] = useState(false);
   const [sendMenuOpen, setSendMenuOpen] = useState(false);
   const sendMenuRef = useRef<HTMLDivElement>(null);
@@ -41,6 +42,7 @@ export function App() {
   const handleToggleEditMode = useCallback(() => {
     const next = !editMode;
     setEditMode(next);
+    editModeRef.current = next;
     if (!next) {
       setMultiEdit(false);
     }
@@ -90,6 +92,7 @@ export function App() {
     // When the user switches tabs, reset to inactive
     const onTabActivated = () => {
       setEditMode(false);
+      editModeRef.current = false;
       setMultiEdit(false);
       setElementData(null);
       setChanges([]);
@@ -103,18 +106,24 @@ export function App() {
 
     chrome.tabs.onActivated.addListener(onTabActivated);
 
-    // When the active tab navigates/reloads, clear changes
+    // When the active tab navigates/reloads, clear changes and re-activate
     const onTabUpdated = (tabId: number, changeInfo: chrome.tabs.TabChangeInfo) => {
-      if (changeInfo.status === "loading") {
-        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-          if (tabs[0]?.id === tabId) {
-            setChanges([]);
-            setCanRedo(false);
-            setElementData(null);
-            if (tabs[0].url) setPageUrl(tabs[0].url);
-          }
-        });
-      }
+      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+        if (tabs[0]?.id !== tabId) return;
+
+        if (changeInfo.status === "loading") {
+          // Page is reloading — clear changes and selection
+          setChanges([]);
+          setCanRedo(false);
+          setElementData(null);
+          if (tabs[0].url) setPageUrl(tabs[0].url);
+        }
+
+        if (changeInfo.status === "complete" && editModeRef.current) {
+          // Page finished loading — re-activate if edit mode is on
+          chrome.runtime.sendMessage({ type: "ACTIVATE" } satisfies Message).catch(() => {});
+        }
+      });
     };
     chrome.tabs.onUpdated.addListener(onTabUpdated);
 

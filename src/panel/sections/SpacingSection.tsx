@@ -100,8 +100,8 @@ function SpacingGroup({
 
       {mode === "hv" && (
         <div className="pd-section__row pd-section__row--half">
-          <NumberInput label={"\u2194"} value={left} onChange={onChangeHoriz} min={min} suffix="px" />
           <NumberInput label={"\u2195"} value={top} onChange={onChangeVert} min={min} suffix="px" />
+          <NumberInput label={"\u2194"} value={left} onChange={onChangeHoriz} min={min} suffix="px" />
         </div>
       )}
 
@@ -127,7 +127,7 @@ function SpacingGroup({
           </label>
           <label className="pd-spacing__popover-option" onClick={() => selectMode("hv")}>
             <span className={`pd-spacing__radio${mode === "hv" ? " pd-spacing__radio--active" : ""}`} />
-            Horizontal/Vertical
+            Vertical/Horizontal
           </label>
           <label className="pd-spacing__popover-option" onClick={() => selectMode("sides")}>
             <span className={`pd-spacing__radio${mode === "sides" ? " pd-spacing__radio--active" : ""}`} />

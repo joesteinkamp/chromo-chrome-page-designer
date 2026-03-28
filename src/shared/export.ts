@@ -23,6 +23,83 @@ interface GroupedChanges {
   changes: Change[];
 }
 
+/**
+ * Collapse batched changes (same batchId + same property + same values)
+ * into a single representative change. Finds the shared CSS class among
+ * the selectors so the AI agent targets the component/class, not each instance.
+ */
+function collapseBatches(changes: Change[]): Change[] {
+  const result: Change[] = [];
+  const batchSeen = new Set<string>();
+
+  for (const change of changes) {
+    if (!change.batchId) {
+      result.push(change);
+      continue;
+    }
+
+    // Build a key for this batch + change type + property
+    const key = change.type === "style"
+      ? `${change.batchId}:${change.property}:${change.from}:${change.to}`
+      : `${change.batchId}:${change.type}`;
+
+    if (batchSeen.has(key)) continue;
+    batchSeen.add(key);
+
+    // Find all changes in this batch with same property/values
+    const siblings = changes.filter((c) => {
+      if (c.batchId !== change.batchId) return false;
+      if (c.type !== change.type) return false;
+      if (c.type === "style" && change.type === "style") {
+        return c.property === change.property && c.from === change.from && c.to === change.to;
+      }
+      return true;
+    });
+
+    if (siblings.length <= 1) {
+      result.push(change);
+      continue;
+    }
+
+    // Find the shared CSS class among all selectors
+    const sharedClass = findSharedClass(siblings.map((c) => c.selector));
+    const collapsed = { ...change };
+    if (sharedClass) {
+      collapsed.selector = sharedClass;
+      collapsed.description = `${collapsed.description} (${siblings.length} instances)`;
+    }
+    result.push(collapsed);
+  }
+
+  return result;
+}
+
+/**
+ * Find the most specific CSS class shared by all selectors.
+ * Parses class names from selectors and returns the best shared one.
+ */
+function findSharedClass(selectors: string[]): string | null {
+  if (selectors.length < 2) return null;
+
+  // Extract all classes from each selector
+  const classesPerSelector = selectors.map((sel) => {
+    const matches = sel.match(/\.([a-zA-Z_-][\w-]*)/g);
+    return matches ? matches.map((m) => m) : [];
+  });
+
+  // Find classes present in ALL selectors
+  const first = classesPerSelector[0];
+  const shared = first.filter((cls) =>
+    classesPerSelector.every((classes) => classes.includes(cls))
+  );
+
+  if (shared.length === 0) return null;
+
+  // Pick the most specific (longest) shared class
+  shared.sort((a, b) => b.length - a.length);
+  return shared[0];
+}
+
 function groupBySelector(changes: Change[], componentMap?: Map<string, ComponentContext>): GroupedChanges[] {
   const map = new Map<string, Change[]>();
   for (const c of changes) {
@@ -54,7 +131,10 @@ export function exportAsJSON(
     changeset.sessionNote = sessionNote;
   }
   // Add grouped view with component context for developer convenience
-  changeset.groups = groupBySelector(changes, componentMap);
+  const collapsed = collapseBatches(changes);
+  changeset.groups = groupBySelector(collapsed, componentMap);
+  // Update the changes count to reflect collapsed
+  changeset.description = summarizeChanges(collapsed);
   return JSON.stringify(changeset, null, 2);
 }
 
@@ -69,9 +149,12 @@ export function exportAsSummary(
     return `No changes recorded for ${url}`;
   }
 
+  // Collapse batched multi-instance changes into single entries
+  const collapsed = collapseBatches(changes);
+
   const lines: string[] = [
     `**URL:** ${url}`,
-    `**Changes:** ${changes.length}`,
+    `**Changes:** ${collapsed.length}`,
   ];
 
   if (sessionNote) {
@@ -80,7 +163,7 @@ export function exportAsSummary(
   lines.push(``);
 
   // Group by selector
-  const groups = groupBySelector(changes, componentMap);
+  const groups = groupBySelector(collapsed, componentMap);
 
   for (const group of groups) {
     let header = `### \`${group.selector}\``;

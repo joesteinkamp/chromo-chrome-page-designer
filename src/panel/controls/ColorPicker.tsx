@@ -191,7 +191,7 @@ function hexToHsl(hex: string): { h: number; s: number; l: number } {
 
 function getHueGroup(hex: string): string {
   const { h, s, l } = hexToHsl(hex);
-  if (s < 10) return l > 60 ? "Light" : "Dark";
+  if (s < 10) return "Gray";
   for (const g of HUE_GROUPS) {
     if (g.min > g.max) { // wraps around (Red)
       if (h >= g.min || h < g.max) return g.name;

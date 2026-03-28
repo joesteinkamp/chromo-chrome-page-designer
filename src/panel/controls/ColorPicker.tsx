@@ -468,6 +468,16 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({
             )}
           </div>
 
+          {/* Transparent button */}
+          <button
+            type="button"
+            className="pd-color-picker__transparent-btn"
+            onClick={() => onChange("transparent")}
+          >
+            <span className="pd-color-picker__transparent-swatch" />
+            Transparent
+          </button>
+
           {/* Design tokens */}
           {designTokens && designTokens.length > 0 && (
             <div className="pd-color-picker__tokens">

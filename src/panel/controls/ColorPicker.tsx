@@ -170,6 +170,8 @@ interface ColorPickerProps {
   className?: string;
   /** CSS custom properties (design tokens) detected on the page */
   designTokens?: Array<{ name: string; value: string }>;
+  /** Unique color values found across the page's stylesheets */
+  pageColors?: string[];
 }
 
 export const ColorPicker: React.FC<ColorPickerProps> = ({
@@ -178,6 +180,7 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({
   label,
   className,
   designTokens,
+  pageColors,
 }) => {
   const rgba = useMemo(() => parseCSSColor(value), [value]);
   const hsla = useMemo(() => rgbaToHsla(rgba), [rgba]);
@@ -512,6 +515,28 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({
                     className="pd-color-picker__recent-swatch"
                     style={{ background: color }}
                     onClick={() => onChange(color)}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Page colors */}
+          {pageColors && pageColors.length > 0 && (
+            <div className="pd-color-picker__recent">
+              <div className="pd-color-picker__recent-label">Page colors</div>
+              <div className="pd-color-picker__recent-grid">
+                {pageColors.map((color) => (
+                  <button
+                    key={color}
+                    type="button"
+                    className="pd-color-picker__recent-swatch"
+                    title={color}
+                    style={{ background: color }}
+                    onClick={() => {
+                      addRecentColor(color);
+                      onChange(color);
+                    }}
                   />
                 ))}
               </div>

@@ -58,6 +58,7 @@ export const DesignTab = React.memo(function DesignTab({
         onStyleChange={onStyleChange}
         disabled={isReplaced}
         designTokens={data.designTokens}
+        pageColors={data.pageColors}
       />
       <StrokeSection
         computedStyles={computedStyles}

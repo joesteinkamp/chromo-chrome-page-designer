@@ -1,5 +1,21 @@
 /* Section components — Figma-like collapsible panels */
 
+/* CSS variable label */
+.pd-var-label {
+  font-size: 10px;
+  font-family: "SF Mono", "Fira Code", monospace;
+  color: var(--pd-accent);
+  background: var(--pd-accent-dim);
+  padding: 1px 6px;
+  border-radius: 3px;
+  margin-bottom: 4px;
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .pd-section {
   border-top: 1px solid var(--pd-border);
   position: relative;

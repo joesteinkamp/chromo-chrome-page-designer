@@ -4,9 +4,17 @@ import "./sections.css";
 
 interface FillSectionProps {
   computedStyles: Record<string, string>;
+  authoredStyles?: Record<string, string>;
   onStyleChange: (property: string, value: string) => void;
   disabled?: boolean;
   designTokens?: Array<{ name: string; value: string }>;
+}
+
+/** Extract the CSS variable name from a var() expression */
+function extractVarName(value: string | undefined): string | null {
+  if (!value) return null;
+  const match = value.match(/var\(\s*(--[^,)]+)/);
+  return match ? match[1].trim() : null;
 }
 
 function parseOpacityFromColor(color: string): number {
@@ -39,6 +47,7 @@ function isGradient(value: string): boolean {
 
 export const FillSection: React.FC<FillSectionProps> = ({
   computedStyles,
+  authoredStyles,
   onStyleChange,
   disabled: sectionDisabled,
   designTokens,
@@ -144,6 +153,11 @@ export const FillSection: React.FC<FillSectionProps> = ({
                   {disabled ? "\u{1F441}\u{200D}\u{1F5E8}" : "\u{1F441}"}
                 </button>
               </div>
+              {extractVarName(authoredStyles?.["background-color"]) && (
+                <div className="pd-var-label" title={authoredStyles?.["background-color"]}>
+                  {extractVarName(authoredStyles?.["background-color"])}
+                </div>
+              )}
               <div className="pd-section__row">
                 <SliderInput
                   value={opacity}

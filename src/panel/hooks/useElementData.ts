@@ -33,12 +33,22 @@ export function useElementData() {
 
     chrome.runtime.onMessage.addListener(listener);
 
+    // Open a long-lived port so the service worker can detect panel close
+    const port = chrome.runtime.connect({ name: "side-panel" });
+
     // Activate on initial panel open
     chrome.runtime.sendMessage({ type: "ACTIVATE" } satisfies Message);
 
+    // Also send deactivate on beforeunload (more reliable than React cleanup)
+    const onUnload = () => {
+      chrome.runtime.sendMessage({ type: "DEACTIVATE" } satisfies Message).catch(() => {});
+    };
+    window.addEventListener("beforeunload", onUnload);
+
     return () => {
       chrome.runtime.onMessage.removeListener(listener);
-      // Deactivate when panel closes
+      window.removeEventListener("beforeunload", onUnload);
+      port.disconnect();
       chrome.runtime.sendMessage({ type: "DEACTIVATE" } satisfies Message).catch(() => {});
     };
   }, []);

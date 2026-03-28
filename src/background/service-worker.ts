@@ -240,3 +240,13 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
     chrome.sidePanel.open({ tabId: tab.id }).catch(() => {});
   }
 });
+
+// Detect side panel close via port disconnect and deactivate content script
+chrome.runtime.onConnect.addListener((port) => {
+  if (port.name === "side-panel") {
+    port.onDisconnect.addListener(() => {
+      // Panel was closed — deactivate the content script
+      forwardToContentScript({ type: "DEACTIVATE" } as any);
+    });
+  }
+});

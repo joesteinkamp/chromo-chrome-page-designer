@@ -164,7 +164,7 @@
   border-radius: 6px;
   padding: 10px;
   box-shadow: var(--pd-shadow);
-  width: 200px;
+  width: 220px;
 }
 
 .pd-color-picker__sat-area {
@@ -265,6 +265,7 @@
   background: var(--pd-bg);
   border: 1px solid var(--pd-border);
   border-radius: var(--pd-radius);
+  min-width: 0;
   color: var(--pd-text);
   font-family: "SF Mono", "Fira Code", monospace;
   font-size: 11px;

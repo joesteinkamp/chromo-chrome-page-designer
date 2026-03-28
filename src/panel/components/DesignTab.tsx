@@ -63,6 +63,7 @@ export const DesignTab = React.memo(function DesignTab({
       <StrokeSection
         computedStyles={computedStyles}
         authoredStyles={data.authoredStyles}
+        pageColors={data.pageColors}
         onStyleChange={onStyleChange}
       />
       <CornerRadiusSection

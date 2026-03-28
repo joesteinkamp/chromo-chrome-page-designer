@@ -52,12 +52,14 @@ export const DesignTab = React.memo(function DesignTab({
       )}
       <FillSection
         computedStyles={computedStyles}
+        authoredStyles={data.authoredStyles}
         onStyleChange={onStyleChange}
         disabled={isReplaced}
         designTokens={data.designTokens}
       />
       <StrokeSection
         computedStyles={computedStyles}
+        authoredStyles={data.authoredStyles}
         onStyleChange={onStyleChange}
       />
       <CornerRadiusSection

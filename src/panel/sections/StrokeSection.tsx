@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo, useEffect } from "react";
+import React, { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { ColorPicker, NumberInput, SelectDropdown } from "../controls";
 import { VarLabel } from "./VarLabel";
 import "./sections.css";
@@ -9,6 +9,7 @@ interface StrokeSectionProps {
   onStyleChange: (property: string, value: string) => void;
 }
 
+type StrokeMode = "single" | "sides";
 
 const BORDER_STYLE_OPTIONS = [
   { value: "none", label: "None" },
@@ -24,6 +25,13 @@ const SIDE_PROPS = [
   "border-left-width",
 ] as const;
 
+const SIDE_STYLE_PROPS = [
+  "border-top-style",
+  "border-right-style",
+  "border-bottom-style",
+  "border-left-style",
+];
+
 const SIDE_LABELS = ["T", "R", "B", "L"] as const;
 
 function parsePx(val: string): number {
@@ -31,13 +39,16 @@ function parsePx(val: string): number {
   return isNaN(num) ? 0 : num;
 }
 
+function detectMode(widths: string[]): StrokeMode {
+  if (widths[0] === widths[1] && widths[1] === widths[2] && widths[2] === widths[3]) return "single";
+  return "sides";
+}
+
 export const StrokeSection: React.FC<StrokeSectionProps> = ({
   computedStyles,
   authoredStyles,
   onStyleChange,
 }) => {
-  const [linked, setLinked] = useState(true);
-
   const sideColors = [
     computedStyles["border-top-color"] || "rgb(0, 0, 0)",
     computedStyles["border-right-color"] || "rgb(0, 0, 0)",
@@ -57,7 +68,6 @@ export const StrokeSection: React.FC<StrokeSectionProps> = ({
     computedStyles["border-left-width"] || "0px",
   ];
 
-  // Find the first side that has a visible border for display
   const activeSide = sideStyles.findIndex((s, i) => s !== "none" && parsePx(sideWidths[i]) > 0);
   const borderColor = activeSide >= 0 ? sideColors[activeSide] : sideColors[0];
   const borderStyle = activeSide >= 0 ? sideStyles[activeSide] : sideStyles[0];
@@ -66,18 +76,36 @@ export const StrokeSection: React.FC<StrokeSectionProps> = ({
   const [collapsed, setCollapsed] = useState(!hasValue);
   useEffect(() => { setCollapsed(!hasValue); }, [hasValue]);
 
-  const allSame = useMemo(
-    () =>
-      sideWidths[0] === sideWidths[1] &&
-      sideWidths[1] === sideWidths[2] &&
-      sideWidths[2] === sideWidths[3],
-    [sideWidths]
-  );
+  const [mode, setMode] = useState<StrokeMode>(() => detectMode(sideWidths));
+  const [popoverOpen, setPopoverOpen] = useState(false);
+  const popoverRef = useRef<HTMLDivElement>(null);
+  const gearRef = useRef<HTMLButtonElement>(null);
 
-  // Auto-unlink when sides have different widths
+  // Auto-upgrade mode when sides differ
   useEffect(() => {
-    if (!allSame && linked) setLinked(false);
-  }, [allSame]);
+    const needed = detectMode(sideWidths);
+    if (needed === "sides" && mode !== "sides") setMode("sides");
+  }, [sideWidths]);
+
+  // Close popover on outside click
+  useEffect(() => {
+    if (!popoverOpen) return;
+    function handleClick(e: MouseEvent) {
+      if (
+        popoverRef.current && !popoverRef.current.contains(e.target as Node) &&
+        gearRef.current && !gearRef.current.contains(e.target as Node)
+      ) {
+        setPopoverOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [popoverOpen]);
+
+  const selectMode = (m: StrokeMode) => {
+    setMode(m);
+    setPopoverOpen(false);
+  };
 
   const ensureBorderStyle = useCallback(
     (width: number) => {
@@ -89,21 +117,17 @@ export const StrokeSection: React.FC<StrokeSectionProps> = ({
   );
 
   const handleColorChange = useCallback(
-    (v: string) => {
-      onStyleChange("border-color", v);
-    },
+    (v: string) => { onStyleChange("border-color", v); },
     [onStyleChange]
   );
 
-  const handleLinkedWidthChange = useCallback(
+  const handleWidthChange = useCallback(
     (v: number) => {
       ensureBorderStyle(v);
       onStyleChange("border-width", `${v}px`);
     },
     [onStyleChange, ensureBorderStyle]
   );
-
-  const SIDE_STYLE_PROPS = ["border-top-style", "border-right-style", "border-bottom-style", "border-left-style"];
 
   const handleSideWidthChange = useCallback(
     (index: number, v: number) => {
@@ -116,15 +140,9 @@ export const StrokeSection: React.FC<StrokeSectionProps> = ({
   );
 
   const handleStyleChange = useCallback(
-    (v: string) => {
-      onStyleChange("border-style", v);
-    },
+    (v: string) => { onStyleChange("border-style", v); },
     [onStyleChange]
   );
-
-  const toggleLinked = useCallback(() => {
-    setLinked((prev) => !prev);
-  }, []);
 
   return (
     <div className="pd-section">
@@ -156,38 +174,56 @@ export const StrokeSection: React.FC<StrokeSectionProps> = ({
               onChange={handleStyleChange}
             />
           </div>
-          <div className="pd-stroke">
-            <div className="pd-stroke__linked-row">
+
+          <div className="pd-spacing__group" style={{ position: "relative" }}>
+            <div className="pd-spacing__group-header">
+              <span className="pd-spacing__group-label">Width</span>
               <button
-                className={`pd-stroke__link-btn${linked ? " pd-stroke__link-btn--active" : ""}`}
-                onClick={toggleLinked}
+                ref={gearRef}
+                className={`pd-section__icon-btn${popoverOpen ? " pd-section__icon-btn--active" : ""}`}
                 type="button"
-                title={linked ? "Unlink sides" : "Link sides"}
+                title="Width options"
+                onClick={() => setPopoverOpen((o) => !o)}
               >
-                {linked ? "\u{1F517}" : "\u2022\u2022"}
+                &#x2699;
               </button>
-              {linked && (
+            </div>
+
+            {mode === "single" && (
+              <div className="pd-section__row">
                 <NumberInput
                   value={parsePx(sideWidths[0])}
-                  onChange={handleLinkedWidthChange}
+                  onChange={handleWidthChange}
                   min={0}
                   suffix="px"
-                  label="Width"
                 />
-              )}
-            </div>
-            {!linked && (
-              <div className="pd-stroke__unlinked">
-                {SIDE_LABELS.map((label, i) => (
-                  <NumberInput
-                    key={label}
-                    value={parsePx(sideWidths[i])}
-                    onChange={(v) => handleSideWidthChange(i, v)}
-                    min={0}
-                    suffix="px"
-                    label={label}
-                  />
-                ))}
+              </div>
+            )}
+
+            {mode === "sides" && (
+              <>
+                <div className="pd-section__row pd-section__row--half">
+                  <NumberInput label="T" value={parsePx(sideWidths[0])} onChange={(v) => handleSideWidthChange(0, v)} min={0} suffix="px" />
+                  <NumberInput label="R" value={parsePx(sideWidths[1])} onChange={(v) => handleSideWidthChange(1, v)} min={0} suffix="px" />
+                </div>
+                <div className="pd-section__row pd-section__row--half">
+                  <NumberInput label="B" value={parsePx(sideWidths[2])} onChange={(v) => handleSideWidthChange(2, v)} min={0} suffix="px" />
+                  <NumberInput label="L" value={parsePx(sideWidths[3])} onChange={(v) => handleSideWidthChange(3, v)} min={0} suffix="px" />
+                </div>
+              </>
+            )}
+
+            {popoverOpen && (
+              <div className="pd-spacing__popover" ref={popoverRef}>
+                <div className="pd-spacing__popover-title">Stroke Width</div>
+                <label className="pd-spacing__popover-option" onClick={() => selectMode("single")}>
+                  <span className={`pd-spacing__radio${mode === "single" ? " pd-spacing__radio--active" : ""}`} />
+                  One value for all sides
+                </label>
+                <label className="pd-spacing__popover-option" onClick={() => selectMode("sides")}>
+                  <span className={`pd-spacing__radio${mode === "sides" ? " pd-spacing__radio--active" : ""}`} />
+                  Top/Right/Bottom/Left
+                </label>
               </div>
             )}
           </div>

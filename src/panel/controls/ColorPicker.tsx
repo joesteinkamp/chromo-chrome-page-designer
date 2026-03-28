@@ -447,6 +447,25 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({
               onBlur={handleHexInputBlur}
               onKeyDown={handleHexInputKeyDown}
             />
+            {"EyeDropper" in window && (
+              <button
+                type="button"
+                className="pd-color-picker__eyedropper-btn"
+                title="Pick color from page"
+                onClick={async () => {
+                  try {
+                    const dropper = new (window as any).EyeDropper();
+                    const result = await dropper.open();
+                    if (result?.sRGBHex) {
+                      addRecentColor(result.sRGBHex);
+                      onChange(result.sRGBHex);
+                    }
+                  } catch { /* user cancelled */ }
+                }}
+              >
+                &#x1F4A7;
+              </button>
+            )}
           </div>
 
           {/* Design tokens */}

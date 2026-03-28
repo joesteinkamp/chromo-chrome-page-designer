@@ -8,6 +8,7 @@ import "./sections.css";
 
 interface AutoLayoutSectionProps {
   computedStyles: Record<string, string>;
+  authoredStyles?: Record<string, string>;
   onStyleChange: (property: string, value: string) => void;
 }
 

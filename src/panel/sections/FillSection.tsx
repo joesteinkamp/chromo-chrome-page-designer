@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useRef, useEffect } from "react";
 import { ColorPicker, SliderInput } from "../controls";
+import { VarLabel } from "./VarLabel";
 import "./sections.css";
 
 interface FillSectionProps {
@@ -8,13 +9,6 @@ interface FillSectionProps {
   onStyleChange: (property: string, value: string) => void;
   disabled?: boolean;
   designTokens?: Array<{ name: string; value: string }>;
-}
-
-/** Extract the CSS variable name from a var() expression */
-function extractVarName(value: string | undefined): string | null {
-  if (!value) return null;
-  const match = value.match(/var\(\s*(--[^,)]+)/);
-  return match ? match[1].trim() : null;
 }
 
 function parseOpacityFromColor(color: string): number {
@@ -153,11 +147,7 @@ export const FillSection: React.FC<FillSectionProps> = ({
                   {disabled ? "\u{1F441}\u{200D}\u{1F5E8}" : "\u{1F441}"}
                 </button>
               </div>
-              {extractVarName(authoredStyles?.["background-color"]) && (
-                <div className="pd-var-label" title={authoredStyles?.["background-color"]}>
-                  {extractVarName(authoredStyles?.["background-color"])}
-                </div>
-              )}
+              <VarLabel authoredStyles={authoredStyles} property="background-color" />
               <div className="pd-section__row">
                 <SliderInput
                   value={opacity}

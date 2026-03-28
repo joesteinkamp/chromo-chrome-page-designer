@@ -38,10 +38,12 @@ export const DesignTab = React.memo(function DesignTab({
       />
       <SpacingSection
         computedStyles={computedStyles}
+        authoredStyles={data.authoredStyles}
         onStyleChange={onStyleChange}
       />
       <AutoLayoutSection
         computedStyles={computedStyles}
+        authoredStyles={data.authoredStyles}
         onStyleChange={onStyleChange}
       />
       {hasTextContent && (
@@ -64,6 +66,7 @@ export const DesignTab = React.memo(function DesignTab({
       />
       <CornerRadiusSection
         computedStyles={computedStyles}
+        authoredStyles={data.authoredStyles}
         onStyleChange={onStyleChange}
       />
       <ShadowSection

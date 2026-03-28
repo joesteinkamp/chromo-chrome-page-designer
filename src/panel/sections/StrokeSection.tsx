@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useMemo, useEffect } from "react";
 import { ColorPicker, NumberInput, SelectDropdown } from "../controls";
+import { VarLabel } from "./VarLabel";
 import "./sections.css";
 
 interface StrokeSectionProps {
@@ -8,11 +9,6 @@ interface StrokeSectionProps {
   onStyleChange: (property: string, value: string) => void;
 }
 
-function extractVarName(value: string | undefined): string | null {
-  if (!value) return null;
-  const match = value.match(/var\(\s*(--[^,)]+)/);
-  return match ? match[1].trim() : null;
-}
 
 const BORDER_STYLE_OPTIONS = [
   { value: "none", label: "None" },
@@ -152,11 +148,7 @@ export const StrokeSection: React.FC<StrokeSectionProps> = ({
               label="Color"
             />
           </div>
-          {extractVarName(authoredStyles?.["border-color"] || authoredStyles?.["border-top-color"]) && (
-            <div className="pd-var-label" title={authoredStyles?.["border-color"] || authoredStyles?.["border-top-color"]}>
-              {extractVarName(authoredStyles?.["border-color"] || authoredStyles?.["border-top-color"])}
-            </div>
-          )}
+          <VarLabel authoredStyles={authoredStyles} property={["border-color", "border-top-color"]} />
           <div className="pd-section__row">
             <SelectDropdown
               value={borderStyle}

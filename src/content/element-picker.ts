@@ -11,6 +11,7 @@ import {
   showSelection,
   hideSelection,
   updateSelection,
+  updateMultiSelectOverlays,
   getHandleDirection,
 } from "./overlay";
 
@@ -270,6 +271,9 @@ function onScroll(): void {
   if (selectedElement) {
     updateSelection(selectedElement);
   }
+  if (multiSelectedElements.length > 0) {
+    updateMultiSelectOverlays(multiSelectedElements);
+  }
 }
 
 function onResize(): void {
@@ -282,6 +286,9 @@ function onResize(): void {
     }
     if (selectedElement) {
       updateSelection(selectedElement);
+    }
+    if (multiSelectedElements.length > 0) {
+      updateMultiSelectOverlays(multiSelectedElements);
     }
     rafId = null;
   });

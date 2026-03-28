@@ -154,6 +154,17 @@ export function showMultiSelectOverlays(elements: Element[]): void {
   }
 }
 
+export function updateMultiSelectOverlays(elements: Element[]): void {
+  if (multiSelectOverlays.length !== elements.length) {
+    showMultiSelectOverlays(elements);
+    return;
+  }
+  for (let i = 0; i < elements.length; i++) {
+    const rect = elements[i].getBoundingClientRect();
+    positionOverlay(multiSelectOverlays[i], rect);
+  }
+}
+
 export function hideMultiSelectOverlays(): void {
   multiSelectOverlays.forEach((o) => o.remove());
   multiSelectOverlays = [];

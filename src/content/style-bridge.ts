@@ -229,17 +229,13 @@ function hasDirectText(element: Element): boolean {
   return false;
 }
 
-/** Color properties to scan in stylesheets */
+/** Color properties to read from computed styles */
 const COLOR_PROPS = [
-  "color", "background-color", "border-color",
+  "color", "background-color",
   "border-top-color", "border-right-color", "border-bottom-color", "border-left-color",
-  "outline-color", "box-shadow", "text-shadow",
 ];
 
-const HEX_REGEX = /#(?:[0-9a-fA-F]{3,4}){1,2}\b/g;
-const RGB_REGEX = /rgba?\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*(?:,\s*[\d.]+)?\s*\)/g;
-
-/** Convert rgb/rgba to hex */
+/** Convert rgb/rgba string to hex */
 function rgbToHex(rgb: string): string | null {
   const m = rgb.match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/);
   if (!m) return null;
@@ -247,46 +243,38 @@ function rgbToHex(rgb: string): string | null {
   return `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`;
 }
 
-/** Scan all stylesheets for unique color values used on the page */
+/** Skip these common/boring colors */
+const SKIP_COLORS = new Set([
+  "#000000", "#ffffff", "#000", "#fff",
+  "rgba(0, 0, 0, 0)", "transparent",
+]);
+
+/**
+ * Walk visible DOM elements and extract unique colors from computed styles.
+ * Works regardless of cross-origin stylesheets since getComputedStyle
+ * always returns resolved values.
+ */
 function extractPageColors(): string[] {
   const colors = new Set<string>();
-  const skip = new Set(["transparent", "inherit", "currentcolor", "#000000", "#ffffff", "#000", "#fff"]);
+  const elements = document.querySelectorAll("body *");
+  const limit = Math.min(elements.length, 500); // cap for performance
 
-  try {
-    const sheets = document.styleSheets;
-    for (let i = 0; i < sheets.length && colors.size < 50; i++) {
-      try {
-        const rules = sheets[i].cssRules;
-        for (let j = 0; j < rules.length && colors.size < 50; j++) {
-          const rule = rules[j];
-          if (!(rule instanceof CSSStyleRule)) continue;
+  for (let i = 0; i < limit && colors.size < 30; i++) {
+    const el = elements[i];
+    if ((el as HTMLElement).offsetParent === null && (el as HTMLElement).style?.display !== "fixed") continue; // skip hidden
+    if (el.className && typeof el.className === "string" && el.className.includes("__pd-")) continue; // skip our overlays
 
-          for (const prop of COLOR_PROPS) {
-            const val = rule.style.getPropertyValue(prop);
-            if (!val || val.includes("var(")) continue;
+    const computed = window.getComputedStyle(el);
+    for (const prop of COLOR_PROPS) {
+      const val = computed.getPropertyValue(prop);
+      if (!val || SKIP_COLORS.has(val)) continue;
 
-            // Extract hex values
-            const hexMatches = val.match(HEX_REGEX);
-            if (hexMatches) {
-              for (const h of hexMatches) {
-                const norm = h.toLowerCase();
-                if (!skip.has(norm)) colors.add(norm);
-              }
-            }
-
-            // Extract rgb/rgba and convert to hex
-            const rgbMatches = val.match(RGB_REGEX);
-            if (rgbMatches) {
-              for (const rgb of rgbMatches) {
-                const hex = rgbToHex(rgb);
-                if (hex && !skip.has(hex)) colors.add(hex);
-              }
-            }
-          }
-        }
-      } catch { /* cross-origin */ }
+      const hex = rgbToHex(val);
+      if (hex && !SKIP_COLORS.has(hex)) {
+        colors.add(hex);
+      }
     }
-  } catch { /* security */ }
+  }
 
   return Array.from(colors).slice(0, 24);
 }

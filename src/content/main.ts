@@ -5,6 +5,7 @@
  */
 
 import { initOverlay, destroyOverlay, getHandleDirection, showMultiEditOverlays, hideMultiEditOverlays, updateMultiEditOverlays, showMultiSelectOverlays, hideMultiSelectOverlays } from "./overlay";
+import { forcePseudoState, clearAllForcedStates } from "./pseudo-state";
 import {
   startPicker,
   stopPicker,
@@ -220,6 +221,16 @@ chrome.runtime.onMessage.addListener(
         break;
       }
 
+      case "FORCE_PSEUDO_STATE": {
+        const pseudoEl = getSelectedElement();
+        if (pseudoEl) {
+          forcePseudoState(pseudoEl, message.states);
+          // Re-read styles after forcing pseudo-state
+          sendElementData(pseudoEl);
+        }
+        break;
+      }
+
       case "GET_CHANGES":
         sendResponse({
           type: "CHANGES_RESPONSE",
@@ -329,6 +340,7 @@ function deactivate(): void {
   cancelDrag();
   hideImageToolbar();
   hideMultiEditOverlays();
+  clearAllForcedStates();
   multiEditEnabled = false;
   hideSpacing();
 

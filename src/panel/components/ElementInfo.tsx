@@ -1,6 +1,8 @@
-import React, { useCallback } from "react";
+import React, { useCallback, useState } from "react";
 import type { ElementData } from "../../shared/types";
 import type { Message } from "../../shared/messages";
+
+const PSEUDO_STATES = [":hover", ":active", ":focus"] as const;
 
 interface Props {
   data: ElementData;
@@ -12,9 +14,19 @@ interface Props {
 export function ElementInfo({ data, multiEdit, onToggleMultiEdit, multiSelectCount }: Props) {
   const dimensions = `${Math.round(data.rect.width)} × ${Math.round(data.rect.height)}`;
   const hasMatches = data.matchCount > 0;
+  const [hovOpen, setHovOpen] = useState(false);
+  const [forcedStates, setForcedStates] = useState<string[]>([]);
 
   const handleWrap = useCallback(() => {
     chrome.runtime.sendMessage({ type: "WRAP_ELEMENT" } satisfies Message);
+  }, []);
+
+  const handleTogglePseudoState = useCallback((state: string) => {
+    setForcedStates((prev) => {
+      const next = prev.includes(state) ? prev.filter((s) => s !== state) : [...prev, state];
+      chrome.runtime.sendMessage({ type: "FORCE_PSEUDO_STATE", states: next } satisfies Message);
+      return next;
+    });
   }, []);
 
   const handleBreadcrumbClick = useCallback(
@@ -85,27 +97,52 @@ export function ElementInfo({ data, multiEdit, onToggleMultiEdit, multiSelectCou
       </div>
 
       <div className="pd-element-info__badges">
-        {data.isFlex && (
-          <span className="pd-element-info__badge pd-element-info__badge--flex">
-            Auto layout
-          </span>
-        )}
-        {data.isGrid && (
-          <span className="pd-element-info__badge pd-element-info__badge--grid">
-            Grid
-          </span>
-        )}
-        {data.isImage && (
-          <span className="pd-element-info__badge pd-element-info__badge--img">
-            Image
-          </span>
-        )}
-        {data.hasTextContent && (
-          <span className="pd-element-info__badge pd-element-info__badge--text">
-            Text
-          </span>
-        )}
+        <div className="pd-element-info__badges-left">
+          {data.isFlex && (
+            <span className="pd-element-info__badge pd-element-info__badge--flex">
+              Auto layout
+            </span>
+          )}
+          {data.isGrid && (
+            <span className="pd-element-info__badge pd-element-info__badge--grid">
+              Grid
+            </span>
+          )}
+          {data.isImage && (
+            <span className="pd-element-info__badge pd-element-info__badge--img">
+              Image
+            </span>
+          )}
+          {data.hasTextContent && (
+            <span className="pd-element-info__badge pd-element-info__badge--text">
+              Text
+            </span>
+          )}
+        </div>
+        <button
+          className={`pd-element-info__hov-btn${hovOpen || forcedStates.length > 0 ? " pd-element-info__hov-btn--active" : ""}`}
+          onClick={() => setHovOpen((o) => !o)}
+          type="button"
+          title="Force element state"
+        >
+          :hov
+        </button>
       </div>
+
+      {hovOpen && (
+        <div className="pd-element-info__pseudo-states">
+          {PSEUDO_STATES.map((state) => (
+            <label key={state} className="pd-element-info__pseudo-check">
+              <input
+                type="checkbox"
+                checked={forcedStates.includes(state)}
+                onChange={() => handleTogglePseudoState(state)}
+              />
+              {state}
+            </label>
+          ))}
+        </div>
+      )}
 
       {data.componentInfo?.componentName && (
         <div className="pd-element-info__component">

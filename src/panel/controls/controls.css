@@ -584,6 +584,58 @@
   letter-spacing: 0.3px;
 }
 
+/* ── Page color groups ── */
+.pd-color-picker__page-colors {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--pd-border);
+}
+
+.pd-color-picker__color-group {
+  margin-bottom: 2px;
+}
+
+.pd-color-picker__color-group-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 3px 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-family: var(--pd-font);
+  color: var(--pd-text-dim);
+}
+
+.pd-color-picker__color-group-header:hover {
+  color: var(--pd-text);
+}
+
+.pd-color-picker__color-group-swatches {
+  display: flex;
+  gap: 2px;
+}
+
+.pd-color-picker__color-group-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  flex-shrink: 0;
+}
+
+.pd-color-picker__color-group-name {
+  font-size: 10px;
+  flex: 1;
+  text-align: left;
+}
+
+.pd-color-picker__color-group-count {
+  font-size: 9px;
+  color: var(--pd-text-muted);
+}
+
 /* ── SelectDropdown ── */
 .pd-select {
   display: flex;

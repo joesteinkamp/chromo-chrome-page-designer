@@ -225,8 +225,11 @@ chrome.runtime.onMessage.addListener(
         const pseudoEl = getSelectedElement();
         if (pseudoEl) {
           forcePseudoState(pseudoEl, message.states);
-          // Re-read styles after forcing pseudo-state
-          sendElementData(pseudoEl);
+          // Wait a frame for styles to settle, then re-read and send to panel
+          requestAnimationFrame(() => {
+            sendElementData(pseudoEl);
+            refreshSelection();
+          });
         }
         break;
       }

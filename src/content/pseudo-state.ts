@@ -33,11 +33,12 @@ export function forcePseudoState(element: Element, states: string[]): void {
             if (!selText.includes(state)) continue;
 
             // Try to match the element against the selector with pseudo-class removed
+            const escapedState = state.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
             const baseSelector = selText
               .split(",")
               .filter((s) => s.includes(state))
-              .map((s) => s.replace(new RegExp(`${state.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, "g"), "").trim())
-              .filter(Boolean);
+              .map((s) => s.replace(new RegExp(escapedState + "(?=[^a-zA-Z-]|$)", "g"), "").trim())
+              .filter((s) => s && !s.includes("::"));
 
             for (const base of baseSelector) {
               try {

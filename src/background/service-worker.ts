@@ -94,13 +94,17 @@ chrome.runtime.onMessage.addListener(
         return true;
 
       // --- Forward to panel (from content script) ---
+      // Only re-broadcast messages from content scripts (which have sender.tab)
+      // to ensure the side panel receives them
       case "ELEMENT_SELECTED":
       case "ELEMENT_DESELECTED":
       case "MULTI_ELEMENT_SELECTED":
       case "CHANGES_RESPONSE":
       case "STATE_RESPONSE":
       case "SAVED_EDITS_AVAILABLE":
-        // These broadcast on the runtime channel — panel picks them up
+        if (sender.tab) {
+          chrome.runtime.sendMessage(message).catch(() => {});
+        }
         break;
 
       // --- Persistence ---

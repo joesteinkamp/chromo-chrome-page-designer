@@ -42,9 +42,18 @@ export const StrokeSection: React.FC<StrokeSectionProps> = ({
 }) => {
   const [linked, setLinked] = useState(true);
 
-  const borderColor = computedStyles["border-top-color"] || "rgb(0, 0, 0)";
-  const borderStyle = computedStyles["border-top-style"] || "none";
-
+  const sideColors = [
+    computedStyles["border-top-color"] || "rgb(0, 0, 0)",
+    computedStyles["border-right-color"] || "rgb(0, 0, 0)",
+    computedStyles["border-bottom-color"] || "rgb(0, 0, 0)",
+    computedStyles["border-left-color"] || "rgb(0, 0, 0)",
+  ];
+  const sideStyles = [
+    computedStyles["border-top-style"] || "none",
+    computedStyles["border-right-style"] || "none",
+    computedStyles["border-bottom-style"] || "none",
+    computedStyles["border-left-style"] || "none",
+  ];
   const sideWidths: [string, string, string, string] = [
     computedStyles["border-top-width"] || "0px",
     computedStyles["border-right-width"] || "0px",
@@ -52,8 +61,12 @@ export const StrokeSection: React.FC<StrokeSectionProps> = ({
     computedStyles["border-left-width"] || "0px",
   ];
 
-  const borderWidth = parsePx(sideWidths[0]);
-  const hasValue = borderStyle !== "none" && borderWidth > 0;
+  // Find the first side that has a visible border for display
+  const activeSide = sideStyles.findIndex((s, i) => s !== "none" && parsePx(sideWidths[i]) > 0);
+  const borderColor = activeSide >= 0 ? sideColors[activeSide] : sideColors[0];
+  const borderStyle = activeSide >= 0 ? sideStyles[activeSide] : sideStyles[0];
+
+  const hasValue = sideStyles.some((s, i) => s !== "none" && parsePx(sideWidths[i]) > 0);
   const [collapsed, setCollapsed] = useState(!hasValue);
   useEffect(() => { setCollapsed(!hasValue); }, [hasValue]);
 
@@ -64,6 +77,11 @@ export const StrokeSection: React.FC<StrokeSectionProps> = ({
       sideWidths[2] === sideWidths[3],
     [sideWidths]
   );
+
+  // Auto-unlink when sides have different widths
+  useEffect(() => {
+    if (!allSame && linked) setLinked(false);
+  }, [allSame]);
 
   const ensureBorderStyle = useCallback(
     (width: number) => {
@@ -89,12 +107,16 @@ export const StrokeSection: React.FC<StrokeSectionProps> = ({
     [onStyleChange, ensureBorderStyle]
   );
 
+  const SIDE_STYLE_PROPS = ["border-top-style", "border-right-style", "border-bottom-style", "border-left-style"];
+
   const handleSideWidthChange = useCallback(
     (index: number, v: number) => {
-      ensureBorderStyle(v);
+      if (v > 0 && sideStyles[index] === "none") {
+        onStyleChange(SIDE_STYLE_PROPS[index], "solid");
+      }
       onStyleChange(SIDE_PROPS[index], `${v}px`);
     },
-    [onStyleChange, ensureBorderStyle]
+    [onStyleChange, sideStyles]
   );
 
   const handleStyleChange = useCallback(

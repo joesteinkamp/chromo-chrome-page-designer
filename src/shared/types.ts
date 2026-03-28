@@ -66,6 +66,8 @@ export interface BaseChange {
   selector: string;
   /** Human-readable description */
   description: string;
+  /** Groups related changes (e.g. multi-edit) for batch undo */
+  batchId?: string;
 }
 
 export interface StyleChange extends BaseChange {

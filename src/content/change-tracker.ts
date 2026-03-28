@@ -20,7 +20,19 @@ import type {
 let changes: Change[] = [];
 let redoStack: Change[] = [];
 let nextId = 1;
+let currentBatchId: string | null = null;
 const selectorCache = new WeakMap<Element, string>();
+
+/** Start a batch — all changes recorded until endBatch share a batchId */
+export function startBatch(): string {
+  currentBatchId = `batch_${nextId++}_${Date.now()}`;
+  return currentBatchId;
+}
+
+/** End the current batch */
+export function endBatch(): void {
+  currentBatchId = null;
+}
 
 /** Get or compute a cached CSS selector for an element */
 function getSelector(element: Element): string {
@@ -69,9 +81,10 @@ export function recordStyleChange(
     property,
     from,
     to,
+    ...(currentBatchId ? { batchId: currentBatchId } : {}),
   };
   changes.push(change);
-  redoStack = []; // Clear redo on new action
+  redoStack = [];
   broadcastChanges();
   return change;
 }
@@ -289,11 +302,23 @@ export function undoChange(changeId: string): boolean {
   return true;
 }
 
-/** Undo the most recent change */
+/** Undo the most recent change (or entire batch if batched) */
 export function undoLast(): boolean {
   if (changes.length === 0) return false;
-  const change = changes[changes.length - 1];
-  return undoChange(change.id);
+  const last = changes[changes.length - 1];
+
+  // If the last change has a batchId, undo all changes in that batch
+  if (last.batchId) {
+    const batchId = last.batchId;
+    const batchChanges = changes.filter((c) => c.batchId === batchId);
+    let success = false;
+    for (const c of [...batchChanges].reverse()) {
+      if (undoChange(c.id)) success = true;
+    }
+    return success;
+  }
+
+  return undoChange(last.id);
 }
 
 export function undoAll(): void {

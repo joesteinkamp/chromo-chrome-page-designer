@@ -47,6 +47,7 @@ export type Message =
   | { type: "REDO_CHANGE" }
   | { type: "SELECT_ELEMENT"; selector: string }
   | { type: "WRAP_ELEMENT" }
+  | { type: "FORCE_PSEUDO_STATE"; states: string[] }
   // Persistence
   | { type: "SAVE_EDITS"; url: string; changes: Change[] }
   | { type: "LOAD_EDITS"; url: string }

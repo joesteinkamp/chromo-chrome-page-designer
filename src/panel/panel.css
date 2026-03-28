@@ -564,8 +564,62 @@ body {
 
 .pd-element-info__badges {
   display: flex;
+  align-items: center;
+  justify-content: space-between;
   gap: 4px;
   margin-top: 6px;
+}
+
+.pd-element-info__badges-left {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.pd-element-info__hov-btn {
+  font-size: 10px;
+  font-family: "SF Mono", "Fira Code", monospace;
+  font-weight: 600;
+  color: var(--pd-text-muted);
+  background: none;
+  border: 1px solid var(--pd-border);
+  border-radius: 3px;
+  padding: 1px 5px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.pd-element-info__hov-btn:hover {
+  color: var(--pd-text);
+  border-color: var(--pd-text-muted);
+}
+
+.pd-element-info__hov-btn--active {
+  color: #f59e0b;
+  border-color: #f59e0b;
+  background: rgba(245, 158, 11, 0.1);
+}
+
+.pd-element-info__pseudo-states {
+  display: flex;
+  gap: 12px;
+  margin-top: 6px;
+  padding: 6px 0;
+}
+
+.pd-element-info__pseudo-check {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-family: "SF Mono", "Fira Code", monospace;
+  color: var(--pd-text-dim);
+  cursor: pointer;
+}
+
+.pd-element-info__pseudo-check input {
+  margin: 0;
+  cursor: pointer;
 }
 
 .pd-element-info__badge {

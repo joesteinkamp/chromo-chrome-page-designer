@@ -63,6 +63,7 @@ chrome.runtime.onMessage.addListener(
       case "CLEAR_CHANGES":
       case "SELECT_ELEMENT":
       case "WRAP_ELEMENT":
+      case "FORCE_PSEUDO_STATE":
         forwardToContentScript(message);
         break;
 

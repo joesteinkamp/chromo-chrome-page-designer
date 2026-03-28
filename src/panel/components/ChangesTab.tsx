@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect, useRef } from "react";
 import type { Change } from "../../shared/types";
-import { generateVisualDiffAnnotations } from "../../shared/export";
+import { generateVisualDiffAnnotations, collapseBatches } from "../../shared/export";
 import type { Message } from "../../shared/messages";
 import "./changes.css";
 
@@ -21,6 +21,8 @@ const TYPE_ICONS: Record<Change["type"], string> = {
   image: "\uD83D\uDDBC",
   delete: "\u2716",
   hide: "\uD83D\uDC41",
+  wrap: "\u25A1",
+  duplicate: "\u2750",
 };
 
 function relativeTime(timestamp: number): string {
@@ -42,8 +44,9 @@ interface ChangeGroup {
 }
 
 function groupChanges(changes: Change[]): ChangeGroup[] {
+  const collapsed = collapseBatches(changes);
   const map = new Map<string, Change[]>();
-  for (const c of changes) {
+  for (const c of collapsed) {
     const existing = map.get(c.selector) || [];
     existing.push(c);
     map.set(c.selector, existing);

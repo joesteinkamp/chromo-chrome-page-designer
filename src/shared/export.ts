@@ -28,7 +28,7 @@ interface GroupedChanges {
  * into a single representative change. Finds the shared CSS class among
  * the selectors so the AI agent targets the component/class, not each instance.
  */
-function collapseBatches(changes: Change[]): Change[] {
+export function collapseBatches(changes: Change[]): Change[] {
   const result: Change[] = [];
   const batchSeen = new Set<string>();
 

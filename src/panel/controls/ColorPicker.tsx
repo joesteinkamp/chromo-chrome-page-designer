@@ -145,21 +145,6 @@ function hslaToCSS(hsla: HSLA): string {
   return rgbaToHex(rgba);
 }
 
-// ── Recent colors store ──
-const MAX_RECENT_COLORS = 10;
-let recentColors: string[] = [];
-
-function addRecentColor(hex: string): void {
-  const normalized = hex.toLowerCase();
-  recentColors = [normalized, ...recentColors.filter((c) => c !== normalized)].slice(
-    0,
-    MAX_RECENT_COLORS
-  );
-}
-
-function getRecentColors(): string[] {
-  return [...recentColors];
-}
 
 // ── Component ──
 
@@ -172,6 +157,102 @@ interface ColorPickerProps {
   designTokens?: Array<{ name: string; value: string }>;
   /** Unique color values found across the page's stylesheets */
   pageColors?: string[];
+}
+
+// ── Page color groups ──
+
+const HUE_GROUPS: Array<{ name: string; min: number; max: number }> = [
+  { name: "Red", min: 345, max: 15 },
+  { name: "Orange", min: 15, max: 45 },
+  { name: "Yellow", min: 45, max: 70 },
+  { name: "Green", min: 70, max: 170 },
+  { name: "Cyan", min: 170, max: 200 },
+  { name: "Blue", min: 200, max: 260 },
+  { name: "Purple", min: 260, max: 300 },
+  { name: "Pink", min: 300, max: 345 },
+];
+
+function hexToHsl(hex: string): { h: number; s: number; l: number } {
+  const n = parseInt(hex.slice(1), 16);
+  const r = ((n >> 16) & 255) / 255;
+  const g = ((n >> 8) & 255) / 255;
+  const b = (n & 255) / 255;
+  const max = Math.max(r, g, b), min = Math.min(r, g, b);
+  const l = (max + min) / 2;
+  if (max === min) return { h: 0, s: 0, l: l * 100 };
+  const d = max - min;
+  const s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+  let h = 0;
+  if (max === r) h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
+  else if (max === g) h = ((b - r) / d + 2) / 6;
+  else h = ((r - g) / d + 4) / 6;
+  return { h: h * 360, s: s * 100, l: l * 100 };
+}
+
+function getHueGroup(hex: string): string {
+  const { h, s, l } = hexToHsl(hex);
+  if (s < 10) return l > 60 ? "Light" : "Dark";
+  for (const g of HUE_GROUPS) {
+    if (g.min > g.max) { // wraps around (Red)
+      if (h >= g.min || h < g.max) return g.name;
+    } else {
+      if (h >= g.min && h < g.max) return g.name;
+    }
+  }
+  return "Other";
+}
+
+function groupColors(colors: string[]): Map<string, string[]> {
+  const groups = new Map<string, string[]>();
+  for (const c of colors) {
+    const group = getHueGroup(c);
+    const arr = groups.get(group) || [];
+    arr.push(c);
+    groups.set(group, arr);
+  }
+  return groups;
+}
+
+function PageColorGroups({ colors, onChange }: { colors: string[]; onChange: (v: string) => void }) {
+  const groups = useMemo(() => groupColors(colors), [colors]);
+  const [openGroup, setOpenGroup] = useState<string | null>(null);
+
+  return (
+    <div className="pd-color-picker__page-colors">
+      <div className="pd-color-picker__recent-label">Page colors</div>
+      {Array.from(groups.entries()).map(([name, groupColors]) => (
+        <div key={name} className="pd-color-picker__color-group">
+          <button
+            type="button"
+            className="pd-color-picker__color-group-header"
+            onClick={() => setOpenGroup(openGroup === name ? null : name)}
+          >
+            <span className="pd-color-picker__color-group-swatches">
+              {groupColors.slice(0, 5).map((c) => (
+                <span key={c} className="pd-color-picker__color-group-dot" style={{ background: c }} />
+              ))}
+            </span>
+            <span className="pd-color-picker__color-group-name">{name}</span>
+            <span className="pd-color-picker__color-group-count">{groupColors.length}</span>
+          </button>
+          {openGroup === name && (
+            <div className="pd-color-picker__recent-grid">
+              {groupColors.map((color) => (
+                <button
+                  key={color}
+                  type="button"
+                  className="pd-color-picker__recent-swatch"
+                  title={color}
+                  style={{ background: color }}
+                  onClick={() => onChange(color)}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
 }
 
 export const ColorPicker: React.FC<ColorPickerProps> = ({
@@ -248,7 +329,6 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({
   const emitColor = useCallback(
     (newHsla: HSLA) => {
       const css = hslaToCSS(newHsla);
-      addRecentColor(css);
       onChange(css);
     },
     [onChange]
@@ -460,7 +540,6 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({
                     const dropper = new (window as any).EyeDropper();
                     const result = await dropper.open();
                     if (result?.sRGBHex) {
-                      addRecentColor(result.sRGBHex);
                       onChange(result.sRGBHex);
                     }
                   } catch { /* user cancelled */ }
@@ -494,7 +573,6 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({
                     title={`${token.name}: ${token.value}`}
                     style={{ background: token.value }}
                     onClick={() => {
-                      addRecentColor(token.value);
                       onChange(token.value);
                     }}
                   />
@@ -503,44 +581,9 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({
             </div>
           )}
 
-          {/* Recent colors */}
-          {getRecentColors().length > 0 && (
-            <div className="pd-color-picker__recent">
-              <div className="pd-color-picker__recent-label">Recent</div>
-              <div className="pd-color-picker__recent-grid">
-                {getRecentColors().map((color, i) => (
-                  <button
-                    key={`${color}-${i}`}
-                    type="button"
-                    className="pd-color-picker__recent-swatch"
-                    style={{ background: color }}
-                    onClick={() => onChange(color)}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Page colors */}
+          {/* Page colors — grouped by hue */}
           {pageColors && pageColors.length > 0 && (
-            <div className="pd-color-picker__recent">
-              <div className="pd-color-picker__recent-label">Page colors</div>
-              <div className="pd-color-picker__recent-grid">
-                {pageColors.map((color) => (
-                  <button
-                    key={color}
-                    type="button"
-                    className="pd-color-picker__recent-swatch"
-                    title={color}
-                    style={{ background: color }}
-                    onClick={() => {
-                      addRecentColor(color);
-                      onChange(color);
-                    }}
-                  />
-                ))}
-              </div>
-            </div>
+            <PageColorGroups colors={pageColors} onChange={onChange} />
           )}
         </div>
       )}

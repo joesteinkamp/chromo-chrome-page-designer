@@ -16,6 +16,14 @@ export type Message =
   // Style changes (panel → content script)
   | { type: "APPLY_STYLE"; property: string; value: string }
   | { type: "APPLY_STYLE_TO_MATCHING"; className: string; property: string; value: string }
+  // Component prop changes (panel → content script)
+  | {
+      type: "APPLY_PROP";
+      componentName: string;
+      propName: string;
+      propValue: string | number | boolean | null;
+      propType: "string" | "number" | "boolean" | "null";
+    }
   | { type: "MULTI_ELEMENT_SELECTED"; count: number; data: ElementData }
   // Interaction events (content script → background → panel)
   | { type: "TEXT_CHANGED"; selector: string; from: string; to: string }

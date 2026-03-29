@@ -56,6 +56,7 @@ chrome.runtime.onMessage.addListener(
       case "TOGGLE_MULTI_EDIT":
       case "APPLY_STYLE":
       case "APPLY_STYLE_TO_MATCHING":
+      case "APPLY_PROP":
       case "UNDO_CHANGE":
       case "UNDO_ALL":
       case "REDO":

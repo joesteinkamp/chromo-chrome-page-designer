@@ -275,6 +275,71 @@
   margin-top: 2px;
 }
 
+/* ── Component Props ── */
+.pd-props__component-label {
+  font-size: 11px;
+  font-family: "SF Mono", "Fira Code", monospace;
+  color: var(--pd-accent);
+  margin-bottom: 6px;
+}
+
+.pd-props__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pd-props__name {
+  font-size: 11px;
+  color: var(--pd-text-dim);
+  min-width: 60px;
+  flex-shrink: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pd-props__input {
+  flex: 1;
+  min-width: 0;
+  height: 24px;
+  padding: 0 6px;
+  border: 1px solid var(--pd-border);
+  border-radius: var(--pd-radius);
+  background: var(--pd-bg-input);
+  color: var(--pd-text);
+  font-family: var(--pd-font);
+  font-size: 11px;
+}
+
+.pd-props__input:focus {
+  outline: none;
+  border-color: var(--pd-accent);
+}
+
+.pd-props__toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.pd-props__toggle input[type="checkbox"] {
+  accent-color: var(--pd-accent);
+}
+
+.pd-props__toggle-label {
+  font-size: 11px;
+  color: var(--pd-text-dim);
+  font-family: "SF Mono", "Fira Code", monospace;
+}
+
+.pd-props__null {
+  font-size: 11px;
+  color: var(--pd-text-muted);
+  font-style: italic;
+}
+
 /* Disabled / not-applicable section */
 .pd-section--disabled {
   opacity: 0.35;

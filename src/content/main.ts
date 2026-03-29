@@ -18,6 +18,7 @@ import {
   selectElementDirectly,
 } from "./element-picker";
 import { extractElementData, applyStyleToElement, findMatchingElements } from "./style-bridge";
+import { applyReactProp } from "./framework-detect";
 import { startInlineEdit, stopInlineEdit, isEditing } from "./inline-edit";
 import { initDragDrop, isDragActive, cancelDrag } from "./drag-drop";
 import { tryStartResize, isResizeActive } from "./resize";
@@ -159,6 +160,19 @@ chrome.runtime.onMessage.addListener(
           setTimeout(() => el.classList.remove("__pd-flash"), 400);
 
           sendElementData(el);
+        }
+        break;
+      }
+
+      case "APPLY_PROP": {
+        const el = getSelectedElement();
+        if (el) {
+          applyReactProp(el, message.componentName, message.propName, message.propValue, message.propType);
+          // Wait a frame for React to re-render, then refresh
+          requestAnimationFrame(() => {
+            refreshSelection();
+            sendElementData(el);
+          });
         }
         break;
       }

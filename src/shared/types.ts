@@ -39,6 +39,11 @@ export interface ElementData {
     componentHierarchy: string[];
     sourceFile: string | null;
     sourceLine: number | null;
+    props?: Array<{
+      name: string;
+      value: string | number | boolean | null;
+      type: "string" | "number" | "boolean" | "null";
+    }>;
   };
 }
 

@@ -235,14 +235,13 @@ function onKeyDown(e: KeyboardEvent): void {
   if (!isActive || suspended || !selectedElement) return;
   if (e.key !== "Enter") return;
 
-  e.preventDefault();
-  e.stopPropagation();
-  e.stopImmediatePropagation();
-
   if (e.shiftKey) {
     // Shift+Enter: go up to parent
     const parent = selectedElement.parentElement;
     if (parent && parent !== document.body && parent !== document.documentElement) {
+      e.preventDefault();
+      e.stopPropagation();
+      e.stopImmediatePropagation();
       selectedElement = parent;
       hoveredElement = null;
       hideHover();
@@ -250,15 +249,20 @@ function onKeyDown(e: KeyboardEvent): void {
       callbacks?.onSelect(selectedElement);
     }
   } else {
-    // Enter: go down to first child element
-    const firstChild = selectedElement.children[0];
-    if (firstChild && !isOverlayElement(firstChild)) {
+    // Enter: go down to first child element if one exists
+    const firstChild = Array.from(selectedElement.children).find(c => !isOverlayElement(c));
+    if (firstChild) {
+      e.preventDefault();
+      e.stopPropagation();
+      e.stopImmediatePropagation();
       selectedElement = firstChild;
       hoveredElement = null;
       hideHover();
       showSelection(selectedElement);
       callbacks?.onSelect(selectedElement);
     }
+    // No child elements — don't consume the event, let keyboard.ts
+    // handle it for inline text editing
   }
 }
 

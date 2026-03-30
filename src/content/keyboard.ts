@@ -22,6 +22,7 @@ import {
   recordStyleChange,
   recordDeleteChange,
   recordHideChange,
+  recordMoveChange,
   undoLast,
   redoLast,
 } from "./change-tracker";
@@ -180,7 +181,7 @@ function onKeyDown(e: KeyboardEvent): void {
     return;
   }
 
-  // Arrow keys — nudge position
+  // Arrow keys — reorder within auto-layout (flex/grid) or nudge position
   if (
     e.key === "ArrowUp" ||
     e.key === "ArrowDown" ||
@@ -189,6 +190,67 @@ function onKeyDown(e: KeyboardEvent): void {
   ) {
     e.preventDefault();
     e.stopPropagation();
+
+    const parent = selected.parentElement;
+    if (!parent) return;
+
+    const parentDisplay = window.getComputedStyle(parent).display;
+    const isAutoLayout =
+      parentDisplay === "flex" ||
+      parentDisplay === "inline-flex" ||
+      parentDisplay === "grid" ||
+      parentDisplay === "inline-grid";
+
+    if (isAutoLayout) {
+      // Reorder element within the flex/grid container
+      const siblings = Array.from(parent.children).filter(
+        (c) => !isOverlayElement(c)
+      );
+      const currentIndex = siblings.indexOf(selected);
+      if (currentIndex === -1) return;
+
+      // Determine direction based on flex-direction / grid flow
+      const parentComputed = window.getComputedStyle(parent);
+      const flexDir = parentComputed.flexDirection || "row";
+      const isVertical = flexDir === "column" || flexDir === "column-reverse";
+      const isReversed = flexDir === "row-reverse" || flexDir === "column-reverse";
+
+      let moveForward: boolean;
+      if (isVertical) {
+        if (e.key !== "ArrowUp" && e.key !== "ArrowDown") return;
+        moveForward = isReversed
+          ? e.key === "ArrowUp"
+          : e.key === "ArrowDown";
+      } else {
+        if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+        moveForward = isReversed
+          ? e.key === "ArrowLeft"
+          : e.key === "ArrowRight";
+      }
+
+      const fromParent = generateSelector(parent);
+      const fromIndex = currentIndex;
+
+      if (moveForward && currentIndex < siblings.length - 1) {
+        // Move after the next sibling
+        const nextSibling = siblings[currentIndex + 1];
+        parent.insertBefore(nextSibling, selected);
+        recordMoveChange(selected, fromParent, fromIndex, fromParent, fromIndex + 1);
+      } else if (!moveForward && currentIndex > 0) {
+        // Move before the previous sibling
+        const prevSibling = siblings[currentIndex - 1];
+        parent.insertBefore(selected, prevSibling);
+        recordMoveChange(selected, fromParent, fromIndex, fromParent, fromIndex - 1);
+      } else {
+        return; // Already at the edge
+      }
+
+      callbacks.refreshSelection();
+      callbacks.sendElementData(selected);
+      return;
+    }
+
+    // Not in auto-layout — nudge position by pixels
     const amount = e.shiftKey ? 10 : 1;
     const computed = window.getComputedStyle(selected);
 

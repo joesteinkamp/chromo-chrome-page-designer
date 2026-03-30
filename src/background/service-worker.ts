@@ -167,6 +167,12 @@ async function ensureContentScript(tabId: number): Promise<void> {
   } catch {
     // Content script not loaded — inject it
     try {
+      // Inject main world bridge first (for framework detection)
+      await chrome.scripting.executeScript({
+        target: { tabId },
+        files: ["content/main-world-bridge.js"],
+        world: "MAIN" as any,
+      });
       await chrome.scripting.executeScript({
         target: { tabId },
         files: ["content/main.js"],

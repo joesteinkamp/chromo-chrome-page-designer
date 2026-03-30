@@ -25,6 +25,12 @@
       "js": ["content/main.js"],
       "css": ["content/content.css"],
       "run_at": "document_idle"
+    },
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content/main-world-bridge.js"],
+      "run_at": "document_idle",
+      "world": "MAIN"
     }
   ],
   "icons": {

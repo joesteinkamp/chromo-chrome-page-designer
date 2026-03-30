@@ -1,0 +1,278 @@
+/**
+ * Main world bridge for framework detection.
+ * This script runs in the page's JS context (world: "MAIN" in manifest)
+ * so it can access React fibers, Vue instances, etc.
+ *
+ * The isolated world content script communicates by:
+ *   1. Setting data attributes on the target element
+ *   2. Dispatching a custom event on document.documentElement
+ *   3. This listener runs synchronously and writes results as data attributes
+ *   4. The isolated world reads the result attributes
+ */
+
+(function () {
+  var INTERNAL_RE =
+    /^(Fragment|Suspense|StrictMode|Provider|Consumer|ForwardRef|Memo|Lazy|Profiler|ErrorBoundary)$/;
+
+  // --- Detect & extract component info ---
+  document.documentElement.addEventListener("__pd-detect", function () {
+    var el = document.querySelector("[data-pd-detect]");
+    if (!el) return;
+
+    var result = {
+      framework: null as string | null,
+      componentName: null as string | null,
+      componentHierarchy: [] as string[],
+      sourceFile: null as string | null,
+      sourceLine: null as number | null,
+      props: [] as Array<{
+        name: string;
+        value: string | number | boolean | null;
+        type: string;
+      }>,
+    };
+
+    var keys = Object.keys(el);
+    var isReact = keys.some(function (k) {
+      return (
+        k.startsWith("__reactFiber$") ||
+        k.startsWith("__reactInternalInstance$")
+      );
+    });
+    var isVue3 = "__vueParentComponent" in el;
+    var isVue2 = "__vue__" in el;
+    var isSvelte = "__svelte_meta" in el;
+
+    if (isReact) {
+      result.framework = "react";
+      var fiberKey = keys.find(function (k) {
+        return (
+          k.startsWith("__reactFiber$") ||
+          k.startsWith("__reactInternalInstance$")
+        );
+      });
+      if (fiberKey) {
+        var fiber = (el as any)[fiberKey];
+        var current = fiber ? fiber.return : null;
+        var foundFirst = false;
+        while (current) {
+          if (typeof current.type === "function") {
+            var name =
+              current.type.displayName || current.type.name || null;
+            if (name && !INTERNAL_RE.test(name)) {
+              result.componentHierarchy.push(name);
+              if (!foundFirst) {
+                foundFirst = true;
+                result.componentName = name;
+                if (current._debugSource) {
+                  result.sourceFile =
+                    current._debugSource.fileName || null;
+                  result.sourceLine =
+                    current._debugSource.lineNumber || null;
+                }
+                if (current.memoizedProps) {
+                  var entries = Object.entries(current.memoizedProps);
+                  for (var i = 0; i < entries.length; i++) {
+                    var pkey = entries[i][0];
+                    var pval = entries[i][1];
+                    if (
+                      pkey === "children" ||
+                      pkey === "key" ||
+                      pkey === "ref"
+                    )
+                      continue;
+                    if (pval === null || pval === undefined) {
+                      result.props.push({
+                        name: pkey,
+                        value: null,
+                        type: "null",
+                      });
+                    } else if (typeof pval === "string") {
+                      result.props.push({
+                        name: pkey,
+                        value: pval,
+                        type: "string",
+                      });
+                    } else if (typeof pval === "number") {
+                      result.props.push({
+                        name: pkey,
+                        value: pval,
+                        type: "number",
+                      });
+                    } else if (typeof pval === "boolean") {
+                      result.props.push({
+                        name: pkey,
+                        value: pval,
+                        type: "boolean",
+                      });
+                    }
+                  }
+                }
+              }
+            }
+          }
+          current = current.return;
+        }
+      }
+    } else if (isVue3) {
+      result.framework = "vue";
+      try {
+        var inst = (el as any).__vueParentComponent;
+        var foundVue = false;
+        while (inst) {
+          var vname =
+            (inst.type && (inst.type.name || inst.type.__name)) || null;
+          if (vname) {
+            result.componentHierarchy.push(vname);
+            if (!foundVue) {
+              foundVue = true;
+              result.componentName = vname;
+              result.sourceFile =
+                (inst.type && inst.type.__file) || null;
+            }
+          }
+          inst = inst.parent;
+        }
+      } catch (e) {
+        /* cross-origin */
+      }
+    } else if (isVue2) {
+      result.framework = "vue";
+      try {
+        var v2 = (el as any).__vue__;
+        var foundV2 = false;
+        while (v2) {
+          var v2name =
+            (v2.$options &&
+              (v2.$options.name || v2.$options._componentTag)) ||
+            null;
+          if (v2name) {
+            result.componentHierarchy.push(v2name);
+            if (!foundV2) {
+              foundV2 = true;
+              result.componentName = v2name;
+              result.sourceFile =
+                (v2.$options && v2.$options.__file) || null;
+            }
+          }
+          v2 = v2.$parent;
+        }
+      } catch (e) {
+        /* cross-origin */
+      }
+    } else if (isSvelte) {
+      result.framework = "svelte";
+      try {
+        var meta = (el as any).__svelte_meta;
+        if (meta && meta.loc) {
+          result.sourceFile = meta.loc.file || null;
+          result.sourceLine = meta.loc.line || null;
+        }
+        if (result.sourceFile) {
+          var m = result.sourceFile.match(/([^\\/]+)\.svelte$/);
+          if (m) {
+            result.componentName = m[1];
+            result.componentHierarchy = [m[1]];
+          }
+        }
+      } catch (e) {
+        /* */
+      }
+    }
+
+    el.setAttribute("data-pd-detect-result", JSON.stringify(result));
+  });
+
+  // --- Apply prop change ---
+  document.documentElement.addEventListener(
+    "__pd-apply-prop",
+    function () {
+      var el = document.querySelector("[data-pd-apply]");
+      if (!el) return;
+
+      var componentName = el.getAttribute("data-pd-apply-component");
+      var propName = el.getAttribute("data-pd-apply-prop");
+      var propValueStr = el.getAttribute("data-pd-apply-value");
+      if (!componentName || !propName || propValueStr === null) return;
+
+      var propValue: any;
+      try {
+        propValue = JSON.parse(propValueStr);
+      } catch {
+        return;
+      }
+
+      var keys = Object.keys(el);
+      var fiberKey = keys.find(function (k) {
+        return (
+          k.startsWith("__reactFiber$") ||
+          k.startsWith("__reactInternalInstance$")
+        );
+      });
+      if (!fiberKey) return;
+      var fiber = (el as any)[fiberKey];
+
+      var current = fiber ? fiber.return : null;
+      while (current) {
+        if (typeof current.type === "function") {
+          var name =
+            current.type.displayName || current.type.name || null;
+          if (
+            name &&
+            !INTERNAL_RE.test(name) &&
+            name === componentName
+          )
+            break;
+        }
+        current = current.return;
+      }
+      if (!current) return;
+
+      if (current.memoizedProps)
+        current.memoizedProps[propName] = propValue;
+      if (current.pendingProps)
+        current.pendingProps[propName] = propValue;
+
+      // Try React DevTools hook first
+      var hook = (window as any).__REACT_DEVTOOLS_GLOBAL_HOOK__;
+      if (hook && hook.renderers) {
+        try {
+          var renderers = hook.renderers;
+          var renderer =
+            renderers.get(1) ||
+            (renderers.values
+              ? renderers.values().next().value
+              : null);
+          if (renderer && renderer.overrideProps) {
+            renderer.overrideProps(current, [propName], propValue);
+            return;
+          }
+        } catch (e) {
+          /* */
+        }
+      }
+
+      // Fallback: force update via class component
+      if (
+        current.stateNode &&
+        typeof current.stateNode.forceUpdate === "function"
+      ) {
+        current.stateNode.forceUpdate();
+        return;
+      }
+
+      // Walk up to find a class component ancestor
+      var ancestor = current.return;
+      while (ancestor) {
+        if (
+          ancestor.stateNode &&
+          typeof ancestor.stateNode.forceUpdate === "function"
+        ) {
+          ancestor.stateNode.forceUpdate();
+          break;
+        }
+        ancestor = ancestor.return;
+      }
+    },
+  );
+})();

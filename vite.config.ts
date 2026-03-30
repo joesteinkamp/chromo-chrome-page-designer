@@ -50,6 +50,10 @@ export default defineConfig({
         popup: resolve(__dirname, "popup.html"),
         options: resolve(__dirname, "options.html"),
         "content/main": resolve(__dirname, "src/content/main.ts"),
+        "content/main-world-bridge": resolve(
+          __dirname,
+          "src/content/main-world-bridge.ts"
+        ),
         "background/service-worker": resolve(
           __dirname,
           "src/background/service-worker.ts"
@@ -59,6 +63,7 @@ export default defineConfig({
         entryFileNames: (chunkInfo) => {
           if (
             chunkInfo.name === "content/main" ||
+            chunkInfo.name === "content/main-world-bridge" ||
             chunkInfo.name === "background/service-worker"
           ) {
             return "[name].js";

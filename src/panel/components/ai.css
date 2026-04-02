@@ -1,0 +1,387 @@
+/* AI Tab — natural language edits and design critique */
+
+.pd-ai {
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Sections */
+.pd-ai__section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pd-ai__section--critique {
+  border-top: 1px solid var(--pd-border);
+  padding-top: 12px;
+}
+
+.pd-ai__section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.pd-ai__section-title {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--pd-text-dim);
+}
+
+/* Input area */
+.pd-ai__input-wrap {
+  display: flex;
+  gap: 6px;
+}
+
+.pd-ai__input {
+  flex: 1;
+  height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--pd-border);
+  border-radius: var(--pd-radius);
+  background: var(--pd-bg);
+  color: var(--pd-text);
+  font-family: var(--pd-font);
+  font-size: 12px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.pd-ai__input:focus {
+  border-color: var(--pd-accent);
+}
+
+.pd-ai__input:disabled {
+  opacity: 0.5;
+}
+
+.pd-ai__submit {
+  height: 32px;
+  padding: 0 12px;
+  border: none;
+  border-radius: var(--pd-radius);
+  background: var(--pd-accent);
+  color: #fff;
+  font-family: var(--pd-font);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: opacity 0.15s;
+}
+
+.pd-ai__submit:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.pd-ai__submit:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.pd-ai__hint {
+  font-size: 11px;
+  color: var(--pd-text-muted);
+}
+
+/* Loading */
+.pd-ai__loading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+  color: var(--pd-text-dim);
+  font-size: 12px;
+}
+
+.pd-ai__spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--pd-border);
+  border-top-color: var(--pd-accent);
+  border-radius: 50%;
+  animation: pd-ai-spin 0.6s linear infinite;
+}
+
+@keyframes pd-ai-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Suggestions list */
+.pd-ai__suggestions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.pd-ai__suggestion {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  background: var(--pd-bg-raised);
+  border: 1px solid var(--pd-border);
+  border-radius: var(--pd-radius);
+}
+
+.pd-ai__suggestion-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.pd-ai__suggestion-prop {
+  font-family: "SF Mono", "Fira Code", monospace;
+  font-size: 11px;
+  color: var(--pd-accent);
+}
+
+.pd-ai__suggestion-value {
+  font-family: "SF Mono", "Fira Code", monospace;
+  font-size: 11px;
+  color: var(--pd-text);
+  word-break: break-all;
+}
+
+.pd-ai__suggestion-actions {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.pd-ai__suggestion-apply {
+  height: 24px;
+  padding: 0 8px;
+  border: none;
+  border-radius: 3px;
+  background: var(--pd-accent-dim);
+  color: var(--pd-accent);
+  font-family: var(--pd-font);
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.pd-ai__suggestion-apply:hover {
+  background: var(--pd-accent);
+  color: #fff;
+}
+
+.pd-ai__suggestion-dismiss {
+  height: 24px;
+  padding: 0 8px;
+  border: none;
+  border-radius: 3px;
+  background: var(--pd-bg-hover);
+  color: var(--pd-text-muted);
+  font-family: var(--pd-font);
+  font-size: 11px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.pd-ai__suggestion-dismiss:hover {
+  background: var(--pd-danger-dim);
+  color: var(--pd-danger);
+}
+
+.pd-ai__apply-all {
+  height: 22px;
+  padding: 0 8px;
+  border: none;
+  border-radius: 3px;
+  background: var(--pd-accent);
+  color: #fff;
+  font-family: var(--pd-font);
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.pd-ai__apply-all:hover {
+  opacity: 0.9;
+}
+
+/* Critique button */
+.pd-ai__critique-btn {
+  width: 100%;
+  height: 34px;
+  border: none;
+  border-radius: var(--pd-radius);
+  background: var(--pd-accent);
+  color: #fff;
+  font-family: var(--pd-font);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.pd-ai__critique-btn:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.pd-ai__critique-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* Critique items */
+.pd-ai__critique-item {
+  padding: 10px;
+  background: var(--pd-bg-raised);
+  border: 1px solid var(--pd-border);
+  border-radius: var(--pd-radius);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.pd-ai__critique-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pd-ai__critique-message {
+  font-size: 12px;
+  color: var(--pd-text);
+  line-height: 1.4;
+}
+
+/* Category badges */
+.pd-ai__suggestion-badge {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.pd-ai__suggestion-badge--spacing {
+  background: rgba(79, 158, 255, 0.15);
+  color: var(--pd-accent);
+}
+
+.pd-ai__suggestion-badge--color {
+  background: rgba(255, 149, 0, 0.15);
+  color: #ff9500;
+}
+
+.pd-ai__suggestion-badge--typography {
+  background: rgba(175, 82, 222, 0.15);
+  color: #af52de;
+}
+
+.pd-ai__suggestion-badge--alignment {
+  background: rgba(52, 199, 89, 0.15);
+  color: var(--pd-green);
+}
+
+.pd-ai__suggestion-badge--contrast {
+  background: rgba(255, 69, 58, 0.15);
+  color: var(--pd-danger);
+}
+
+.pd-ai__suggestion-badge--general {
+  background: var(--pd-bg-hover);
+  color: var(--pd-text-dim);
+}
+
+/* Severity indicator */
+.pd-ai__severity {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.pd-ai__severity--info {
+  background: var(--pd-accent-dim);
+  color: var(--pd-accent);
+}
+
+.pd-ai__severity--warning {
+  background: rgba(255, 149, 0, 0.15);
+  color: #ff9500;
+}
+
+.pd-ai__severity--error {
+  background: var(--pd-danger-dim);
+  color: var(--pd-danger);
+}
+
+/* Error display */
+.pd-ai__error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  background: var(--pd-danger-dim);
+  border: 1px solid rgba(255, 69, 58, 0.25);
+  border-radius: var(--pd-radius);
+  color: var(--pd-danger);
+  font-size: 12px;
+}
+
+.pd-ai__error-dismiss {
+  border: none;
+  background: none;
+  color: var(--pd-danger);
+  font-size: 11px;
+  cursor: pointer;
+  text-decoration: underline;
+  font-family: var(--pd-font);
+}
+
+/* No API key prompt */
+.pd-ai__no-key {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 32px 16px;
+  text-align: center;
+}
+
+.pd-ai__no-key-text {
+  font-size: 13px;
+  color: var(--pd-text-dim);
+  line-height: 1.5;
+}
+
+.pd-ai__no-key-btn {
+  height: 32px;
+  padding: 0 16px;
+  border: none;
+  border-radius: var(--pd-radius);
+  background: var(--pd-accent);
+  color: #fff;
+  font-family: var(--pd-font);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.pd-ai__no-key-btn:hover {
+  opacity: 0.9;
+}

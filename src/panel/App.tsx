@@ -4,11 +4,13 @@ import { useStyleChange } from "./hooks/useStyleChange";
 import { ElementInfo } from "./components/ElementInfo";
 import { DesignTab } from "./components/DesignTab";
 import { ChangesTab } from "./components/ChangesTab";
+import { AITab } from "./components/AITab";
+import { AgentSyncSection, type AgentSyncStatus } from "./components/AgentSyncSection";
 import { exportAsSummary, type ComponentContext } from "../shared/export";
 import type { Change } from "../shared/types";
-import type { Message } from "../shared/messages";
+import type { Message, AISuggestion } from "../shared/messages";
 
-type Tab = "design" | "changes";
+type Tab = "design" | "changes" | "ai";
 
 export function App() {
   const { elementData, isConnected, setElementData, multiSelectCount } = useElementData();
@@ -25,6 +27,15 @@ export function App() {
   const [hasSavedChanges, setHasSavedChanges] = useState(false);
   const [savedChangesDismissed, setSavedChangesDismissed] = useState(false);
   const componentMapRef = useRef(new Map<string, ComponentContext>());
+  const [agentSyncStatus, setAgentSyncStatus] = useState<AgentSyncStatus>({
+    enabled: false,
+    status: "disconnected",
+    endpoint: "",
+    userId: "",
+  });
+  const [critiqueResponse, setCritiqueResponse] = useState<AISuggestion[] | null>(null);
+  const [nlEditResponse, setNlEditResponse] = useState<Array<{ property: string; value: string }> | null>(null);
+  const [aiError, setAiError] = useState<string | null>(null);
 
   // Accumulate component context as elements are selected
   useEffect(() => {
@@ -68,6 +79,23 @@ export function App() {
           setChanges(message.changes);
           setCanRedo(message.canRedo);
           break;
+        case "AGENT_SYNC_STATUS":
+          setAgentSyncStatus({
+            enabled: message.enabled,
+            status: message.status,
+            endpoint: message.endpoint,
+            userId: message.userId,
+          });
+          break;
+        case "AI_CRITIQUE_RESPONSE":
+          setCritiqueResponse(message.suggestions);
+          break;
+        case "AI_NL_EDIT_RESPONSE":
+          setNlEditResponse(message.changes);
+          break;
+        case "AI_ERROR":
+          setAiError(message.error);
+          break;
       }
     };
 
@@ -88,6 +116,7 @@ export function App() {
     });
 
     chrome.runtime.sendMessage({ type: "GET_CHANGES" } satisfies Message);
+    chrome.runtime.sendMessage({ type: "GET_AGENT_SYNC_STATUS" } satisfies Message);
 
     // When the user switches tabs, reset to inactive
     const onTabActivated = () => {
@@ -356,6 +385,12 @@ export function App() {
                   <span className="pd-panel__tab-badge">{changes.length}</span>
                 )}
               </button>
+              <button
+                className={`pd-panel__tab ${activeTab === "ai" ? "pd-panel__tab--active" : ""}`}
+                onClick={() => setActiveTab("ai")}
+              >
+                AI
+              </button>
             </div>
             <div className="pd-panel__content">
               {activeTab === "design" && (
@@ -372,6 +407,17 @@ export function App() {
                   onRedo={handleRedo}
                   onRestore={handleLoadEdits}
                   url={pageUrl}
+                />
+              )}
+              {activeTab === "ai" && (
+                <AITab
+                  elementData={elementData}
+                  critiqueResponse={critiqueResponse}
+                  nlEditResponse={nlEditResponse}
+                  aiError={aiError}
+                  onClearCritique={() => setCritiqueResponse(null)}
+                  onClearNLEdit={() => setNlEditResponse(null)}
+                  onClearError={() => setAiError(null)}
                 />
               )}
             </div>
@@ -456,6 +502,7 @@ export function App() {
           </div>
         )}
       </div>
+      <AgentSyncSection syncStatus={agentSyncStatus} />
     </div>
   );
 }

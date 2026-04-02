@@ -7,6 +7,17 @@
 import type { Message } from "../shared/messages";
 import { saveEdits, loadEdits, hasSavedEdits } from "./storage";
 import { captureScreenshot } from "./screenshot";
+import { runDesignCritique, runNLEdit } from "./ai-service";
+import {
+  initRelay,
+  stopRelay,
+  isRelayConnected,
+  getRelayEndpoint,
+  getUserId,
+  pushStateUpdate,
+  onRelayCommand,
+} from "./relay-client";
+import type { RelayCommand } from "./relay-client";
 
 let activeTabId: number | null = null;
 
@@ -106,6 +117,26 @@ chrome.runtime.onMessage.addListener(
         if (sender.tab) {
           chrome.runtime.sendMessage(message).catch(() => {});
         }
+        // Push to relay if connected
+        if (isRelayConnected()) {
+          if (message.type === "ELEMENT_SELECTED") {
+            pushStateUpdate({
+              pageUrl: sender.tab?.url || "",
+              pageTitle: sender.tab?.title || "",
+              selectedElement: message.data,
+              changes: [],
+              componentMap: {},
+            });
+          } else if (message.type === "CHANGES_RESPONSE") {
+            pushStateUpdate({
+              pageUrl: sender.tab?.url || "",
+              pageTitle: sender.tab?.title || "",
+              selectedElement: null,
+              changes: message.changes,
+              componentMap: {},
+            });
+          }
+        }
         break;
 
       // --- Persistence ---
@@ -130,6 +161,120 @@ chrome.runtime.onMessage.addListener(
       case "REPLAY_CHANGES":
         forwardToContentScript(message, sendResponse);
         return true;
+
+      // --- Agent Sync ---
+      case "AGENT_SYNC_ENABLE":
+        initRelay().then(async () => {
+          const endpoint = await getRelayEndpoint();
+          const id = await getUserId();
+          sendResponse({
+            type: "AGENT_SYNC_STATUS",
+            enabled: true,
+            status: isRelayConnected() ? "connected" : "connecting",
+            endpoint,
+            userId: id,
+          } satisfies Message);
+        });
+        return true;
+
+      case "AGENT_SYNC_DISABLE":
+        stopRelay().then(async () => {
+          const endpoint = await getRelayEndpoint();
+          const id = await getUserId();
+          sendResponse({
+            type: "AGENT_SYNC_STATUS",
+            enabled: false,
+            status: "disconnected",
+            endpoint,
+            userId: id,
+          } satisfies Message);
+        });
+        return true;
+
+      case "GET_AGENT_SYNC_STATUS":
+        (async () => {
+          const endpoint = await getRelayEndpoint();
+          const id = await getUserId();
+          sendResponse({
+            type: "AGENT_SYNC_STATUS",
+            enabled: isRelayConnected(),
+            status: isRelayConnected() ? "connected" : "disconnected",
+            endpoint,
+            userId: id,
+          } satisfies Message);
+        })();
+        return true;
+
+      // --- Relay commands (forwarded to content script) ---
+      case "RELAY_APPLY_STYLE":
+        forwardToContentScript({
+          type: "APPLY_STYLE",
+          property: message.property,
+          value: message.value,
+        } as Message);
+        // Also select the element first if a selector is provided
+        if (message.selector) {
+          forwardToContentScript({
+            type: "SELECT_ELEMENT",
+            selector: message.selector,
+          } as Message);
+        }
+        break;
+
+      case "RELAY_APPLY_TEXT":
+        forwardToContentScript({
+          type: "SELECT_ELEMENT",
+          selector: message.selector,
+        } as Message);
+        // Forward as TEXT_CHANGED so the content script can apply it
+        if (sender.tab) {
+          chrome.runtime.sendMessage(message).catch(() => {});
+        }
+        break;
+
+      case "RELAY_SELECT_ELEMENT":
+        forwardToContentScript({
+          type: "SELECT_ELEMENT",
+          selector: message.selector,
+        } as Message);
+        break;
+
+      case "RELAY_GET_STATE":
+        forwardToContentScript({ type: "GET_CHANGES" } as Message, sendResponse);
+        return true;
+
+      // --- AI features ---
+      case "AI_CRITIQUE_REQUEST":
+        runDesignCritique(message.apiKey, message.pageUrl, message.screenshotDataUrl)
+          .then((suggestions) => {
+            chrome.runtime.sendMessage({
+              type: "AI_CRITIQUE_RESPONSE",
+              suggestions,
+            } satisfies Message).catch(() => {});
+          })
+          .catch((err) => {
+            chrome.runtime.sendMessage({
+              type: "AI_ERROR",
+              error: err.message || "Design critique failed",
+            } satisfies Message).catch(() => {});
+          });
+        break;
+
+      case "AI_NL_EDIT_REQUEST":
+        runNLEdit(message.apiKey, message.instruction, message.selector, message.computedStyles)
+          .then((changes) => {
+            chrome.runtime.sendMessage({
+              type: "AI_NL_EDIT_RESPONSE",
+              changes,
+            } satisfies Message).catch(() => {});
+          })
+          .catch((err) => {
+            chrome.runtime.sendMessage({
+              type: "AI_ERROR",
+              error: err.message || "Natural language edit failed",
+            } satisfies Message).catch(() => {});
+          });
+        break;
 
       // --- Screenshot ---
       case "CAPTURE_SCREENSHOT":
@@ -250,6 +395,65 @@ chrome.runtime.onInstalled.addListener(() => {
 chrome.contextMenus.onClicked.addListener((info, tab) => {
   if (info.menuItemId === "design-this-page" && tab?.id) {
     chrome.sidePanel.open({ tabId: tab.id }).catch(() => {});
+  }
+});
+
+// --- Relay command handler ---
+// Forward commands from the relay server to the content script
+onRelayCommand((cmd: RelayCommand) => {
+  switch (cmd.type) {
+    case "apply_style":
+      getActiveTabId().then((tabId) => {
+        if (!tabId) return;
+        if (cmd.selector) {
+          sendToTab(tabId, { type: "SELECT_ELEMENT", selector: cmd.selector } as Message);
+        }
+        // Small delay to ensure element is selected before applying style
+        setTimeout(() => {
+          if (tabId) {
+            sendToTab(tabId, {
+              type: "APPLY_STYLE",
+              property: cmd.property,
+              value: cmd.value,
+            } as Message);
+          }
+        }, 50);
+      });
+      break;
+
+    case "apply_text":
+      getActiveTabId().then((tabId) => {
+        if (!tabId) return;
+        if (cmd.selector) {
+          sendToTab(tabId, { type: "SELECT_ELEMENT", selector: cmd.selector } as Message);
+        }
+      });
+      break;
+
+    case "select_element":
+      getActiveTabId().then((tabId) => {
+        if (!tabId) return;
+        sendToTab(tabId, { type: "SELECT_ELEMENT", selector: cmd.selector } as Message);
+      });
+      break;
+
+    case "get_state":
+      getActiveTabId().then((tabId) => {
+        if (!tabId) return;
+        chrome.tabs.sendMessage(tabId, { type: "GET_CHANGES" } as Message, (resp) => {
+          void chrome.runtime.lastError;
+          if (resp && isRelayConnected()) {
+            pushStateUpdate({
+              pageUrl: "",
+              pageTitle: "",
+              selectedElement: null,
+              changes: resp.changes || [],
+              componentMap: {},
+            });
+          }
+        });
+      });
+      break;
   }
 });
 

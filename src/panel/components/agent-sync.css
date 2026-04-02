@@ -1,0 +1,152 @@
+/* Agent Sync — footer section for MCP connection */
+
+.pd-agent-sync {
+  padding: 10px 12px;
+  border-top: 1px solid var(--pd-border);
+  background: var(--pd-bg-raised);
+  flex-shrink: 0;
+}
+
+.pd-agent-sync__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.pd-agent-sync__label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--pd-text-dim);
+}
+
+/* Toggle — reuses pd-panel__toggle pattern */
+.pd-agent-sync__toggle {
+  display: flex;
+  align-items: center;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 2px;
+  border-radius: 8px;
+}
+
+.pd-agent-sync__toggle-track {
+  position: relative;
+  width: 28px;
+  height: 16px;
+  border-radius: 8px;
+  background: var(--pd-bg-hover);
+  transition: background 0.15s;
+}
+
+.pd-agent-sync__toggle--on .pd-agent-sync__toggle-track {
+  background: var(--pd-accent);
+}
+
+.pd-agent-sync__toggle-thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #fff;
+  transition: left 0.15s;
+}
+
+.pd-agent-sync__toggle--on .pd-agent-sync__toggle-thumb {
+  left: 14px;
+}
+
+/* Details (when enabled) */
+.pd-agent-sync__details {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.pd-agent-sync__status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--pd-text-dim);
+}
+
+.pd-agent-sync__status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.pd-agent-sync__status-dot--connected {
+  background: var(--pd-green);
+}
+
+.pd-agent-sync__status-dot--disconnected {
+  background: var(--pd-danger);
+}
+
+.pd-agent-sync__status-dot--connecting {
+  background: #ff9500;
+  animation: pd-agent-sync-pulse 1s ease-in-out infinite;
+}
+
+@keyframes pd-agent-sync-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.pd-agent-sync__status-text {
+  font-size: 11px;
+}
+
+.pd-agent-sync__endpoint {
+  font-family: "SF Mono", "Fira Code", monospace;
+  font-size: 10px;
+  color: var(--pd-text-muted);
+  background: var(--pd-bg);
+  border: 1px solid var(--pd-border);
+  border-radius: var(--pd-radius);
+  padding: 4px 8px;
+  word-break: break-all;
+}
+
+.pd-agent-sync__copy-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 24px;
+  padding: 0 10px;
+  border: 1px solid var(--pd-border);
+  border-radius: var(--pd-radius);
+  background: var(--pd-bg);
+  color: var(--pd-text-dim);
+  font-family: var(--pd-font);
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.15s;
+  align-self: flex-start;
+}
+
+.pd-agent-sync__copy-btn:hover {
+  background: var(--pd-bg-hover);
+  color: var(--pd-text);
+}
+
+.pd-agent-sync__note {
+  font-size: 10px;
+  color: var(--pd-text-muted);
+  line-height: 1.4;
+}
+
+/* Description (when disabled) */
+.pd-agent-sync__description {
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--pd-text-muted);
+}

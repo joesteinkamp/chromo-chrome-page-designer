@@ -11,6 +11,8 @@ import { captureScreenshot } from "./screenshot";
 let activeTabId: number | null = null;
 /** Tabs where the extension has been activated (content script should be running) */
 const activatedTabs = new Set<number>();
+/** Tabs currently being injected (prevents concurrent injection races) */
+const injectingTabs = new Set<number>();
 
 // --- Message handling ---
 
@@ -172,6 +174,9 @@ chrome.runtime.onMessage.addListener(
  * Returns true if the content script is available, false on failure.
  */
 async function ensureContentScript(tabId: number): Promise<boolean> {
+  // Prevent concurrent injection attempts for the same tab
+  if (injectingTabs.has(tabId)) return true;
+
   try {
     // Check if content script is already there by sending a ping
     await new Promise<void>((resolve, reject) => {
@@ -186,6 +191,7 @@ async function ensureContentScript(tabId: number): Promise<boolean> {
     return true;
   } catch {
     // Content script not loaded — inject it
+    injectingTabs.add(tabId);
     try {
       // Inject main world bridge first (for framework detection)
       await chrome.scripting.executeScript({
@@ -205,9 +211,11 @@ async function ensureContentScript(tabId: number): Promise<boolean> {
       await new Promise((r) => setTimeout(r, 100));
       return true;
     } catch (err) {
-      // Can't inject — no permission (activeTab expired) or restricted page
+      // Can't inject — no permission or restricted page (chrome://, etc.)
       console.warn("Chromo Design: Cannot inject into this tab:", err);
       return false;
+    } finally {
+      injectingTabs.delete(tabId);
     }
   }
 }
@@ -255,19 +263,26 @@ chrome.tabs.onActivated.addListener((info) => {
   activeTabId = info.tabId;
 });
 
-// Re-inject content script when a previously activated tab navigates
+// Re-inject content script when a previously activated tab navigates.
+// Only act on actual navigations (url change), not every tab update event.
 chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
-  if (changeInfo.status === "complete" && activatedTabs.has(tabId)) {
-    // Tab finished loading — re-inject and re-activate
-    ensureContentScript(tabId).then((injected) => {
-      if (injected) {
-        sendToTab(tabId, { type: "ACTIVATE" });
-      } else {
-        // Permission lost (activeTab expired) — notify the panel
-        activatedTabs.delete(tabId);
-        chrome.runtime.sendMessage({ type: "INJECTION_FAILED" } satisfies Message).catch(() => {});
+  if (changeInfo.url && activatedTabs.has(tabId)) {
+    // URL changed — the old content script is gone. Wait for page to load,
+    // then re-inject. We listen for the next "complete" status.
+    const onComplete = (_tid: number, info: any) => {
+      if (_tid === tabId && info.status === "complete") {
+        chrome.tabs.onUpdated.removeListener(onComplete);
+        ensureContentScript(tabId).then((injected) => {
+          if (injected) {
+            sendToTab(tabId, { type: "ACTIVATE" });
+          } else {
+            activatedTabs.delete(tabId);
+            chrome.runtime.sendMessage({ type: "INJECTION_FAILED" } satisfies Message).catch(() => {});
+          }
+        });
       }
-    });
+    };
+    chrome.tabs.onUpdated.addListener(onComplete);
   }
 });
 

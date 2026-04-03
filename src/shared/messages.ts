@@ -67,7 +67,9 @@ export type Message =
   | { type: "REPLAY_RESULT"; applied: number; failed: number }
   // Screenshot
   | { type: "CAPTURE_SCREENSHOT" }
-  | { type: "SCREENSHOT_CAPTURED"; dataUrl: string };
+  | { type: "SCREENSHOT_CAPTURED"; dataUrl: string }
+  // Injection failure (background → panel)
+  | { type: "INJECTION_FAILED" };
 
 /** Type-safe message sender to background */
 export function sendMessage(message: Message): Promise<Message | undefined> {

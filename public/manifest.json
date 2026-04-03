@@ -4,7 +4,6 @@
   "version": "0.1.0",
   "description": "Visual webpage editor — edit any page like Figma",
   "permissions": ["activeTab", "storage", "scripting", "sidePanel", "tabs", "contextMenus"],
-  "host_permissions": ["<all_urls>"],
   "action": {
     "default_icon": {
       "16": "icons/icon-16.png",
@@ -19,20 +18,6 @@
     "service_worker": "background/service-worker.js",
     "type": "module"
   },
-  "content_scripts": [
-    {
-      "matches": ["<all_urls>"],
-      "js": ["content/main.js"],
-      "css": ["content/content.css"],
-      "run_at": "document_idle"
-    },
-    {
-      "matches": ["<all_urls>"],
-      "js": ["content/main-world-bridge.js"],
-      "run_at": "document_idle",
-      "world": "MAIN"
-    }
-  ],
   "icons": {
     "16": "icons/icon-16.png",
     "48": "icons/icon-48.png",

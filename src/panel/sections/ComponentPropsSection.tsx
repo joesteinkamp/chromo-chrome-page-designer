@@ -19,15 +19,17 @@ export const ComponentPropsSection: React.FC<ComponentPropsSectionProps> = ({
 
   const handlePropChange = useCallback(
     (propName: string, propValue: string | number | boolean | null, propType: "string" | "number" | "boolean" | "null") => {
+      if (!componentInfo.framework) return;
       chrome.runtime.sendMessage({
         type: "APPLY_PROP",
+        framework: componentInfo.framework,
         componentName: componentInfo.componentName!,
         propName,
         propValue,
         propType,
       } satisfies Message);
     },
-    [componentInfo.componentName, selector],
+    [componentInfo.componentName, componentInfo.framework, selector],
   );
 
   return (

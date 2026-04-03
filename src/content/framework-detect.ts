@@ -80,6 +80,7 @@ export function extractComponentInfo(element: Element): ComponentInfo {
 
 /**
  * Apply a prop change to a React component via main world bridge.
+ * @deprecated Use applyComponentProp instead for framework-agnostic prop changes.
  */
 export function applyReactProp(
   element: Element,
@@ -88,32 +89,46 @@ export function applyReactProp(
   propValue: string | number | boolean | null,
   propType: "string" | "number" | "boolean" | "null",
 ): boolean {
+  return applyComponentProp(element, "react", componentName, propName, propValue, propType);
+}
+
+/**
+ * Apply a prop change to a component via main world bridge.
+ * Supports React, Vue (2/3), and Svelte (4) frameworks.
+ */
+export function applyComponentProp(
+  element: Element,
+  framework: "react" | "vue" | "svelte",
+  componentName: string,
+  propName: string,
+  propValue: string | number | boolean | null,
+  propType: "string" | "number" | "boolean" | "null",
+): boolean {
+  const attrs = [
+    "data-pd-apply",
+    "data-pd-apply-framework",
+    "data-pd-apply-component",
+    "data-pd-apply-prop",
+    "data-pd-apply-value",
+  ];
   try {
     let coerced: any = propValue;
     if (propType === "number") coerced = Number(propValue);
     else if (propType === "boolean") coerced = Boolean(propValue);
     else if (propType === "null") coerced = null;
 
-    // Tag the element with all needed info as data attributes
     element.setAttribute("data-pd-apply", "");
+    element.setAttribute("data-pd-apply-framework", framework);
     element.setAttribute("data-pd-apply-component", componentName);
     element.setAttribute("data-pd-apply-prop", propName);
     element.setAttribute("data-pd-apply-value", JSON.stringify(coerced));
 
     document.documentElement.dispatchEvent(new CustomEvent("__pd-apply-prop"));
 
-    // Clean up
-    element.removeAttribute("data-pd-apply");
-    element.removeAttribute("data-pd-apply-component");
-    element.removeAttribute("data-pd-apply-prop");
-    element.removeAttribute("data-pd-apply-value");
-
+    for (const attr of attrs) element.removeAttribute(attr);
     return true;
   } catch {
-    element.removeAttribute("data-pd-apply");
-    element.removeAttribute("data-pd-apply-component");
-    element.removeAttribute("data-pd-apply-prop");
-    element.removeAttribute("data-pd-apply-value");
+    for (const attr of attrs) element.removeAttribute(attr);
     return false;
   }
 }

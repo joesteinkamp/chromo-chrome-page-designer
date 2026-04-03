@@ -19,6 +19,7 @@ export type Message =
   // Component prop changes (panel → content script)
   | {
       type: "APPLY_PROP";
+      framework: "react" | "vue" | "svelte";
       componentName: string;
       propName: string;
       propValue: string | number | boolean | null;

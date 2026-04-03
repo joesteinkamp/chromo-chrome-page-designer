@@ -24,6 +24,7 @@ export function App() {
   const sendMenuRef = useRef<HTMLDivElement>(null);
   const [hasSavedChanges, setHasSavedChanges] = useState(false);
   const [savedChangesDismissed, setSavedChangesDismissed] = useState(false);
+  const [injectionFailed, setInjectionFailed] = useState(false);
   const componentMapRef = useRef(new Map<string, ComponentContext>());
 
   // Accumulate component context as elements are selected
@@ -46,6 +47,9 @@ export function App() {
     if (!next) {
       setMultiEdit(false);
     }
+    if (next) {
+      setInjectionFailed(false);
+    }
     chrome.runtime.sendMessage({
       type: next ? "ACTIVATE" : "DEACTIVATE",
     } satisfies Message);
@@ -67,6 +71,16 @@ export function App() {
         case "CHANGES_RESPONSE":
           setChanges(message.changes);
           setCanRedo(message.canRedo);
+          break;
+        case "INJECTION_FAILED":
+          setInjectionFailed(true);
+          setEditMode(false);
+          editModeRef.current = false;
+          break;
+        case "STATE_RESPONSE":
+          if (message.isActive) {
+            setInjectionFailed(false);
+          }
           break;
       }
     };
@@ -378,6 +392,13 @@ export function App() {
           </>
         ) : (
           <div className="pd-panel__empty">
+            {injectionFailed && (
+              <div className="pd-panel__injection-banner">
+                <div className="pd-panel__injection-banner-text">
+                  Cannot access this page. Click the extension icon in the toolbar to grant access, then toggle edit mode on.
+                </div>
+              </div>
+            )}
             {hasSavedChanges && !savedChangesDismissed && (
               <div className="pd-panel__saved-prompt">
                 <div className="pd-panel__saved-prompt-text">

@@ -262,6 +262,23 @@ body {
 }
 
 /* Saved changes prompt */
+.pd-panel__injection-banner {
+  width: 100%;
+  max-width: 260px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  border: 1px solid #f59e0b;
+  border-radius: 8px;
+  background: rgba(245, 158, 11, 0.08);
+}
+
+.pd-panel__injection-banner-text {
+  font-size: 12px;
+  color: var(--pd-text);
+  line-height: 1.5;
+  text-align: center;
+}
+
 .pd-panel__saved-prompt {
   width: 100%;
   max-width: 260px;

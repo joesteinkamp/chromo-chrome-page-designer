@@ -19,6 +19,7 @@ export type Message =
   // Component prop changes (panel → content script)
   | {
       type: "APPLY_PROP";
+      framework: "react" | "vue" | "svelte";
       componentName: string;
       propName: string;
       propValue: string | number | boolean | null;
@@ -66,7 +67,9 @@ export type Message =
   | { type: "REPLAY_RESULT"; applied: number; failed: number }
   // Screenshot
   | { type: "CAPTURE_SCREENSHOT" }
-  | { type: "SCREENSHOT_CAPTURED"; dataUrl: string };
+  | { type: "SCREENSHOT_CAPTURED"; dataUrl: string }
+  // Injection failure (background → panel)
+  | { type: "INJECTION_FAILED" };
 
 /** Type-safe message sender to background */
 export function sendMessage(message: Message): Promise<Message | undefined> {

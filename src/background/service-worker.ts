@@ -9,6 +9,8 @@ import { saveEdits, loadEdits, hasSavedEdits } from "./storage";
 import { captureScreenshot } from "./screenshot";
 
 let activeTabId: number | null = null;
+/** Tabs where the extension has been activated (content script should be running) */
+const activatedTabs = new Set<number>();
 
 // --- Message handling ---
 
@@ -27,8 +29,13 @@ chrome.runtime.onMessage.addListener(
           if (tab?.id) {
             await chrome.sidePanel.open({ tabId: tab.id });
             activeTabId = tab.id;
-            await ensureContentScript(tab.id);
-            sendToTab(tab.id, { type: "ACTIVATE" });
+            const injected = await ensureContentScript(tab.id);
+            if (injected) {
+              activatedTabs.add(tab.id);
+              sendToTab(tab.id, { type: "ACTIVATE" });
+            } else {
+              chrome.runtime.sendMessage({ type: "INJECTION_FAILED" } satisfies Message).catch(() => {});
+            }
           }
         });
         break;
@@ -37,7 +44,13 @@ chrome.runtime.onMessage.addListener(
         // From side panel — ensure content script is injected, then activate
         getActiveTabId().then(async (tabId) => {
           if (!tabId) return;
-          await ensureContentScript(tabId);
+          const injected = await ensureContentScript(tabId);
+          if (!injected) {
+            // Notify panel that injection failed (e.g. activeTab permission expired)
+            chrome.runtime.sendMessage({ type: "INJECTION_FAILED" } satisfies Message).catch(() => {});
+            return;
+          }
+          activatedTabs.add(tabId);
           // Use sendMessage with callback to ensure delivery
           chrome.tabs.sendMessage(tabId, message, (resp) => {
             void chrome.runtime.lastError;
@@ -53,6 +66,11 @@ chrome.runtime.onMessage.addListener(
 
       // --- Forward to content script ---
       case "DEACTIVATE":
+        getActiveTabId().then((tabId) => {
+          if (tabId) activatedTabs.delete(tabId);
+        });
+        forwardToContentScript(message);
+        break;
       case "TOGGLE_MULTI_EDIT":
       case "APPLY_STYLE":
       case "APPLY_STYLE_TO_MATCHING":
@@ -149,10 +167,11 @@ chrome.runtime.onMessage.addListener(
 
 /**
  * Ensure the content script is loaded on the given tab.
- * After extension install/reload, existing tabs won't have it.
- * Uses chrome.scripting.executeScript to inject if needed.
+ * Uses chrome.scripting.executeScript to inject programmatically.
+ * Requires either activeTab permission (from user gesture) or host_permissions.
+ * Returns true if the content script is available, false on failure.
  */
-async function ensureContentScript(tabId: number): Promise<void> {
+async function ensureContentScript(tabId: number): Promise<boolean> {
   try {
     // Check if content script is already there by sending a ping
     await new Promise<void>((resolve, reject) => {
@@ -164,6 +183,7 @@ async function ensureContentScript(tabId: number): Promise<void> {
         }
       });
     });
+    return true;
   } catch {
     // Content script not loaded — inject it
     try {
@@ -183,9 +203,11 @@ async function ensureContentScript(tabId: number): Promise<void> {
       });
       // Give it a moment to initialize
       await new Promise((r) => setTimeout(r, 100));
+      return true;
     } catch (err) {
-      // Can't inject on chrome:// pages, etc.
+      // Can't inject — no permission (activeTab expired) or restricted page
       console.warn("Chromo Design: Cannot inject into this tab:", err);
+      return false;
     }
   }
 }
@@ -233,6 +255,28 @@ chrome.tabs.onActivated.addListener((info) => {
   activeTabId = info.tabId;
 });
 
+// Re-inject content script when a previously activated tab navigates
+chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
+  if (changeInfo.status === "complete" && activatedTabs.has(tabId)) {
+    // Tab finished loading — re-inject and re-activate
+    ensureContentScript(tabId).then((injected) => {
+      if (injected) {
+        sendToTab(tabId, { type: "ACTIVATE" });
+      } else {
+        // Permission lost (activeTab expired) — notify the panel
+        activatedTabs.delete(tabId);
+        chrome.runtime.sendMessage({ type: "INJECTION_FAILED" } satisfies Message).catch(() => {});
+      }
+    });
+  }
+});
+
+// Clean up when a tab is closed
+chrome.tabs.onRemoved.addListener((tabId) => {
+  activatedTabs.delete(tabId);
+  if (activeTabId === tabId) activeTabId = null;
+});
+
 // Open side panel on action click
 chrome.sidePanel
   .setPanelBehavior({ openPanelOnActionClick: true })
@@ -257,8 +301,9 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
 chrome.runtime.onConnect.addListener((port) => {
   if (port.name === "side-panel") {
     port.onDisconnect.addListener(() => {
-      // Panel was closed — deactivate the content script
+      // Panel was closed — deactivate the content script and stop tracking
       forwardToContentScript({ type: "DEACTIVATE" } as any);
+      activatedTabs.clear();
     });
   }
 });

@@ -16,6 +16,7 @@ import {
   getUserId,
   pushStateUpdate,
   onRelayCommand,
+  onConnectionChange,
 } from "./relay-client";
 import type { RelayCommand } from "./relay-client";
 
@@ -463,6 +464,20 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
   if (info.menuItemId === "design-this-page" && tab?.id) {
     chrome.sidePanel.open({ tabId: tab.id }).catch(() => {});
   }
+});
+
+// --- Relay connection status ---
+// Broadcast connection changes to the panel so the UI updates
+onConnectionChange(async (connected) => {
+  const endpoint = await getRelayEndpoint();
+  const id = await getUserId();
+  chrome.runtime.sendMessage({
+    type: "AGENT_SYNC_STATUS",
+    enabled: true,
+    status: connected ? "connected" : "disconnected",
+    endpoint,
+    userId: id,
+  } satisfies Message).catch(() => {});
 });
 
 // --- Relay command handler ---

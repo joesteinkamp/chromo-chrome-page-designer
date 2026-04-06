@@ -368,20 +368,17 @@
   line-height: 1.5;
 }
 
-.pd-ai__no-key-btn {
-  height: 32px;
-  padding: 0 16px;
-  border: none;
-  border-radius: var(--pd-radius);
-  background: var(--pd-accent);
-  color: #fff;
-  font-family: var(--pd-font);
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: opacity 0.15s;
+.pd-ai__key-input-wrap {
+  display: flex;
+  gap: 6px;
+  width: 100%;
 }
 
-.pd-ai__no-key-btn:hover {
-  opacity: 0.9;
+.pd-ai__key-input-wrap .pd-ai__input {
+  flex: 1;
+}
+
+.pd-ai__key-note {
+  font-size: 10px;
+  color: var(--pd-text-muted);
 }

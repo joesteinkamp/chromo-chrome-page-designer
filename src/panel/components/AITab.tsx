@@ -153,9 +153,17 @@ export function AITab({
     []
   );
 
-  const handleOpenOptions = useCallback(() => {
-    chrome.runtime.sendMessage({ type: "OPEN_OPTIONS_PAGE" } satisfies Message);
-  }, []);
+  const [keyInput, setKeyInput] = useState("");
+  const [keySaved, setKeySaved] = useState(false);
+
+  const handleSaveKey = useCallback(() => {
+    if (!keyInput.trim()) return;
+    chrome.storage.sync.set({ anthropicApiKey: keyInput.trim() }, () => {
+      setApiKey(keyInput.trim());
+      setKeySaved(true);
+      setTimeout(() => setKeySaved(false), 2000);
+    });
+  }, [keyInput]);
 
   const severityIcon = (severity: string) => {
     switch (severity) {
@@ -168,17 +176,34 @@ export function AITab({
     }
   };
 
-  // No API key prompt
+  // No API key prompt — inline input
   if (!apiKey) {
     return (
       <div className="pd-ai">
         <div className="pd-ai__no-key">
           <div className="pd-ai__no-key-text">
-            Set your Anthropic API key in Settings to enable AI features
+            Enter your Anthropic API key to enable AI features
           </div>
-          <button className="pd-ai__no-key-btn" onClick={handleOpenOptions}>
-            Open Settings
-          </button>
+          <div className="pd-ai__key-input-wrap">
+            <input
+              className="pd-ai__input"
+              type="password"
+              placeholder="sk-ant-..."
+              value={keyInput}
+              onChange={(e) => setKeyInput(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") handleSaveKey(); }}
+            />
+            <button
+              className="pd-ai__submit"
+              onClick={handleSaveKey}
+              disabled={!keyInput.trim()}
+            >
+              {keySaved ? "Saved!" : "Save"}
+            </button>
+          </div>
+          <div className="pd-ai__key-note">
+            Stored locally, only sent to Anthropic's API
+          </div>
         </div>
       </div>
     );

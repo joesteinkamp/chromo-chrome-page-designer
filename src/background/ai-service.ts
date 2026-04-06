@@ -176,7 +176,18 @@ function extractJSON(text: string): any {
     const fixed = cleaned.replace(/"([^"]*)"/g, (_match, content) => {
       return '"' + content.replace(/\n/g, " ").replace(/\r/g, "") + '"';
     });
-    return JSON.parse(fixed);
+    try {
+      return JSON.parse(fixed);
+    } catch {
+      // If still failing, the response was likely truncated — try to salvage partial array
+      const partial = fixed.replace(/,\s*[^}\]]*$/, ""); // remove trailing incomplete item
+      const closedArray = partial.endsWith("]") ? partial : partial + "]";
+      try {
+        return JSON.parse(closedArray);
+      } catch (e) {
+        throw new Error(`Failed to parse AI response: ${(e as Error).message}. Response preview: ${text.slice(0, 200)}...`);
+      }
+    }
   }
 }
 
@@ -193,7 +204,7 @@ export async function runDesignCritique(
   const [, mediaType, base64Data] = match;
 
   const system =
-    "You are a design critic analyzing a webpage screenshot. Identify design issues and suggest specific CSS fixes. Focus on: spacing inconsistencies, color contrast issues, typography problems, alignment errors. Return JSON array of suggestions.";
+    "You are a design critic. Analyze the screenshot and return ONLY a valid JSON array, no markdown, no explanation. Keep messages short (under 100 chars). Limit to 5 most important issues.";
 
   const userContent = [
     {
@@ -202,11 +213,11 @@ export async function runDesignCritique(
     },
     {
       type: "text",
-      text: `Analyze this webpage at ${pageUrl} for design issues. Return a JSON array where each object has: selector (CSS selector of the element), category (spacing|color|typography|alignment|contrast|general), severity (info|warning|error), message (brief description), suggestedChanges (optional array of {property, value} CSS fixes).`,
+      text: `Analyze this webpage at ${pageUrl}. Return ONLY a JSON array (no code fences, no markdown). Each object: {"selector": "CSS selector", "category": "spacing|color|typography|alignment|contrast|general", "severity": "info|warning|error", "message": "short description", "suggestedChanges": [{"property": "css-prop", "value": "css-value"}]}. Max 5 items. Keep messages brief.`,
     },
   ];
 
-  const responseText = await callProvider(provider, apiKey, system, userContent, 2000);
+  const responseText = await callProvider(provider, apiKey, system, userContent, 4000);
   return extractJSON(responseText) as AISuggestion[];
 }
 

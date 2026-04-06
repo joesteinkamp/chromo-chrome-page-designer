@@ -153,12 +153,17 @@ async function callProvider(
 // --- JSON extraction ---
 
 function extractJSON(text: string): any {
-  // Try to find JSON array in the response (may be wrapped in markdown code block)
-  const codeBlockMatch = text.match(/```(?:json)?\s*(\[[\s\S]*?\])\s*```/);
-  if (codeBlockMatch) return JSON.parse(codeBlockMatch[1]);
-  const jsonMatch = text.match(/\[[\s\S]*\]/);
-  if (jsonMatch) return JSON.parse(jsonMatch[0]);
-  return JSON.parse(text);
+  // Strip markdown code fences if present
+  let cleaned = text.trim();
+  // Remove ```json ... ``` or ``` ... ```
+  cleaned = cleaned.replace(/^```(?:json)?\s*\n?/i, "").replace(/\n?\s*```\s*$/, "");
+  // Find the first [ and last ] to extract the JSON array
+  const start = cleaned.indexOf("[");
+  const end = cleaned.lastIndexOf("]");
+  if (start !== -1 && end > start) {
+    return JSON.parse(cleaned.slice(start, end + 1));
+  }
+  return JSON.parse(cleaned);
 }
 
 // --- Public API ---

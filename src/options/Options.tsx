@@ -3,10 +3,14 @@ import "./options.css";
 
 interface Settings {
   defaultUnit: "px" | "rem" | "em";
+  anthropicApiKey: string;
+  relayUrl: string;
 }
 
 const DEFAULT_SETTINGS: Settings = {
   defaultUnit: "px",
+  anthropicApiKey: "",
+  relayUrl: "ws://localhost:3847",
 };
 
 export function Options() {
@@ -16,14 +20,17 @@ export function Options() {
     text: string;
   } | null>(null);
   const [version, setVersion] = useState("");
+  const [showApiKey, setShowApiKey] = useState(false);
 
   useEffect(() => {
     const manifest = chrome.runtime.getManifest();
     setVersion(manifest.version);
 
-    chrome.storage.sync.get(["defaultUnit"], (result) => {
+    chrome.storage.sync.get(["defaultUnit", "anthropicApiKey", "relayUrl"], (result) => {
       setSettings({
         defaultUnit: result.defaultUnit || DEFAULT_SETTINGS.defaultUnit,
+        anthropicApiKey: result.anthropicApiKey || DEFAULT_SETTINGS.anthropicApiKey,
+        relayUrl: result.relayUrl || DEFAULT_SETTINGS.relayUrl,
       });
     });
   }, []);
@@ -93,6 +100,61 @@ export function Options() {
             {message.text}
           </div>
         )}
+      </div>
+
+      {/* AI Integration */}
+      <div className="pd-options__section">
+        <div className="pd-options__section-title">AI Integration</div>
+
+        <div className="pd-options__field">
+          <label className="pd-options__label">Anthropic API Key</label>
+          <div className="pd-options__password-wrap">
+            <input
+              className="pd-options__input"
+              type={showApiKey ? "text" : "password"}
+              value={settings.anthropicApiKey}
+              onChange={(e) =>
+                setSettings((prev) => ({ ...prev, anthropicApiKey: e.target.value }))
+              }
+              placeholder="sk-ant-..."
+            />
+            <button
+              type="button"
+              className="pd-options__password-toggle"
+              onClick={() => setShowApiKey((v) => !v)}
+              title={showApiKey ? "Hide API key" : "Show API key"}
+            >
+              {showApiKey ? "Hide" : "Show"}
+            </button>
+          </div>
+          <div style={{ fontSize: 10, color: "var(--pd-text-muted)", marginTop: 4 }}>
+            Your API key is stored locally and never sent anywhere except Anthropic's API
+          </div>
+        </div>
+
+        <div className="pd-options__field">
+          <label className="pd-options__label">Relay URL</label>
+          <input
+            className="pd-options__input"
+            type="text"
+            value={settings.relayUrl}
+            onChange={(e) =>
+              setSettings((prev) => ({ ...prev, relayUrl: e.target.value }))
+            }
+            placeholder="ws://localhost:3847"
+          />
+          <div style={{ fontSize: 10, color: "var(--pd-text-muted)", marginTop: 4 }}>
+            Leave default for local development, or enter your relay server URL
+          </div>
+        </div>
+
+        <button
+          type="button"
+          className="pd-options__save"
+          onClick={handleSave}
+        >
+          Save
+        </button>
       </div>
     </div>
   );

@@ -7,6 +7,7 @@
 import { TRACKED_PROPERTIES } from "../shared/constants";
 import { generateBreadcrumb, generateSelector } from "../shared/selector";
 import { extractComponentInfo } from "./framework-detect";
+import { detectTailwind, extractTailwindClasses } from "./tailwind-detect";
 import type { ElementData } from "../shared/types";
 
 /** Track which Google Fonts have been injected to avoid duplicates */
@@ -50,6 +51,24 @@ export function extractElementData(element: Element): ElementData {
     try { cachedPageColors = extractPageColors(); } catch { cachedPageColors = []; }
   }
 
+  // Detect Tailwind CSS
+  let tailwindDetected = false;
+  let tailwindClasses: string[] = [];
+  try {
+    tailwindDetected = detectTailwind();
+    if (tailwindDetected) {
+      tailwindClasses = extractTailwindClasses(element);
+    }
+  } catch { /* */ }
+
+  // Extract CSS variable references from authored styles
+  const cssVariables: Record<string, string> = {};
+  for (const [prop, val] of Object.entries(authoredStyles)) {
+    if (val && /var\(/.test(val)) {
+      cssVariables[prop] = val;
+    }
+  }
+
   // Extract framework component info (React/Vue/Svelte)
   let componentInfo: ElementData["componentInfo"];
   try { componentInfo = extractComponentInfo(element); } catch { /* */ }
@@ -76,6 +95,9 @@ export function extractElementData(element: Element): ElementData {
     matchCount: countMatchingElements(element),
     designTokens,
     pageColors: cachedPageColors || [],
+    tailwindClasses: tailwindClasses.length > 0 ? tailwindClasses : undefined,
+    tailwindDetected: tailwindDetected || undefined,
+    cssVariables: Object.keys(cssVariables).length > 0 ? cssVariables : undefined,
     componentInfo,
   };
 }

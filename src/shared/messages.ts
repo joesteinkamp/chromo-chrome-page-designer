@@ -1,5 +1,13 @@
 import type { Change, ElementData } from "./types";
 
+export interface AISuggestion {
+  selector: string;
+  category: "spacing" | "color" | "typography" | "alignment" | "contrast" | "general";
+  severity: "info" | "warning" | "error";
+  message: string;
+  suggestedChanges?: Array<{ property: string; value: string }>;
+}
+
 /** All messages passed between extension contexts */
 export type Message =
   // Lifecycle
@@ -69,7 +77,23 @@ export type Message =
   | { type: "CAPTURE_SCREENSHOT" }
   | { type: "SCREENSHOT_CAPTURED"; dataUrl: string }
   // Injection failure (background → panel)
-  | { type: "INJECTION_FAILED" };
+  | { type: "INJECTION_FAILED" }
+  // Agent Sync
+  | { type: "AGENT_SYNC_ENABLE" }
+  | { type: "AGENT_SYNC_DISABLE" }
+  | { type: "GET_AGENT_SYNC_STATUS" }
+  | { type: "AGENT_SYNC_STATUS"; enabled: boolean; status: "connected" | "disconnected" | "connecting"; endpoint: string; userId: string }
+  // AI features
+  | { type: "AI_NL_EDIT_REQUEST"; instruction: string; selector: string; computedStyles: Record<string, string>; apiKey: string }
+  | { type: "AI_NL_EDIT_RESPONSE"; changes: Array<{ property: string; value: string }> }
+  | { type: "AI_CRITIQUE_REQUEST"; screenshotDataUrl: string; pageUrl: string; apiKey: string }
+  | { type: "AI_CRITIQUE_RESPONSE"; suggestions: AISuggestion[] }
+  | { type: "AI_ERROR"; error: string }
+  // Relay commands (from relay -> content script)
+  | { type: "RELAY_APPLY_STYLE"; selector: string; property: string; value: string }
+  | { type: "RELAY_APPLY_TEXT"; selector: string; text: string }
+  | { type: "RELAY_SELECT_ELEMENT"; selector: string }
+  | { type: "RELAY_GET_STATE" };
 
 /** Type-safe message sender to background */
 export function sendMessage(message: Message): Promise<Message | undefined> {

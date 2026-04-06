@@ -32,6 +32,12 @@ export interface ElementData {
   designTokens: Array<{ name: string; value: string }>;
   /** Unique color values found across the page's stylesheets */
   pageColors: string[];
+  /** Tailwind CSS utility classes on this element */
+  tailwindClasses?: string[];
+  /** Whether Tailwind CSS is detected on the page */
+  tailwindDetected?: boolean;
+  /** CSS variable references for properties (property -> "var(--name)") */
+  cssVariables?: Record<string, string>;
   /** Component info from framework detection (React/Vue/Svelte) */
   componentInfo?: {
     framework: "react" | "vue" | "svelte" | null;

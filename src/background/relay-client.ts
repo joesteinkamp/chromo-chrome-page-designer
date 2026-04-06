@@ -36,7 +36,7 @@ const MAX_RECONNECT_DELAY = 8000;
 const PING_INTERVAL = 30_000;
 // Production relay — hosted by extension publisher, no user config needed.
 // For local development, override via chrome.storage.sync key "relayUrlOverride".
-const RELAY_URL = "wss://relay.pagedesigner.dev";
+const RELAY_URL = "wss://chromo-relay.designknowledgebase.com";
 
 // --- Public API ---
 

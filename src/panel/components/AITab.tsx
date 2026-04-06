@@ -356,7 +356,7 @@ export function AITab({
 
           {/* Design Critique */}
           <div className="pd-ai__section pd-ai__section--critique">
-            <div className="pd-ai__section-title">Design Critique</div>
+            <div className="pd-ai__section-title">Design AI Tools</div>
             <button
               className="pd-ai__critique-btn"
               onClick={handleRunCritique}

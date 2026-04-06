@@ -24,7 +24,7 @@ async function callAnthropic(
       "content-type": "application/json",
     },
     body: JSON.stringify({
-      model: "claude-sonnet-4-20250514",
+      model: "claude-sonnet-4-20250514",  // Latest Claude Sonnet
       max_tokens: maxTokens,
       system,
       messages: [{ role: "user", content: userContent }],
@@ -72,7 +72,7 @@ async function callOpenAI(
       "content-type": "application/json",
     },
     body: JSON.stringify({
-      model: "gpt-4o",
+      model: "gpt-4.1",  // Latest GPT
       max_tokens: maxTokens,
       messages,
     }),
@@ -95,7 +95,7 @@ async function callGemini(
   userContent: Array<Record<string, any>>,
   maxTokens: number
 ): Promise<string> {
-  const model = "gemini-2.0-flash";
+  const model = "gemini-2.5-flash";
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
   // Convert content to Gemini format

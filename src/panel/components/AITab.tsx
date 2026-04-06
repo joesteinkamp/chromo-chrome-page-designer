@@ -154,7 +154,7 @@ export function AITab({
   );
 
   const handleOpenOptions = useCallback(() => {
-    chrome.runtime.openOptionsPage();
+    chrome.runtime.sendMessage({ type: "OPEN_OPTIONS_PAGE" } satisfies Message);
   }, []);
 
   const severityIcon = (severity: string) => {

@@ -76,6 +76,8 @@ export type Message =
   // Screenshot
   | { type: "CAPTURE_SCREENSHOT" }
   | { type: "SCREENSHOT_CAPTURED"; dataUrl: string }
+  // Navigation
+  | { type: "OPEN_OPTIONS_PAGE" }
   // Injection failure (background → panel)
   | { type: "INJECTION_FAILED" }
   // Agent Sync

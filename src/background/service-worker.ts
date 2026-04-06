@@ -35,6 +35,11 @@ chrome.runtime.onMessage.addListener(
     }
 
     switch (message.type) {
+      // --- Navigation ---
+      case "OPEN_OPTIONS_PAGE":
+        chrome.runtime.openOptionsPage();
+        break;
+
       // --- Lifecycle ---
       case "OPEN_SIDE_PANEL":
         chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
@@ -187,43 +192,46 @@ chrome.runtime.onMessage.addListener(
         initRelay().then(async () => {
           const endpoint = await getRelayEndpoint();
           const id = await getUserId();
-          sendResponse({
+          const status: Message = {
             type: "AGENT_SYNC_STATUS",
             enabled: true,
             status: isRelayConnected() ? "connected" : "connecting",
             endpoint,
             userId: id,
-          } satisfies Message);
+          };
+          chrome.runtime.sendMessage(status).catch(() => {});
         });
-        return true;
+        break;
 
       case "AGENT_SYNC_DISABLE":
         stopRelay().then(async () => {
           const endpoint = await getRelayEndpoint();
           const id = await getUserId();
-          sendResponse({
+          const status: Message = {
             type: "AGENT_SYNC_STATUS",
             enabled: false,
             status: "disconnected",
             endpoint,
             userId: id,
-          } satisfies Message);
+          };
+          chrome.runtime.sendMessage(status).catch(() => {});
         });
-        return true;
+        break;
 
       case "GET_AGENT_SYNC_STATUS":
         (async () => {
           const endpoint = await getRelayEndpoint();
           const id = await getUserId();
-          sendResponse({
+          const status: Message = {
             type: "AGENT_SYNC_STATUS",
             enabled: isRelayConnected(),
             status: isRelayConnected() ? "connected" : "disconnected",
             endpoint,
             userId: id,
-          } satisfies Message);
+          };
+          chrome.runtime.sendMessage(status).catch(() => {});
         })();
-        return true;
+        break;
 
       // --- Relay commands (forwarded to content script) ---
       case "RELAY_APPLY_STYLE":

@@ -155,15 +155,29 @@ async function callProvider(
 function extractJSON(text: string): any {
   // Strip markdown code fences if present
   let cleaned = text.trim();
-  // Remove ```json ... ``` or ``` ... ```
   cleaned = cleaned.replace(/^```(?:json)?\s*\n?/i, "").replace(/\n?\s*```\s*$/, "");
   // Find the first [ and last ] to extract the JSON array
   const start = cleaned.indexOf("[");
   const end = cleaned.lastIndexOf("]");
   if (start !== -1 && end > start) {
-    return JSON.parse(cleaned.slice(start, end + 1));
+    cleaned = cleaned.slice(start, end + 1);
   }
-  return JSON.parse(cleaned);
+  // Fix common JSON issues from LLM responses:
+  // - Newlines inside string values (unterminated strings)
+  // - Smart quotes
+  cleaned = cleaned
+    .replace(/[\u201C\u201D]/g, '"')  // smart double quotes
+    .replace(/[\u2018\u2019]/g, "'"); // smart single quotes
+
+  try {
+    return JSON.parse(cleaned);
+  } catch {
+    // If parsing fails, try fixing unescaped newlines inside strings
+    const fixed = cleaned.replace(/"([^"]*)"/g, (_match, content) => {
+      return '"' + content.replace(/\n/g, " ").replace(/\r/g, "") + '"';
+    });
+    return JSON.parse(fixed);
+  }
 }
 
 // --- Public API ---

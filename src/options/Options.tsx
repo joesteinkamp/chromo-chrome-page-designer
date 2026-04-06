@@ -4,13 +4,11 @@ import "./options.css";
 interface Settings {
   defaultUnit: "px" | "rem" | "em";
   anthropicApiKey: string;
-  relayUrl: string;
 }
 
 const DEFAULT_SETTINGS: Settings = {
   defaultUnit: "px",
   anthropicApiKey: "",
-  relayUrl: "ws://localhost:3847",
 };
 
 export function Options() {
@@ -26,11 +24,10 @@ export function Options() {
     const manifest = chrome.runtime.getManifest();
     setVersion(manifest.version);
 
-    chrome.storage.sync.get(["defaultUnit", "anthropicApiKey", "relayUrl"], (result) => {
+    chrome.storage.sync.get(["defaultUnit", "anthropicApiKey"], (result) => {
       setSettings({
         defaultUnit: result.defaultUnit || DEFAULT_SETTINGS.defaultUnit,
         anthropicApiKey: result.anthropicApiKey || DEFAULT_SETTINGS.anthropicApiKey,
-        relayUrl: result.relayUrl || DEFAULT_SETTINGS.relayUrl,
       });
     });
   }, []);
@@ -129,22 +126,6 @@ export function Options() {
           </div>
           <div style={{ fontSize: 10, color: "var(--pd-text-muted)", marginTop: 4 }}>
             Your API key is stored locally and never sent anywhere except Anthropic's API
-          </div>
-        </div>
-
-        <div className="pd-options__field">
-          <label className="pd-options__label">Relay URL</label>
-          <input
-            className="pd-options__input"
-            type="text"
-            value={settings.relayUrl}
-            onChange={(e) =>
-              setSettings((prev) => ({ ...prev, relayUrl: e.target.value }))
-            }
-            placeholder="ws://localhost:3847"
-          />
-          <div style={{ fontSize: 10, color: "var(--pd-text-muted)", marginTop: 4 }}>
-            Leave default for local development, or enter your relay server URL
           </div>
         </div>
 

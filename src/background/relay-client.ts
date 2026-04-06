@@ -34,7 +34,9 @@ let connectionListeners: Array<(connected: boolean) => void> = [];
 
 const MAX_RECONNECT_DELAY = 8000;
 const PING_INTERVAL = 30_000;
-const DEFAULT_RELAY_URL = "ws://localhost:3847";
+// Production relay — hosted by extension publisher, no user config needed.
+// For local development, override via chrome.storage.sync key "relayUrlOverride".
+const RELAY_URL = "wss://relay.pagedesigner.dev";
 
 // --- Public API ---
 
@@ -110,8 +112,9 @@ export function onConnectionChange(listener: (connected: boolean) => void): void
 // --- Internal ---
 
 async function getRelayBaseUrl(): Promise<string> {
-  const result = await chrome.storage.sync.get("relayUrl");
-  return result.relayUrl || DEFAULT_RELAY_URL;
+  // Allow dev override, but production users never set this
+  const result = await chrome.storage.sync.get("relayUrlOverride");
+  return result.relayUrlOverride || RELAY_URL;
 }
 
 function connect(url: string): void {

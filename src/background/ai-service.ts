@@ -1,12 +1,14 @@
 /**
- * AI service — calls Anthropic API for design critique and NL edits.
+ * AI service — calls Anthropic, OpenAI, or Google Gemini APIs
+ * for design critique and natural language edits.
  * Uses fetch() directly (no SDK) since this runs in a service worker.
  */
 
 import type { AISuggestion } from "../shared/messages";
 
-const API_URL = "https://api.anthropic.com/v1/messages";
-const MODEL = "claude-sonnet-4-20250514";
+type Provider = "anthropic" | "openai" | "gemini";
+
+// --- Provider-specific API callers ---
 
 async function callAnthropic(
   apiKey: string,
@@ -14,7 +16,7 @@ async function callAnthropic(
   userContent: Array<Record<string, any>>,
   maxTokens: number
 ): Promise<string> {
-  const response = await fetch(API_URL, {
+  const response = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
       "x-api-key": apiKey,
@@ -22,7 +24,7 @@ async function callAnthropic(
       "content-type": "application/json",
     },
     body: JSON.stringify({
-      model: MODEL,
+      model: "claude-sonnet-4-20250514",
       max_tokens: maxTokens,
       system,
       messages: [{ role: "user", content: userContent }],
@@ -36,32 +38,139 @@ async function callAnthropic(
 
   const data = await response.json();
   const textBlock = data.content?.find((b: any) => b.type === "text");
-  if (!textBlock?.text) {
-    throw new Error("No text response from Anthropic API");
-  }
+  if (!textBlock?.text) throw new Error("No text response from Anthropic API");
   return textBlock.text;
 }
 
-function extractJSON(text: string): any {
-  // Try to find JSON array in the response
-  const jsonMatch = text.match(/\[[\s\S]*\]/);
-  if (jsonMatch) {
-    return JSON.parse(jsonMatch[0]);
+async function callOpenAI(
+  apiKey: string,
+  system: string,
+  userContent: Array<Record<string, any>>,
+  maxTokens: number
+): Promise<string> {
+  // Convert content to OpenAI format
+  const messages: any[] = [
+    { role: "system", content: system },
+    { role: "user", content: userContent.map((block) => {
+      if (block.type === "text") return { type: "text", text: block.text };
+      if (block.type === "image") {
+        return {
+          type: "image_url",
+          image_url: {
+            url: `data:${block.source.media_type};base64,${block.source.data}`,
+          },
+        };
+      }
+      return block;
+    })},
+  ];
+
+  const response = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${apiKey}`,
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({
+      model: "gpt-4o",
+      max_tokens: maxTokens,
+      messages,
+    }),
+  });
+
+  if (!response.ok) {
+    const errBody = await response.text();
+    throw new Error(`OpenAI API error (${response.status}): ${errBody}`);
   }
-  // Try parsing the whole text
+
+  const data = await response.json();
+  const text = data.choices?.[0]?.message?.content;
+  if (!text) throw new Error("No text response from OpenAI API");
+  return text;
+}
+
+async function callGemini(
+  apiKey: string,
+  system: string,
+  userContent: Array<Record<string, any>>,
+  maxTokens: number
+): Promise<string> {
+  const model = "gemini-2.0-flash";
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+
+  // Convert content to Gemini format
+  const parts: any[] = [];
+  for (const block of userContent) {
+    if (block.type === "text") {
+      parts.push({ text: block.text });
+    } else if (block.type === "image") {
+      parts.push({
+        inline_data: {
+          mime_type: block.source.media_type,
+          data: block.source.data,
+        },
+      });
+    }
+  }
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      system_instruction: { parts: [{ text: system }] },
+      contents: [{ role: "user", parts }],
+      generationConfig: { maxOutputTokens: maxTokens },
+    }),
+  });
+
+  if (!response.ok) {
+    const errBody = await response.text();
+    throw new Error(`Gemini API error (${response.status}): ${errBody}`);
+  }
+
+  const data = await response.json();
+  const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!text) throw new Error("No text response from Gemini API");
+  return text;
+}
+
+// --- Unified caller ---
+
+async function callProvider(
+  provider: Provider,
+  apiKey: string,
+  system: string,
+  userContent: Array<Record<string, any>>,
+  maxTokens: number
+): Promise<string> {
+  switch (provider) {
+    case "anthropic": return callAnthropic(apiKey, system, userContent, maxTokens);
+    case "openai": return callOpenAI(apiKey, system, userContent, maxTokens);
+    case "gemini": return callGemini(apiKey, system, userContent, maxTokens);
+  }
+}
+
+// --- JSON extraction ---
+
+function extractJSON(text: string): any {
+  // Try to find JSON array in the response (may be wrapped in markdown code block)
+  const codeBlockMatch = text.match(/```(?:json)?\s*(\[[\s\S]*?\])\s*```/);
+  if (codeBlockMatch) return JSON.parse(codeBlockMatch[1]);
+  const jsonMatch = text.match(/\[[\s\S]*\]/);
+  if (jsonMatch) return JSON.parse(jsonMatch[0]);
   return JSON.parse(text);
 }
+
+// --- Public API ---
 
 export async function runDesignCritique(
   apiKey: string,
   pageUrl: string,
-  screenshotDataUrl: string
+  screenshotDataUrl: string,
+  provider: Provider = "anthropic"
 ): Promise<AISuggestion[]> {
-  // Extract base64 data and media type from data URL
   const match = screenshotDataUrl.match(/^data:(image\/\w+);base64,(.+)$/);
-  if (!match) {
-    throw new Error("Invalid screenshot data URL");
-  }
+  if (!match) throw new Error("Invalid screenshot data URL");
   const [, mediaType, base64Data] = match;
 
   const system =
@@ -70,11 +179,7 @@ export async function runDesignCritique(
   const userContent = [
     {
       type: "image",
-      source: {
-        type: "base64",
-        media_type: mediaType,
-        data: base64Data,
-      },
+      source: { type: "base64", media_type: mediaType, data: base64Data },
     },
     {
       type: "text",
@@ -82,7 +187,7 @@ export async function runDesignCritique(
     },
   ];
 
-  const responseText = await callAnthropic(apiKey, system, userContent, 2000);
+  const responseText = await callProvider(provider, apiKey, system, userContent, 2000);
   return extractJSON(responseText) as AISuggestion[];
 }
 
@@ -90,7 +195,8 @@ export async function runNLEdit(
   apiKey: string,
   instruction: string,
   selector: string,
-  computedStyles: Record<string, string>
+  computedStyles: Record<string, string>,
+  provider: Provider = "anthropic"
 ): Promise<Array<{ property: string; value: string }>> {
   const system =
     "You are a CSS expert. Given an element's current styles and a natural language instruction, return the CSS property changes needed. Return only a JSON array of {property, value} objects.";
@@ -102,6 +208,6 @@ export async function runNLEdit(
     },
   ];
 
-  const responseText = await callAnthropic(apiKey, system, userContent, 1000);
+  const responseText = await callProvider(provider, apiKey, system, userContent, 1000);
   return extractJSON(responseText) as Array<{ property: string; value: string }>;
 }

@@ -274,7 +274,7 @@ chrome.runtime.onMessage.addListener(
 
       // --- AI features ---
       case "AI_CRITIQUE_REQUEST":
-        runDesignCritique(message.apiKey, message.pageUrl, message.screenshotDataUrl)
+        runDesignCritique(message.apiKey, message.pageUrl, message.screenshotDataUrl, message.provider)
           .then((suggestions) => {
             chrome.runtime.sendMessage({
               type: "AI_CRITIQUE_RESPONSE",
@@ -290,7 +290,7 @@ chrome.runtime.onMessage.addListener(
         break;
 
       case "AI_NL_EDIT_REQUEST":
-        runNLEdit(message.apiKey, message.instruction, message.selector, message.computedStyles)
+        runNLEdit(message.apiKey, message.instruction, message.selector, message.computedStyles, message.provider)
           .then((changes) => {
             chrome.runtime.sendMessage({
               type: "AI_NL_EDIT_RESPONSE",

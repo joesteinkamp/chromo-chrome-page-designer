@@ -86,9 +86,9 @@ export type Message =
   | { type: "GET_AGENT_SYNC_STATUS" }
   | { type: "AGENT_SYNC_STATUS"; enabled: boolean; status: "connected" | "disconnected" | "connecting"; endpoint: string; userId: string }
   // AI features
-  | { type: "AI_NL_EDIT_REQUEST"; instruction: string; selector: string; computedStyles: Record<string, string>; apiKey: string }
+  | { type: "AI_NL_EDIT_REQUEST"; instruction: string; selector: string; computedStyles: Record<string, string>; apiKey: string; provider: "anthropic" | "openai" | "gemini" }
   | { type: "AI_NL_EDIT_RESPONSE"; changes: Array<{ property: string; value: string }> }
-  | { type: "AI_CRITIQUE_REQUEST"; screenshotDataUrl: string; pageUrl: string; apiKey: string }
+  | { type: "AI_CRITIQUE_REQUEST"; screenshotDataUrl: string; pageUrl: string; apiKey: string; provider: "anthropic" | "openai" | "gemini" }
   | { type: "AI_CRITIQUE_RESPONSE"; suggestions: AISuggestion[] }
   | { type: "AI_ERROR"; error: string }
   // Relay commands (from relay -> content script)

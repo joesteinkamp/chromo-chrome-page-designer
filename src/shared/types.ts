@@ -2,6 +2,8 @@
 export interface ElementData {
   /** CSS selector uniquely identifying this element */
   selector: string;
+  /** Frame ID (0 = top frame, non-zero = iframe). Used for routing messages. */
+  frameId?: number;
   /** Tag name (lowercase) */
   tag: string;
   /** Element id attribute (empty string if none) */

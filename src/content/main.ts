@@ -45,6 +45,8 @@ import type { Message } from "../shared/messages";
 
 let isActive = false;
 let multiEditEnabled = false;
+/** Whether this content script is running inside an iframe */
+const isInIframe = window !== window.top;
 
 /** Safely send a message — auto-deactivate if extension context is invalidated */
 function safeSendMessage(message: Message, responseCallback?: (response: any) => void): void {
@@ -90,6 +92,17 @@ chrome.runtime.onMessage.addListener(
 
       case "GET_STATE":
         sendResponse({ type: "STATE_RESPONSE", isActive });
+        break;
+
+      case "DESELECT_FRAME":
+        // Another frame got a selection — clear ours
+        if (getSelectedElement()) {
+          clearSelection();
+          hideImageToolbar();
+          hideMultiEditOverlays();
+          hideMultiSelectOverlays();
+          hideSpacing();
+        }
         break;
 
       case "TOGGLE_MULTI_EDIT": {

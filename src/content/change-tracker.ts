@@ -3,7 +3,7 @@
  * Provides undo/redo support and serialization for export.
  */
 
-import { generateSelector } from "../shared/selector";
+import { generateSelector, IFRAME_SELECTOR_SEP } from "../shared/selector";
 import type {
   Change,
   StyleChange,
@@ -342,7 +342,7 @@ export function redoLast(): boolean {
 }
 
 function applyUndo(change: Change): boolean {
-  const element = document.querySelector(change.selector);
+  const element = resolveSelector(change.selector);
 
   switch (change.type) {
     case "style":
@@ -380,7 +380,7 @@ function applyUndo(change: Change): boolean {
 
     case "move": {
       if (!element) return false;
-      const origParent = document.querySelector(change.fromParent);
+      const origParent = resolveSelector(change.fromParent);
       if (origParent) {
         const children = Array.from(origParent.children);
         const refNode = children[change.fromIndex] || null;
@@ -391,7 +391,7 @@ function applyUndo(change: Change): boolean {
 
     case "delete": {
       // Restore deleted element
-      const parent = document.querySelector(change.parentSelector);
+      const parent = resolveSelector(change.parentSelector);
       if (!parent) return false;
       const temp = document.createElement("div");
       temp.innerHTML = change.html;
@@ -415,7 +415,7 @@ function applyUndo(change: Change): boolean {
 
     case "wrap": {
       // Undo: unwrap the element from its wrapper
-      const wrapper = document.querySelector(change.wrapperSelector);
+      const wrapper = resolveSelector(change.wrapperSelector);
       if (!wrapper) return false;
       const parent = wrapper.parentElement;
       if (!parent) return false;
@@ -428,7 +428,7 @@ function applyUndo(change: Change): boolean {
 
     case "duplicate": {
       // Undo: remove the cloned element
-      const clone = document.querySelector(change.cloneSelector);
+      const clone = resolveSelector(change.cloneSelector);
       if (clone) clone.remove();
       return true;
     }
@@ -436,7 +436,7 @@ function applyUndo(change: Change): boolean {
 }
 
 function applyRedo(change: Change): boolean {
-  const element = document.querySelector(change.selector);
+  const element = resolveSelector(change.selector);
 
   switch (change.type) {
     case "style":
@@ -470,7 +470,7 @@ function applyRedo(change: Change): boolean {
 
     case "move": {
       if (!element) return false;
-      const newParent = document.querySelector(change.toParent);
+      const newParent = resolveSelector(change.toParent);
       if (newParent) {
         const children = Array.from(newParent.children);
         const refNode = children[change.toIndex] || null;
@@ -480,7 +480,7 @@ function applyRedo(change: Change): boolean {
     }
 
     case "delete": {
-      const el = document.querySelector(change.selector);
+      const el = resolveSelector(change.selector);
       if (el) el.remove();
       return true;
     }
@@ -540,7 +540,7 @@ export function replayChanges(
   let failed = 0;
 
   for (const change of savedChanges) {
-    const element = document.querySelector(change.selector);
+    const element = resolveSelector(change.selector);
     if (!element || !(element instanceof HTMLElement)) {
       failed++;
       continue;
@@ -564,7 +564,7 @@ export function replayChanges(
           }
           break;
         case "move": {
-          const newParent = document.querySelector(change.toParent);
+          const newParent = resolveSelector(change.toParent);
           if (newParent) {
             const children = Array.from(newParent.children);
             const refNode = children[change.toIndex] || null;
@@ -611,6 +611,40 @@ function findExisting(
     }
   }
   return undefined;
+}
+
+/**
+ * Resolve a selector that may include an iframe prefix (>>>).
+ * When running inside an iframe, strips the iframe path and queries locally.
+ * When running in the top frame, tries to traverse into iframes if needed.
+ */
+function resolveSelector(selector: string): Element | null {
+  if (!selector.includes(IFRAME_SELECTOR_SEP)) {
+    return document.querySelector(selector);
+  }
+
+  const parts = selector.split(IFRAME_SELECTOR_SEP);
+  const localSelector = parts.pop()!;
+
+  // If we're inside an iframe, just use the local part
+  if (window !== window.top) {
+    return document.querySelector(localSelector);
+  }
+
+  // In the top frame, traverse through iframes
+  let currentDoc: Document = document;
+  for (const iframeSel of parts) {
+    const iframe = currentDoc.querySelector(iframeSel) as HTMLIFrameElement | null;
+    if (!iframe) return null;
+    try {
+      currentDoc = iframe.contentDocument!;
+      if (!currentDoc) return null;
+    } catch {
+      // Cross-origin iframe — can't access
+      return null;
+    }
+  }
+  return currentDoc.querySelector(localSelector);
 }
 
 function truncate(s: string, max = 20): string {

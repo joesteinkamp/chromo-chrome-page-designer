@@ -133,6 +133,13 @@ function onMouseMove(e: MouseEvent): void {
     return;
   }
 
+  // Skip iframes — let the iframe's own content script handle hover/selection
+  if (target.tagName === "IFRAME" || target.tagName === "FRAME") {
+    hideHover();
+    hoveredElement = null;
+    return;
+  }
+
   hoveredElement = target;
   const rect = target.getBoundingClientRect();
   showHover(rect);
@@ -147,6 +154,9 @@ function onClick(e: MouseEvent): void {
   // Allow resize handle clicks to pass through to mousedown handler
   if (getHandleDirection(target)) return;
   if (isOverlayElement(target)) return;
+
+  // Skip iframes — let the iframe's own content script handle click
+  if (target.tagName === "IFRAME" || target.tagName === "FRAME") return;
 
   // Prevent the page from handling this click
   e.preventDefault();

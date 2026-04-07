@@ -16,7 +16,7 @@
 
   /** UI library internals — skip these to find the user's component */
   var LIBRARY_INTERNAL_RE =
-    /^(Mui[A-Z]\w*Root|Mui[A-Z]\w*Base|Styled\w+|Emotion\w+|Base[A-Z]\w+|Chakra\w+Factory|_c\d*|Transition|Slot|Primitive)/;
+    /^(Mui[A-Z]\w*Root|Mui[A-Z]\w*Base|Styled\(?\w*\)?|Styled\w+|Emotion\w+|Base[A-Z]\w+|Chakra\w+Factory|_c\d*|Transition|Slot|Primitive|ThemeProvider|CssBaseline)/;
 
   /** Extract component name from a fiber, handling memo/forwardRef wrappers */
   function getComponentName(fiber: any): string | null {

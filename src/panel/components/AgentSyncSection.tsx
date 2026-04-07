@@ -24,7 +24,7 @@ export function AgentSyncSection({ syncStatus }: AgentSyncSectionProps) {
   }, [syncStatus.enabled]);
 
   const handleCopyConfig = useCallback(async () => {
-    const command = `claude mcp add --transport http page-designer ${syncStatus.endpoint}`;
+    const command = `claude mcp add --transport http chromo-designer ${syncStatus.endpoint}`;
     await navigator.clipboard.writeText(command);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);

@@ -200,21 +200,31 @@ export function AITab({
 
   const handleApplyFix = useCallback(
     (selector: string, changes: Array<{ property: string; value: string }>) => {
-      // First select the element
+      // Select the element and wait for confirmation before applying styles
       chrome.runtime.sendMessage({
         type: "SELECT_ELEMENT",
         selector,
       } satisfies Message);
-      // Apply styles with a small delay to ensure element is selected
+
+      // Listen for the element to be selected, then apply
+      const onSelected = (msg: Message) => {
+        if (msg.type === "ELEMENT_SELECTED") {
+          chrome.runtime.onMessage.removeListener(onSelected);
+          changes.forEach(({ property, value }) => {
+            chrome.runtime.sendMessage({
+              type: "APPLY_STYLE",
+              property,
+              value,
+            } satisfies Message);
+          });
+        }
+      };
+      chrome.runtime.onMessage.addListener(onSelected);
+
+      // Fallback timeout in case ELEMENT_SELECTED never fires
       setTimeout(() => {
-        changes.forEach(({ property, value }) => {
-          chrome.runtime.sendMessage({
-            type: "APPLY_STYLE",
-            property,
-            value,
-          } satisfies Message);
-        });
-      }, 100);
+        chrome.runtime.onMessage.removeListener(onSelected);
+      }, 2000);
     },
     []
   );

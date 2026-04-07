@@ -14,6 +14,10 @@
   var INTERNAL_RE =
     /^(Fragment|Suspense|StrictMode|Provider|Consumer|ForwardRef|Memo|Lazy|Profiler|ErrorBoundary)$/;
 
+  /** UI library internals — skip these to find the user's component */
+  var LIBRARY_INTERNAL_RE =
+    /^(Mui[A-Z]\w*Root|Mui[A-Z]\w*Base|Styled\w+|Emotion\w+|Base[A-Z]\w+|Chakra\w+Factory|_c\d*|Transition|Slot|Primitive)/;
+
   /** Extract component name from a fiber, handling memo/forwardRef wrappers */
   function getComponentName(fiber: any): string | null {
     var type = fiber.type;
@@ -52,10 +56,10 @@
     return null;
   }
 
-  /** Check if a fiber represents a user component (not a host element or React internal) */
+  /** Check if a fiber represents a user component (not a host element, React internal, or library internal) */
   function isUserComponent(fiber: any): boolean {
     var name = getComponentName(fiber);
-    return !!name && !INTERNAL_RE.test(name);
+    return !!name && !INTERNAL_RE.test(name) && !LIBRARY_INTERNAL_RE.test(name);
   }
 
   /** Extract props from a fiber's memoizedProps */

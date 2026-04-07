@@ -199,17 +199,32 @@ export function AITab({
   }, []);
 
   const handleApplyFix = useCallback(
-    (changes: Array<{ property: string; value: string }>) => {
-      changes.forEach(({ property, value }) => {
-        chrome.runtime.sendMessage({
-          type: "APPLY_STYLE",
-          property,
-          value,
-        } satisfies Message);
-      });
+    (selector: string, changes: Array<{ property: string; value: string }>) => {
+      // First select the element
+      chrome.runtime.sendMessage({
+        type: "SELECT_ELEMENT",
+        selector,
+      } satisfies Message);
+      // Apply styles with a small delay to ensure element is selected
+      setTimeout(() => {
+        changes.forEach(({ property, value }) => {
+          chrome.runtime.sendMessage({
+            type: "APPLY_STYLE",
+            property,
+            value,
+          } satisfies Message);
+        });
+      }, 100);
     },
     []
   );
+
+  const handleHighlightElement = useCallback((selector: string) => {
+    chrome.runtime.sendMessage({
+      type: "SELECT_ELEMENT",
+      selector,
+    } satisfies Message);
+  }, []);
 
   const severityIcon = (severity: string) => {
     switch (severity) {
@@ -383,12 +398,19 @@ export function AITab({
               <div className="pd-ai__suggestions">
                 {critiqueResponse.map((suggestion, i) =>
                   dismissedSuggestions.has(i) ? null : (
-                    <div key={i} className="pd-ai__critique-item">
+                    <div
+                      key={i}
+                      className="pd-ai__critique-item"
+                      onClick={() => handleHighlightElement(suggestion.selector)}
+                    >
                       <div className="pd-ai__critique-header">
                         <span
                           className={`pd-ai__suggestion-badge pd-ai__suggestion-badge--${suggestion.category}`}
                         >
                           {suggestion.category}
+                        </span>
+                        <span className="pd-ai__critique-selector" title={suggestion.selector}>
+                          {suggestion.selector}
                         </span>
                         <span
                           className={`pd-ai__severity pd-ai__severity--${suggestion.severity}`}
@@ -404,16 +426,20 @@ export function AITab({
                           suggestion.suggestedChanges.length > 0 && (
                             <button
                               className="pd-ai__suggestion-apply"
-                              onClick={() =>
-                                handleApplyFix(suggestion.suggestedChanges!)
-                              }
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleApplyFix(suggestion.selector, suggestion.suggestedChanges!);
+                              }}
                             >
                               Apply Fix
                             </button>
                           )}
                         <button
                           className="pd-ai__suggestion-dismiss"
-                          onClick={() => handleDismissSuggestion(i)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDismissSuggestion(i);
+                          }}
                         >
                           Dismiss
                         </button>

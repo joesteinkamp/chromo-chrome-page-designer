@@ -319,12 +319,29 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
+  cursor: pointer;
+  transition: border-color 0.12s;
+}
+
+.pd-ai__critique-item:hover {
+  border-color: var(--pd-accent);
 }
 
 .pd-ai__critique-header {
   display: flex;
   align-items: center;
   gap: 6px;
+}
+
+.pd-ai__critique-selector {
+  font-size: 10px;
+  font-family: "SF Mono", "Fira Code", monospace;
+  color: var(--pd-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
 }
 
 .pd-ai__critique-message {

@@ -204,7 +204,7 @@ export async function runDesignCritique(
   const [, mediaType, base64Data] = match;
 
   const system =
-    "You are a design critic. Analyze the screenshot and return ONLY a valid JSON array, no markdown, no explanation. Keep messages short (under 100 chars). Limit to 5 most important issues.";
+    "You are a design critic. Analyze the screenshot and return ONLY a valid JSON array, no markdown, no explanation. Keep messages short (under 100 chars). Return up to 15 issues.";
 
   const userContent = [
     {
@@ -213,11 +213,11 @@ export async function runDesignCritique(
     },
     {
       type: "text",
-      text: `Analyze this webpage at ${pageUrl}. Return ONLY a JSON array (no code fences, no markdown). Each object: {"selector": "CSS selector", "category": "spacing|color|typography|alignment|contrast|general", "severity": "info|warning|error", "message": "short description", "suggestedChanges": [{"property": "css-prop", "value": "css-value"}]}. Max 5 items. Keep messages brief.`,
+      text: `Analyze this webpage at ${pageUrl}. Return ONLY a JSON array (no code fences, no markdown). Each object: {"selector": "CSS selector", "category": "spacing|color|typography|alignment|contrast|general", "severity": "info|warning|error", "message": "short description", "suggestedChanges": [{"property": "css-prop", "value": "css-value"}]}. Up to 15 items. Keep messages brief.`,
     },
   ];
 
-  const responseText = await callProvider(provider, apiKey, system, userContent, 4000);
+  const responseText = await callProvider(provider, apiKey, system, userContent, 8000);
   return extractJSON(responseText) as AISuggestion[];
 }
 

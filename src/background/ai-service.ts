@@ -159,6 +159,13 @@ function extractJSON(text: string): any {
   // Find the first [ and last ] to extract the JSON array
   const start = cleaned.indexOf("[");
   const end = cleaned.lastIndexOf("]");
+
+  // If no JSON array found at all, the model returned plain text
+  if (start === -1) {
+    throw new Error(cleaned.length > 120
+      ? cleaned.slice(0, 120) + "..."
+      : cleaned);
+  }
   if (start !== -1 && end > start) {
     cleaned = cleaned.slice(start, end + 1);
   }
@@ -229,12 +236,12 @@ export async function runNLEdit(
   provider: Provider = "anthropic"
 ): Promise<Array<{ property: string; value: string }>> {
   const system =
-    "You are a CSS expert. Given an element's current styles and a natural language instruction, return the CSS property changes needed. Return only a JSON array of {property, value} objects.";
+    "You are a CSS expert. Given an element's current styles and a natural language instruction, return the CSS property changes needed. ALWAYS return ONLY a valid JSON array of {\"property\": \"css-property\", \"value\": \"css-value\"} objects. No explanations, no markdown, no text. If you cannot determine changes, return an empty array [].";
 
   const userContent = [
     {
       type: "text",
-      text: `Element: ${selector}\nCurrent styles: ${JSON.stringify(computedStyles)}\nInstruction: ${instruction}\n\nReturn a JSON array of CSS changes to apply.`,
+      text: `Element: ${selector}\nCurrent styles: ${JSON.stringify(computedStyles)}\nInstruction: ${instruction}\n\nReturn ONLY a JSON array. If unsure, return [].`,
     },
   ];
 

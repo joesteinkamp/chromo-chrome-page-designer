@@ -49,6 +49,7 @@ export const ComponentPropsSection: React.FC<ComponentPropsSectionProps> = ({
             <PropRow
               key={prop.name}
               prop={prop}
+              enumValues={componentInfo.enumValues?.[prop.name]}
               onChange={handlePropChange}
             />
           ))}
@@ -60,10 +61,11 @@ export const ComponentPropsSection: React.FC<ComponentPropsSectionProps> = ({
 
 interface PropRowProps {
   prop: { name: string; value: string | number | boolean | null; type: "string" | "number" | "boolean" | "null" };
+  enumValues?: string[];
   onChange: (name: string, value: string | number | boolean | null, type: "string" | "number" | "boolean" | "null") => void;
 }
 
-function PropRow({ prop, onChange }: PropRowProps) {
+function PropRow({ prop, enumValues, onChange }: PropRowProps) {
   const [localValue, setLocalValue] = useState(String(prop.value ?? ""));
 
   // Sync when prop changes externally
@@ -114,7 +116,32 @@ function PropRow({ prop, onChange }: PropRowProps) {
     );
   }
 
-  // String type
+  // String type — use dropdown if enum values are available
+  if (enumValues && enumValues.length > 0) {
+    // Ensure current value is in the list
+    const options = [...enumValues];
+    const currentStr = String(prop.value ?? "");
+    if (currentStr && !options.includes(currentStr)) {
+      options.unshift(currentStr);
+    }
+
+    return (
+      <div className="pd-section__row pd-props__row">
+        <span className="pd-props__name">{prop.name}</span>
+        <select
+          className="pd-props__select"
+          value={currentStr}
+          onChange={(e) => onChange(prop.name, e.target.value, "string")}
+        >
+          {options.map((opt) => (
+            <option key={opt} value={opt}>{opt}</option>
+          ))}
+        </select>
+      </div>
+    );
+  }
+
+  // Fallback: text input
   return (
     <div className="pd-section__row pd-props__row">
       <span className="pd-props__name">{prop.name}</span>

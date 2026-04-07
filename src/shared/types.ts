@@ -50,6 +50,8 @@ export interface ElementData {
       value: string | number | boolean | null;
       type: "string" | "number" | "boolean" | "null";
     }>;
+    /** Possible enum values for string props (from propTypes or sibling analysis) */
+    enumValues?: Record<string, string[]>;
   };
 }
 

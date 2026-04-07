@@ -30,6 +30,8 @@ export interface ComponentInfo {
   sourceLine: number | null;
   /** Editable primitive props from the nearest component */
   props?: ComponentProp[];
+  /** Possible enum values for string props */
+  enumValues?: Record<string, string[]>;
 }
 
 /** Detect which framework (if any) rendered this element */
@@ -70,6 +72,7 @@ export function extractComponentInfo(element: Element): ComponentInfo {
       sourceFile: result.sourceFile || null,
       sourceLine: result.sourceLine || null,
       props: result.props && result.props.length > 0 ? result.props : undefined,
+      enumValues: result.enumValues && Object.keys(result.enumValues).length > 0 ? result.enumValues : undefined,
     };
   } catch {
     element.removeAttribute("data-pd-detect");

@@ -14,6 +14,140 @@
   var INTERNAL_RE =
     /^(Fragment|Suspense|StrictMode|Provider|Consumer|ForwardRef|Memo|Lazy|Profiler|ErrorBoundary)$/;
 
+  /** Extract component name from a fiber, handling memo/forwardRef wrappers */
+  function getComponentName(fiber: any): string | null {
+    var type = fiber.type;
+    if (!type) return null;
+
+    // Direct function component or class component
+    if (typeof type === "function") {
+      return type.displayName || type.name || null;
+    }
+
+    // forwardRef: { $$typeof: Symbol(react.forward_ref), render: fn }
+    if (type.$$typeof) {
+      // Check displayName on the wrapper first
+      if (type.displayName) return type.displayName;
+
+      var sym = String(type.$$typeof);
+
+      // forwardRef
+      if (sym.includes("forward_ref") && type.render) {
+        return type.render.displayName || type.render.name || null;
+      }
+
+      // memo: { $$typeof: Symbol(react.memo), type: fn | object }
+      if (sym.includes("memo") && type.type) {
+        if (type.type.displayName) return type.type.displayName;
+        if (typeof type.type === "function") {
+          return type.type.displayName || type.type.name || null;
+        }
+        // memo(forwardRef(...))
+        if (type.type.render) {
+          return type.type.render.displayName || type.type.render.name || null;
+        }
+      }
+    }
+
+    return null;
+  }
+
+  /** Check if a fiber represents a user component (not a host element or React internal) */
+  function isUserComponent(fiber: any): boolean {
+    var name = getComponentName(fiber);
+    return !!name && !INTERNAL_RE.test(name);
+  }
+
+  /** Extract props from a fiber's memoizedProps */
+  function extractProps(fiber: any): Array<{ name: string; value: any; type: string }> {
+    var props: Array<{ name: string; value: any; type: string }> = [];
+    if (!fiber.memoizedProps) return props;
+
+    var entries = Object.entries(fiber.memoizedProps);
+    for (var i = 0; i < entries.length; i++) {
+      var pkey = entries[i][0];
+      var pval = entries[i][1];
+      if (pkey === "children" || pkey === "key" || pkey === "ref") continue;
+      if (pval === null || pval === undefined) {
+        props.push({ name: pkey, value: null, type: "null" });
+      } else if (typeof pval === "string") {
+        props.push({ name: pkey, value: pval, type: "string" });
+      } else if (typeof pval === "number") {
+        props.push({ name: pkey, value: pval, type: "number" });
+      } else if (typeof pval === "boolean") {
+        props.push({ name: pkey, value: pval, type: "boolean" });
+      }
+    }
+    return props;
+  }
+
+  /** Try to extract enum values for string props from propTypes or sibling instances */
+  function extractEnumValues(fiber: any): Record<string, string[]> {
+    var enums: Record<string, string[]> = {};
+    var type = fiber.type;
+    // Unwrap memo/forwardRef to get the actual component type
+    if (type && type.type) type = type.type;
+    if (type && type.render) type = type.render;
+
+    // Check propTypes for oneOf validators
+    if (type && type.propTypes) {
+      var ptEntries = Object.entries(type.propTypes);
+      for (var i = 0; i < ptEntries.length; i++) {
+        var ptName = ptEntries[i][0] as string;
+        var ptValidator = ptEntries[i][1] as any;
+        // React PropTypes.oneOf stores values in the validator function
+        if (ptValidator && ptValidator._values) {
+          enums[ptName] = ptValidator._values.filter(function(v: any) {
+            return typeof v === "string" || typeof v === "number";
+          }).map(String);
+        }
+      }
+    }
+
+    // Scan sibling instances: find other fibers with the same component type
+    // by walking up to the parent and checking children
+    try {
+      var componentType = fiber.type;
+      var parent = fiber.return;
+      if (parent) {
+        var siblingValues: Record<string, Set<string>> = {};
+        // Walk siblings at the same level
+        var child = parent.child;
+        var visited = 0;
+        while (child && visited < 50) {
+          if (child.type === componentType && child.memoizedProps) {
+            var sEntries = Object.entries(child.memoizedProps);
+            for (var si = 0; si < sEntries.length; si++) {
+              var sk = sEntries[si][0] as string;
+              var sv = sEntries[si][1];
+              if (typeof sv === "string" && sk !== "children" && sk !== "key" && sk !== "className") {
+                if (!siblingValues[sk]) siblingValues[sk] = new Set();
+                siblingValues[sk].add(sv);
+              }
+            }
+          }
+          child = child.sibling;
+          visited++;
+        }
+        // Add sibling-observed values to enums (merge with propTypes)
+        var svEntries = Object.entries(siblingValues);
+        for (var svi = 0; svi < svEntries.length; svi++) {
+          var svName = svEntries[svi][0] as string;
+          var svSet = svEntries[svi][1] as Set<string>;
+          if (svSet.size > 1) { // Only if there are multiple observed values
+            var existing = enums[svName] || [];
+            svSet.forEach(function(v) {
+              if (existing.indexOf(v) === -1) existing.push(v);
+            });
+            enums[svName] = existing;
+          }
+        }
+      }
+    } catch (e) { /* */ }
+
+    return enums;
+  }
+
   // --- Detect & extract component info ---
   document.documentElement.addEventListener("__pd-detect", function () {
     var el = document.querySelector("[data-pd-detect]");
@@ -30,6 +164,7 @@
         value: string | number | boolean | null;
         type: string;
       }>,
+      enumValues: {} as Record<string, string[]>,
     };
 
     var keys = Object.keys(el);
@@ -56,59 +191,21 @@
         var current = fiber ? fiber.return : null;
         var foundFirst = false;
         while (current) {
-          if (typeof current.type === "function") {
-            var name =
-              current.type.displayName || current.type.name || null;
-            if (name && !INTERNAL_RE.test(name)) {
-              result.componentHierarchy.push(name);
-              if (!foundFirst) {
-                foundFirst = true;
-                result.componentName = name;
-                if (current._debugSource) {
-                  result.sourceFile =
-                    current._debugSource.fileName || null;
-                  result.sourceLine =
-                    current._debugSource.lineNumber || null;
-                }
-                if (current.memoizedProps) {
-                  var entries = Object.entries(current.memoizedProps);
-                  for (var i = 0; i < entries.length; i++) {
-                    var pkey = entries[i][0];
-                    var pval = entries[i][1];
-                    if (
-                      pkey === "children" ||
-                      pkey === "key" ||
-                      pkey === "ref"
-                    )
-                      continue;
-                    if (pval === null || pval === undefined) {
-                      result.props.push({
-                        name: pkey,
-                        value: null,
-                        type: "null",
-                      });
-                    } else if (typeof pval === "string") {
-                      result.props.push({
-                        name: pkey,
-                        value: pval,
-                        type: "string",
-                      });
-                    } else if (typeof pval === "number") {
-                      result.props.push({
-                        name: pkey,
-                        value: pval,
-                        type: "number",
-                      });
-                    } else if (typeof pval === "boolean") {
-                      result.props.push({
-                        name: pkey,
-                        value: pval,
-                        type: "boolean",
-                      });
-                    }
-                  }
-                }
+          if (isUserComponent(current)) {
+            var name = getComponentName(current)!;
+            result.componentHierarchy.push(name);
+            if (!foundFirst) {
+              foundFirst = true;
+              result.componentName = name;
+              // Source info
+              if (current._debugSource) {
+                result.sourceFile = current._debugSource.fileName || null;
+                result.sourceLine = current._debugSource.lineNumber || null;
               }
+              // Props
+              result.props = extractProps(current);
+              // Enum values
+              result.enumValues = extractEnumValues(current);
             }
           }
           current = current.return;
@@ -129,7 +226,6 @@
               result.componentName = vname;
               result.sourceFile =
                 (inst.type && inst.type.__file) || null;
-              // Extract props from Vue 3 instance
               var vueProps = inst.props;
               if (vueProps) {
                 var vpEntries = Object.entries(vueProps);
@@ -146,6 +242,19 @@
                     result.props.push({ name: vpKey, value: vpVal, type: "boolean" });
                   }
                 }
+              }
+              // Try to extract Vue prop validators for enum values
+              if (inst.type && inst.type.props) {
+                var vueEnums: Record<string, string[]> = {};
+                var vtpEntries = Object.entries(inst.type.props);
+                for (var vti = 0; vti < vtpEntries.length; vti++) {
+                  var vtpName = vtpEntries[vti][0] as string;
+                  var vtpDef = vtpEntries[vti][1] as any;
+                  if (vtpDef && vtpDef.validator && vtpDef.validator._values) {
+                    vueEnums[vtpName] = vtpDef.validator._values.map(String);
+                  }
+                }
+                result.enumValues = vueEnums;
               }
             }
           }
@@ -171,7 +280,6 @@
               result.componentName = v2name;
               result.sourceFile =
                 (v2.$options && v2.$options.__file) || null;
-              // Extract props from Vue 2 instance
               var v2Props = v2.$props || v2._props;
               if (v2Props) {
                 var v2pEntries = Object.entries(v2Props);
@@ -211,29 +319,24 @@
             result.componentHierarchy = [m[1]];
           }
         }
-        // Extract Svelte props from component context
-        var svelteCtx = (el as any).__svelte_meta && (el as any).__svelte_meta.ctx;
-        if (!svelteCtx) {
-          // Svelte 4: component instance accessible via __s (compiled) or $$
-          var svelteComp = (el as any).__svelte_component || (el as any).__s;
-          if (svelteComp && svelteComp.$$) {
-            var svelteProps = svelteComp.$$.props;
-            var svelteCtxArr = svelteComp.$$.ctx;
-            if (svelteProps && svelteCtxArr) {
-              var spEntries = Object.entries(svelteProps);
-              for (var si = 0; si < spEntries.length; si++) {
-                var spName = spEntries[si][0] as string;
-                var spIdx = spEntries[si][1] as number;
-                var spVal = svelteCtxArr[spIdx];
-                if (spVal === null || spVal === undefined) {
-                  result.props.push({ name: spName, value: null, type: "null" });
-                } else if (typeof spVal === "string") {
-                  result.props.push({ name: spName, value: spVal, type: "string" });
-                } else if (typeof spVal === "number") {
-                  result.props.push({ name: spName, value: spVal, type: "number" });
-                } else if (typeof spVal === "boolean") {
-                  result.props.push({ name: spName, value: spVal, type: "boolean" });
-                }
+        var svelteComp = (el as any).__svelte_component || (el as any).__s;
+        if (svelteComp && svelteComp.$$) {
+          var svelteProps = svelteComp.$$.props;
+          var svelteCtxArr = svelteComp.$$.ctx;
+          if (svelteProps && svelteCtxArr) {
+            var spEntries = Object.entries(svelteProps);
+            for (var si = 0; si < spEntries.length; si++) {
+              var spName = spEntries[si][0] as string;
+              var spIdx = spEntries[si][1] as number;
+              var spVal = svelteCtxArr[spIdx];
+              if (spVal === null || spVal === undefined) {
+                result.props.push({ name: spName, value: null, type: "null" });
+              } else if (typeof spVal === "string") {
+                result.props.push({ name: spName, value: spVal, type: "string" });
+              } else if (typeof spVal === "number") {
+                result.props.push({ name: spName, value: spVal, type: "number" });
+              } else if (typeof spVal === "boolean") {
+                result.props.push({ name: spName, value: spVal, type: "boolean" });
               }
             }
           }
@@ -287,28 +390,22 @@
     if (!fiberKey) return;
     var fiber = (el as any)[fiberKey];
 
+    // Find the target component fiber
     var current = fiber ? fiber.return : null;
     while (current) {
-      if (typeof current.type === "function") {
-        var name =
-          current.type.displayName || current.type.name || null;
-        if (
-          name &&
-          !INTERNAL_RE.test(name) &&
-          name === componentName
-        )
-          break;
-      }
+      var name = getComponentName(current);
+      if (name && !INTERNAL_RE.test(name) && name === componentName) break;
       current = current.return;
     }
     if (!current) return;
 
+    // Update props on the fiber
     if (current.memoizedProps)
       current.memoizedProps[propName] = propValue;
     if (current.pendingProps)
       current.pendingProps[propName] = propValue;
 
-    // Try React DevTools hook first
+    // Strategy 1: React DevTools hook (most reliable)
     var hook = (window as any).__REACT_DEVTOOLS_GLOBAL_HOOK__;
     if (hook && hook.renderers) {
       try {
@@ -327,7 +424,7 @@
       }
     }
 
-    // Fallback: force update via class component
+    // Strategy 2: Class component forceUpdate
     if (
       current.stateNode &&
       typeof current.stateNode.forceUpdate === "function"
@@ -336,33 +433,59 @@
       return;
     }
 
-    // Walk up to find a class component ancestor
+    // Strategy 3: Function component — trigger re-render via state hook dispatch
+    try {
+      var stateHook = current.memoizedState;
+      while (stateHook) {
+        if (stateHook.queue && stateHook.queue.dispatch) {
+          // Dispatch an identity update to trigger a re-render
+          stateHook.queue.dispatch(function (prev: any) { return prev; });
+          return;
+        }
+        stateHook = stateHook.next;
+      }
+    } catch (e) {
+      /* */
+    }
+
+    // Strategy 4: Walk up to find any ancestor that can re-render
     var ancestor = current.return;
     while (ancestor) {
+      // Class component ancestor
       if (
         ancestor.stateNode &&
         typeof ancestor.stateNode.forceUpdate === "function"
       ) {
         ancestor.stateNode.forceUpdate();
-        break;
+        return;
+      }
+      // Function component ancestor with state hooks
+      try {
+        var ancestorHook = ancestor.memoizedState;
+        while (ancestorHook) {
+          if (ancestorHook.queue && ancestorHook.queue.dispatch) {
+            ancestorHook.queue.dispatch(function (prev: any) { return prev; });
+            return;
+          }
+          ancestorHook = ancestorHook.next;
+        }
+      } catch (e) {
+        /* */
       }
       ancestor = ancestor.return;
     }
   }
 
   function applyVuePropInMain(el: Element, propName: string, propValue: any) {
-    // Vue 3: update reactive props on the component instance
     var vue3Inst = (el as any).__vueParentComponent;
     if (vue3Inst) {
       try {
         if (vue3Inst.props && propName in vue3Inst.props) {
           vue3Inst.props[propName] = propValue;
         }
-        // Also update via setupState if the prop is forwarded there
         if (vue3Inst.setupState && propName in vue3Inst.setupState) {
           vue3Inst.setupState[propName] = propValue;
         }
-        // Trigger Vue 3 re-render
         if (vue3Inst.update && typeof vue3Inst.update === "function") {
           vue3Inst.update();
         } else if (vue3Inst.proxy && vue3Inst.proxy.$forceUpdate) {
@@ -374,7 +497,6 @@
       return;
     }
 
-    // Vue 2: update via $set or direct assignment
     var vue2Inst = (el as any).__vue__;
     if (vue2Inst) {
       try {
@@ -399,7 +521,6 @@
   }
 
   function applySveltePropInMain(el: Element, propName: string, propValue: any) {
-    // Svelte 4: use component.$set() API
     var svelteComp = (el as any).__svelte_component || (el as any).__s;
     if (svelteComp && typeof svelteComp.$set === "function") {
       try {

@@ -47,8 +47,8 @@ const server = createServer((req: IncomingMessage, res: ServerResponse) => {
     return;
   }
 
-  // MCP endpoints: /{userId}/mcp
-  const mcpMatch = pathname.match(/^\/([a-zA-Z0-9_-]+)\/mcp$/);
+  // MCP endpoints: /mcp/{userId}
+  const mcpMatch = pathname.match(/^\/mcp\/([a-zA-Z0-9_-]+)$/);
   if (mcpMatch) {
     const userId = mcpMatch[1];
 
@@ -318,6 +318,6 @@ import type { UserState } from "./store.js";
 server.listen(PORT, () => {
   console.log(`[relay] Page Designer relay server listening on port ${PORT}`);
   console.log(`[relay]   WebSocket: ws://localhost:${PORT}/ws?id={userId}`);
-  console.log(`[relay]   MCP:       http://localhost:${PORT}/{userId}/mcp`);
+  console.log(`[relay]   MCP:       http://localhost:${PORT}/mcp/{userId}`);
   console.log(`[relay]   Health:    http://localhost:${PORT}/health`);
 });

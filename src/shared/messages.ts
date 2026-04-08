@@ -35,6 +35,8 @@ export type Message =
     }
   | { type: "MULTI_ELEMENT_SELECTED"; count: number; data: ElementData }
   // Interaction events (content script → background → panel)
+  // Text changes (relay → content script)
+  | { type: "APPLY_TEXT"; selector: string; text: string }
   | { type: "TEXT_CHANGED"; selector: string; from: string; to: string }
   | {
       type: "ELEMENT_MOVED";

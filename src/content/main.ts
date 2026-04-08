@@ -237,6 +237,18 @@ chrome.runtime.onMessage.addListener(
         if (sel3) sendElementData(sel3);
         break;
 
+      case "APPLY_TEXT": {
+        const textTarget = document.querySelector(message.selector);
+        if (textTarget && textTarget instanceof HTMLElement) {
+          const oldText = textTarget.textContent || "";
+          textTarget.textContent = message.text;
+          recordTextChange(textTarget, oldText, message.text);
+          refreshSelection();
+          sendElementData(textTarget);
+        }
+        break;
+      }
+
       case "SELECT_ELEMENT": {
         const target = document.querySelector(message.selector);
         if (target) {

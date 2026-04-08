@@ -80,6 +80,10 @@ export type Message =
   | { type: "OPEN_OPTIONS_PAGE" }
   // Injection failure (background → panel)
   | { type: "INJECTION_FAILED" }
+  // Cross-frame coordination
+  | { type: "DESELECT_FRAME" }
+  | { type: "FRAME_ELEMENT_SELECTED"; frameId: number; data: ElementData }
+  | { type: "FRAME_ELEMENT_DESELECTED"; frameId: number }
   // Agent Sync
   | { type: "AGENT_SYNC_ENABLE" }
   | { type: "AGENT_SYNC_DISABLE" }

@@ -21,6 +21,8 @@ import {
 import type { RelayCommand } from "./relay-client";
 
 let activeTabId: number | null = null;
+/** The frame ID that currently has a selected element (0 = top frame) */
+let activeFrameId: number = 0;
 /** Tabs where the extension has been activated (content script should be running) */
 const activatedTabs = new Set<number>();
 /** Tabs currently being injected (prevents concurrent injection races) */
@@ -33,6 +35,20 @@ chrome.runtime.onMessage.addListener(
     // Track the active tab from content script messages
     if (sender.tab?.id) {
       activeTabId = sender.tab.id;
+    }
+
+    // Track the frame that has the active selection
+    if (sender.tab?.id && sender.frameId !== undefined) {
+      if (message.type === "ELEMENT_SELECTED") {
+        const prevFrameId = activeFrameId;
+        activeFrameId = sender.frameId;
+        // Deselect in other frames when a new frame gets a selection
+        if (prevFrameId !== activeFrameId) {
+          deselectOtherFrames(sender.tab.id, sender.frameId);
+        }
+      } else if (message.type === "ELEMENT_DESELECTED" && sender.frameId === activeFrameId) {
+        activeFrameId = 0;
+      }
     }
 
     switch (message.type) {
@@ -141,6 +157,13 @@ chrome.runtime.onMessage.addListener(
       case "STATE_RESPONSE":
       case "SAVED_EDITS_AVAILABLE":
         if (sender.tab) {
+          // Annotate element data with frameId so the panel knows which frame it came from
+          if (message.type === "ELEMENT_SELECTED" && sender.frameId) {
+            message.data.frameId = sender.frameId;
+          }
+          if (message.type === "MULTI_ELEMENT_SELECTED" && sender.frameId) {
+            message.data.frameId = sender.frameId;
+          }
           chrome.runtime.sendMessage(message).catch(() => {});
         }
         // Push to relay if connected
@@ -349,16 +372,16 @@ async function ensureContentScript(tabId: number): Promise<boolean> {
     try {
       // Inject main world bridge first (for framework detection)
       await chrome.scripting.executeScript({
-        target: { tabId },
+        target: { tabId, allFrames: true },
         files: ["content/main-world-bridge.js"],
         world: "MAIN" as any,
       });
       await chrome.scripting.executeScript({
-        target: { tabId },
+        target: { tabId, allFrames: true },
         files: ["content/main.js"],
       });
       await chrome.scripting.insertCSS({
-        target: { tabId },
+        target: { tabId, allFrames: true },
         files: ["content/content.css"],
       });
       // Give it a moment to initialize
@@ -398,8 +421,10 @@ function sendToTab(tabId: number, message: Message): void {
 function forwardToContentScript(message: Message, sendResponse?: (resp: any) => void): void {
   getActiveTabId().then((tabId) => {
     if (!tabId) return;
+    // Route to the specific frame that has the active selection
+    const options = activeFrameId ? { frameId: activeFrameId } : undefined;
     if (sendResponse) {
-      chrome.tabs.sendMessage(tabId, message, (resp) => {
+      chrome.tabs.sendMessage(tabId, message, options ?? {}, (resp) => {
         // Clear lastError to prevent unchecked error
         if (chrome.runtime.lastError) {
           console.warn("Chromo Design:", chrome.runtime.lastError.message);
@@ -407,7 +432,30 @@ function forwardToContentScript(message: Message, sendResponse?: (resp: any) => 
         sendResponse(resp);
       });
     } else {
-      sendToTab(tabId, message);
+      if (options) {
+        chrome.tabs.sendMessage(tabId, message, options, () => {
+          void chrome.runtime.lastError;
+        });
+      } else {
+        sendToTab(tabId, message);
+      }
+    }
+  });
+}
+
+/** Deselect elements in all frames except the specified one */
+function deselectOtherFrames(tabId: number, exceptFrameId: number): void {
+  chrome.webNavigation.getAllFrames({ tabId }, (frames) => {
+    if (!frames) return;
+    for (const frame of frames) {
+      if (frame.frameId !== exceptFrameId) {
+        chrome.tabs.sendMessage(
+          tabId,
+          { type: "DESELECT_FRAME" } satisfies Message,
+          { frameId: frame.frameId },
+          () => { void chrome.runtime.lastError; }
+        );
+      }
     }
   });
 }

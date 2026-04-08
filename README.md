@@ -12,8 +12,8 @@ A Chrome extension that lets you visually edit any live webpage using a Figma-li
 ### Build
 
 ```bash
-git clone https://github.com/joesteinkamp/chrome-page-designer.git
-cd chrome-page-designer
+git clone https://github.com/joesteinkamp/chromo-chrome-page-designer.git
+cd chromo-chrome-page-designer
 npm install
 npm run build
 ```

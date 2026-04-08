@@ -16,7 +16,7 @@ export interface RelayStateUpdate {
 }
 
 export interface RelayCommand {
-  type: "apply_style" | "apply_text" | "select_element" | "get_state";
+  type: "apply_style" | "apply_text" | "get_element_styles";
   [key: string]: any;
 }
 

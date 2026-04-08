@@ -557,31 +557,25 @@ onRelayCommand((cmd: RelayCommand) => {
         if (cmd.selector) {
           sendToTab(tabId, { type: "SELECT_ELEMENT", selector: cmd.selector } as Message);
         }
+        // Small delay to ensure element is selected before applying text
+        setTimeout(() => {
+          if (tabId) {
+            sendToTab(tabId, {
+              type: "APPLY_TEXT",
+              selector: cmd.selector,
+              text: cmd.text,
+            } as Message);
+          }
+        }, 50);
       });
       break;
 
-    case "select_element":
+    case "get_element_styles":
+      // Select the element — this triggers ELEMENT_SELECTED with full computed
+      // styles, which the service worker already pushes to the relay
       getActiveTabId().then((tabId) => {
         if (!tabId) return;
         sendToTab(tabId, { type: "SELECT_ELEMENT", selector: cmd.selector } as Message);
-      });
-      break;
-
-    case "get_state":
-      getActiveTabId().then((tabId) => {
-        if (!tabId) return;
-        chrome.tabs.sendMessage(tabId, { type: "GET_CHANGES" } as Message, (resp) => {
-          void chrome.runtime.lastError;
-          if (resp && isRelayConnected()) {
-            pushStateUpdate({
-              pageUrl: "",
-              pageTitle: "",
-              selectedElement: null,
-              changes: resp.changes || [],
-              componentMap: {},
-            });
-          }
-        });
       });
       break;
   }

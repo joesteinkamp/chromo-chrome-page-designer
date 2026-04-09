@@ -85,20 +85,6 @@
 .__pd-handle--sw { cursor: sw-resize !important; }
 .__pd-handle--w  { cursor: w-resize !important; }
 
-/* Drag insertion indicator */
-.__pd-insertion-line {
-  position: fixed !important;
-  z-index: 2147483647 !important;
-  pointer-events: none !important;
-  height: 2px !important;
-  background: #4f9eff !important;
-  display: none !important;
-}
-
-.__pd-insertion-line--visible {
-  display: block !important;
-}
-
 /* Inline editing highlight */
 .__pd-editing {
   outline: 2px solid #4f9eff !important;

@@ -22,6 +22,8 @@ let redoStack: Change[] = [];
 let nextId = 1;
 let currentBatchId: string | null = null;
 const selectorCache = new WeakMap<Element, string>();
+/** Direct element references for move changes — selectors are unreliable after DOM reorder */
+const moveElementRefs = new Map<string, Element>();
 
 /** Start a batch — all changes recorded until endBatch share a batchId */
 export function startBatch(): string {
@@ -131,6 +133,8 @@ export function recordMoveChange(
   toParent: string,
   toIndex: number
 ): Change {
+  // Invalidate cached selector — element has moved so position-based selectors are stale
+  selectorCache.delete(element);
   const selector = getSelector(element);
   const change: MoveChange = {
     id: makeId(),
@@ -143,6 +147,8 @@ export function recordMoveChange(
     toParent,
     toIndex,
   };
+  // Store direct element reference so undo/redo can find it regardless of selector validity
+  moveElementRefs.set(change.id, element);
   changes.push(change);
   redoStack = [];
   broadcastChanges();
@@ -379,12 +385,17 @@ function applyUndo(change: Change): boolean {
       return true;
 
     case "move": {
-      if (!element) return false;
+      const moveEl = moveElementRefs.get(change.id) ?? element;
+      if (!moveEl) return false;
       const origParent = resolveSelector(change.fromParent);
       if (origParent) {
         const children = Array.from(origParent.children);
         const refNode = children[change.fromIndex] || null;
-        origParent.insertBefore(element, refNode);
+        origParent.insertBefore(moveEl, refNode);
+        // Update selector to reflect restored position
+        selectorCache.delete(moveEl);
+        change.selector = generateSelector(moveEl);
+        selectorCache.set(moveEl, change.selector);
       }
       return true;
     }
@@ -469,12 +480,17 @@ function applyRedo(change: Change): boolean {
       return true;
 
     case "move": {
-      if (!element) return false;
+      const moveEl = moveElementRefs.get(change.id) ?? element;
+      if (!moveEl) return false;
       const newParent = resolveSelector(change.toParent);
       if (newParent) {
         const children = Array.from(newParent.children);
         const refNode = children[change.toIndex] || null;
-        newParent.insertBefore(element, refNode);
+        newParent.insertBefore(moveEl, refNode);
+        // Update selector to reflect new position
+        selectorCache.delete(moveEl);
+        change.selector = generateSelector(moveEl);
+        selectorCache.set(moveEl, change.selector);
       }
       return true;
     }
@@ -529,6 +545,7 @@ export function canRedo(): boolean {
 export function clearChanges(): void {
   changes = [];
   redoStack = [];
+  moveElementRefs.clear();
   broadcastChanges();
 }
 

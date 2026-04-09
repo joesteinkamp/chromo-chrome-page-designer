@@ -1,24 +1,21 @@
 /**
- * Drag-and-drop element rearrangement.
- * Mousedown on selected element → ghost follows cursor → insertion line shows
- * drop position → mouseup moves the element in the DOM.
+ * Drag to move — click and drag a selected element to reposition it
+ * visually by adjusting CSS top/left (pixel movement), matching the
+ * arrow-key nudge behaviour.
  */
 
-import { isOverlayElement } from "./overlay";
-import { generateSelector } from "../shared/selector";
-import { recordMoveChange } from "./change-tracker";
+import { recordStyleChange, startBatch, endBatch } from "./change-tracker";
 
 let isDragging = false;
 let dragElement: HTMLElement | null = null;
-let ghost: HTMLDivElement | null = null;
-let insertionLine: HTMLDivElement | null = null;
-let dropTarget: Element | null = null;
-let insertBefore: boolean = true;
 let startX = 0;
 let startY = 0;
+let startTop = 0;
+let startLeft = 0;
+let originalPosition = "";
 let onDragEnd: (() => void) | null = null;
 
-const DRAG_THRESHOLD = 5;
+const DRAG_THRESHOLD = 3;
 let hasDragStarted = false;
 
 export function initDragDrop(
@@ -31,6 +28,11 @@ export function initDragDrop(
   startY = e.clientY;
   hasDragStarted = false;
   onDragEnd = callback;
+
+  const computed = window.getComputedStyle(element);
+  startTop = parseFloat(computed.top) || 0;
+  startLeft = parseFloat(computed.left) || 0;
+  originalPosition = computed.position;
 
   document.addEventListener("mousemove", onMouseMove, true);
   document.addEventListener("mouseup", onMouseUp, true);
@@ -56,150 +58,50 @@ function onMouseMove(e: MouseEvent): void {
     if (Math.abs(dx) < DRAG_THRESHOLD && Math.abs(dy) < DRAG_THRESHOLD) return;
     hasDragStarted = true;
     isDragging = true;
-    createGhost();
-    createInsertionLine();
-    dragElement.style.opacity = "0.3";
-  }
 
-  if (ghost) {
-    ghost.style.left = `${e.clientX + 10}px`;
-    ghost.style.top = `${e.clientY + 10}px`;
-  }
-
-  if (ghost) ghost.style.display = "none";
-  dragElement.style.pointerEvents = "none";
-
-  const target = document.elementFromPoint(e.clientX, e.clientY);
-
-  dragElement.style.pointerEvents = "";
-  if (ghost) ghost.style.display = "block";
-
-  if (
-    target &&
-    target !== dragElement &&
-    !isOverlayElement(target) &&
-    target !== document.body &&
-    target !== document.documentElement &&
-    !dragElement.contains(target)
-  ) {
-    dropTarget = target;
-    const rect = target.getBoundingClientRect();
-    const midY = rect.top + rect.height / 2;
-    insertBefore = e.clientY < midY;
-
-    if (insertionLine) {
-      const lineY = insertBefore ? rect.top : rect.bottom;
-      insertionLine.style.cssText = `
-        left: ${rect.left}px !important;
-        top: ${lineY - 1}px !important;
-        width: ${rect.width}px !important;
-      `;
-      insertionLine.classList.add("__pd-insertion-line--visible");
+    // Ensure element is positioned for movement
+    if (originalPosition === "static") {
+      dragElement.style.setProperty("position", "relative", "important");
+      recordStyleChange(dragElement, "position", "static", "relative");
     }
-  } else {
-    dropTarget = null;
-    insertionLine?.classList.remove("__pd-insertion-line--visible");
+
+    startBatch();
   }
+
+  const newTop = startTop + dy;
+  const newLeft = startLeft + dx;
+
+  dragElement.style.setProperty("top", `${newTop}px`, "important");
+  dragElement.style.setProperty("left", `${newLeft}px`, "important");
 }
 
-function onMouseUp(e: MouseEvent): void {
+function onMouseUp(_e: MouseEvent): void {
   if (!dragElement) {
     cleanup();
     return;
   }
 
-  if (hasDragStarted && dropTarget && dragElement) {
-    const originalParent = dragElement.parentElement;
-    const originalIndex = originalParent
-      ? Array.from(originalParent.children).indexOf(dragElement)
-      : 0;
-    const fromParentSelector = originalParent
-      ? generateSelector(originalParent)
-      : "body";
+  if (hasDragStarted && dragElement) {
+    const computed = window.getComputedStyle(dragElement);
+    const finalTop = computed.top;
+    const finalLeft = computed.left;
 
-    const targetParent = dropTarget.parentElement;
-    if (targetParent) {
-      if (insertBefore) {
-        targetParent.insertBefore(dragElement, dropTarget);
-      } else {
-        targetParent.insertBefore(dragElement, dropTarget.nextSibling);
-      }
-
-      const newParent = dragElement.parentElement;
-      const newIndex = newParent
-        ? Array.from(newParent.children).indexOf(dragElement)
-        : 0;
-      const toParentSelector = newParent
-        ? generateSelector(newParent)
-        : "body";
-
-      recordMoveChange(
-        dragElement,
-        fromParentSelector,
-        originalIndex,
-        toParentSelector,
-        newIndex
-      );
-    }
+    recordStyleChange(dragElement, "top", `${startTop}px`, finalTop);
+    recordStyleChange(dragElement, "left", `${startLeft}px`, finalLeft);
+    endBatch();
   }
 
   cleanup();
 }
 
-function createGhost(): void {
-  if (!dragElement) return;
-  const rect = dragElement.getBoundingClientRect();
-
-  ghost = document.createElement("div");
-  ghost.className = "__pd-drag-ghost";
-  ghost.style.cssText = `
-    position: fixed !important;
-    z-index: 2147483647 !important;
-    width: ${Math.min(rect.width, 200)}px !important;
-    height: ${Math.min(rect.height, 60)}px !important;
-    background: rgba(79, 158, 255, 0.15) !important;
-    border: 1.5px solid #4f9eff !important;
-    border-radius: 4px !important;
-    pointer-events: none !important;
-    opacity: 0.8 !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    font-family: -apple-system, BlinkMacSystemFont, sans-serif !important;
-    font-size: 11px !important;
-    color: #4f9eff !important;
-    box-sizing: border-box !important;
-    padding: 4px 8px !important;
-    overflow: hidden !important;
-  `;
-  ghost.textContent = `${dragElement.tagName.toLowerCase()}`;
-  document.documentElement.appendChild(ghost);
-}
-
-function createInsertionLine(): void {
-  insertionLine = document.createElement("div");
-  insertionLine.className = "__pd-insertion-line";
-  document.documentElement.appendChild(insertionLine);
-}
-
 function cleanup(): void {
-  if (dragElement) {
-    dragElement.style.opacity = "";
-    dragElement.style.pointerEvents = "";
-  }
-
-  ghost?.remove();
-  insertionLine?.remove();
-
   document.removeEventListener("mousemove", onMouseMove, true);
   document.removeEventListener("mouseup", onMouseUp, true);
 
   isDragging = false;
   hasDragStarted = false;
   dragElement = null;
-  ghost = null;
-  insertionLine = null;
-  dropTarget = null;
+  originalPosition = "";
 
   onDragEnd?.();
   onDragEnd = null;

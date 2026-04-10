@@ -25,6 +25,8 @@ export const AutoLayoutSection: React.FC<AutoLayoutSectionProps> = ({
 
   const display = computedStyles["display"] || "";
   const isFlex = display === "flex" || display === "inline-flex";
+  const isGrid = display === "grid" || display === "inline-grid";
+  const hasLayout = isFlex || isGrid;
 
   const handleDirectionChange = useCallback(
     (v: string) => onStyleChange("flex-direction", v),
@@ -53,6 +55,25 @@ export const AutoLayoutSection: React.FC<AutoLayoutSectionProps> = ({
     onStyleChange("display", "flex");
   }, [onStyleChange]);
 
+  const handleColumnsChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      onStyleChange("grid-template-columns", e.target.value);
+    },
+    [onStyleChange]
+  );
+
+  const handleRowsChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      onStyleChange("grid-template-rows", e.target.value);
+    },
+    [onStyleChange]
+  );
+
+  const handleAutoFlowToggle = useCallback(() => {
+    const current = computedStyles["grid-auto-flow"] || "row";
+    onStyleChange("grid-auto-flow", current === "row" ? "column" : "row");
+  }, [computedStyles, onStyleChange]);
+
   return (
     <div className="pd-section">
       <div
@@ -68,7 +89,7 @@ export const AutoLayoutSection: React.FC<AutoLayoutSectionProps> = ({
       </div>
       {!collapsed && (
         <div className="pd-section__content">
-          {!isFlex ? (
+          {!hasLayout ? (
             <button
               className="pd-section__add-btn"
               onClick={handleAddAutoLayout}
@@ -76,7 +97,7 @@ export const AutoLayoutSection: React.FC<AutoLayoutSectionProps> = ({
             >
               + Add auto layout
             </button>
-          ) : (
+          ) : isFlex ? (
             <>
               <div className="pd-section__row">
                 <DirectionToggle
@@ -106,6 +127,54 @@ export const AutoLayoutSection: React.FC<AutoLayoutSectionProps> = ({
                   title="Toggle flex-wrap"
                 >
                   Wrap
+                </button>
+              </div>
+            </>
+          ) : (
+            /* Grid controls */
+            <>
+              <div className="pd-section__row pd-section__row--label">
+                <label className="pd-section__input-label">Columns</label>
+                <input
+                  className="pd-section__text-input"
+                  type="text"
+                  value={computedStyles["grid-template-columns"] || "none"}
+                  onChange={handleColumnsChange}
+                  title="grid-template-columns"
+                />
+              </div>
+              <div className="pd-section__row pd-section__row--label">
+                <label className="pd-section__input-label">Rows</label>
+                <input
+                  className="pd-section__text-input"
+                  type="text"
+                  value={computedStyles["grid-template-rows"] || "none"}
+                  onChange={handleRowsChange}
+                  title="grid-template-rows"
+                />
+              </div>
+              <div className="pd-section__row">
+                <AlignmentGrid
+                  justifyContent={computedStyles["justify-content"] || "flex-start"}
+                  alignItems={computedStyles["align-items"] || "flex-start"}
+                  onChange={handleAlignmentChange}
+                />
+              </div>
+              <div className="pd-section__row">
+                <NumberInput
+                  value={parseGap(computedStyles["gap"] || "0")}
+                  onChange={handleGapChange}
+                  label="Gap"
+                  min={0}
+                  suffix="px"
+                />
+                <button
+                  className={`pd-section__toggle-btn${(computedStyles["grid-auto-flow"] || "row") === "column" ? " pd-section__toggle-btn--active" : ""}`}
+                  onClick={handleAutoFlowToggle}
+                  type="button"
+                  title="Toggle grid-auto-flow (row / column)"
+                >
+                  Column flow
                 </button>
               </div>
             </>

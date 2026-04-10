@@ -15,6 +15,11 @@ export const FIGMA_LABELS: Record<string, string> = {
   "Align items": "align-items",
   Gap: "gap",
 
+  // Grid
+  Columns: "grid-template-columns",
+  Rows: "grid-template-rows",
+  "Auto flow": "grid-auto-flow",
+
   // Spacing
   "Margin top": "margin-top",
   "Margin right": "margin-right",

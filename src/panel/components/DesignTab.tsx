@@ -26,7 +26,7 @@ export const DesignTab = React.memo(function DesignTab({
   const { computedStyles, hasTextContent } = data;
   const display = computedStyles["display"] || "";
   const isInline =
-    display === "inline" || display === "inline-block" || display === "inline-flex";
+    display === "inline" || display === "inline-block" || display === "inline-flex" || display === "inline-grid";
   const tag = data.tag;
   const isReplaced = tag === "img" || tag === "video" || tag === "iframe" || tag === "canvas";
 

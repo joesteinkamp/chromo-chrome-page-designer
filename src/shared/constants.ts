@@ -34,6 +34,7 @@ export const TRACKED_PROPERTIES = [
   "gap",
   "grid-template-columns",
   "grid-template-rows",
+  "grid-auto-flow",
   // Typography
   "font-family",
   "font-size",

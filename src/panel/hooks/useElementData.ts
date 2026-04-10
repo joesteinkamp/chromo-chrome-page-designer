@@ -33,8 +33,19 @@ export function useElementData() {
 
     chrome.runtime.onMessage.addListener(listener);
 
-    // Open a long-lived port so the service worker can detect panel close
-    const port = chrome.runtime.connect({ name: "side-panel" });
+    // Open a long-lived port so the service worker can detect panel close.
+    // If the service worker restarts (MV3 lifecycle), the port breaks silently.
+    // We must reconnect so the SW can still detect when the panel actually closes.
+    let port = chrome.runtime.connect({ name: "side-panel" });
+    const reconnectPort = () => {
+      try {
+        port = chrome.runtime.connect({ name: "side-panel" });
+        port.onDisconnect.addListener(reconnectPort);
+      } catch {
+        // Extension context invalidated — panel is actually closing
+      }
+    };
+    port.onDisconnect.addListener(reconnectPort);
 
     // Activate on initial panel open
     chrome.runtime.sendMessage({ type: "ACTIVATE" } satisfies Message);
@@ -48,6 +59,7 @@ export function useElementData() {
     return () => {
       chrome.runtime.onMessage.removeListener(listener);
       window.removeEventListener("beforeunload", onUnload);
+      port.onDisconnect.removeListener(reconnectPort);
       port.disconnect();
       chrome.runtime.sendMessage({ type: "DEACTIVATE" } satisfies Message).catch(() => {});
     };

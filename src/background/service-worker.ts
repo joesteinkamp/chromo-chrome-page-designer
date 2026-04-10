@@ -581,13 +581,30 @@ onRelayCommand((cmd: RelayCommand) => {
   }
 });
 
-// Detect side panel close via port disconnect and deactivate content script
+// Detect side panel close via port disconnect and deactivate content script.
+// Uses sendToTab (not forwardToContentScript) so the message reaches ALL frames,
+// not just the activeFrameId. Also deactivates every tracked tab, not just the
+// currently focused one.
 chrome.runtime.onConnect.addListener((port) => {
   if (port.name === "side-panel") {
     port.onDisconnect.addListener(() => {
-      // Panel was closed — deactivate the content script and stop tracking
-      forwardToContentScript({ type: "DEACTIVATE" } as any);
+      const deactivateMsg: Message = { type: "DEACTIVATE" };
+
+      // Deactivate all tabs that were activated
+      for (const tabId of activatedTabs) {
+        sendToTab(tabId, deactivateMsg);
+      }
+
+      // Also send to the current active tab as a fallback (covers the case
+      // where the service worker restarted and activatedTabs was lost)
+      getActiveTabId().then((tabId) => {
+        if (tabId && !activatedTabs.has(tabId)) {
+          sendToTab(tabId, deactivateMsg);
+        }
+      });
+
       activatedTabs.clear();
+      activeFrameId = 0;
     });
   }
 });

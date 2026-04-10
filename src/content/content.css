@@ -85,6 +85,68 @@
 .__pd-handle--sw { cursor: sw-resize !important; }
 .__pd-handle--w  { cursor: w-resize !important; }
 
+/* Drag insertion indicator */
+.__pd-insertion-line {
+  position: fixed !important;
+  z-index: 2147483647 !important;
+  pointer-events: none !important;
+  height: 2px !important;
+  background: #4f9eff !important;
+  display: none !important;
+}
+
+.__pd-insertion-line--visible {
+  display: block !important;
+}
+
+/* Move mode toolbar */
+.__pd-move-toolbar {
+  position: fixed !important;
+  z-index: 2147483647 !important;
+  bottom: 16px !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 2px !important;
+  background: #2c2c2c !important;
+  border: 1px solid #3e3e3e !important;
+  border-radius: 8px !important;
+  padding: 4px 6px !important;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.5) !important;
+  font-family: -apple-system, BlinkMacSystemFont, sans-serif !important;
+  pointer-events: auto !important;
+}
+
+.__pd-move-toolbar__btn {
+  border: none !important;
+  padding: 5px 12px !important;
+  font-size: 11px !important;
+  font-weight: 500 !important;
+  cursor: pointer !important;
+  font-family: inherit !important;
+  color: #ccc !important;
+  background: transparent !important;
+  border-radius: 5px !important;
+}
+
+.__pd-move-toolbar__btn--active {
+  background: #4f9eff !important;
+  color: #fff !important;
+}
+
+.__pd-move-toolbar__btn--disabled {
+  opacity: 0.35 !important;
+  cursor: not-allowed !important;
+}
+
+.__pd-move-toolbar__hint {
+  font-size: 9px !important;
+  color: #666 !important;
+  padding: 0 4px !important;
+  font-family: inherit !important;
+}
+
 /* Inline editing highlight */
 .__pd-editing {
   outline: 2px solid #4f9eff !important;

@@ -18,6 +18,7 @@ import { isEditing } from "./inline-edit";
 import { isDragActive } from "./drag-drop";
 import { isResizeActive } from "./resize";
 import { generateSelector } from "../shared/selector";
+import { getMode, setMode, isAutoLayoutParent } from "./move-mode";
 import {
   recordStyleChange,
   recordDeleteChange,
@@ -181,7 +182,25 @@ function onKeyDown(e: KeyboardEvent): void {
     return;
   }
 
-  // Arrow keys — reorder within auto-layout (flex/grid) or nudge position
+  // P — switch to position mode
+  if ((e.key === "p" || e.key === "P") && !isMeta) {
+    e.preventDefault();
+    e.stopPropagation();
+    setMode("position");
+    return;
+  }
+
+  // R — switch to reorder mode (only when parent is flex/grid)
+  if ((e.key === "r" || e.key === "R") && !isMeta) {
+    if (isAutoLayoutParent(selected)) {
+      e.preventDefault();
+      e.stopPropagation();
+      setMode("reorder");
+    }
+    return;
+  }
+
+  // Arrow keys — move based on current mode
   if (
     e.key === "ArrowUp" ||
     e.key === "ArrowDown" ||
@@ -194,14 +213,7 @@ function onKeyDown(e: KeyboardEvent): void {
     const parent = selected.parentElement;
     if (!parent) return;
 
-    const parentDisplay = window.getComputedStyle(parent).display;
-    const isAutoLayout =
-      parentDisplay === "flex" ||
-      parentDisplay === "inline-flex" ||
-      parentDisplay === "grid" ||
-      parentDisplay === "inline-grid";
-
-    if (isAutoLayout) {
+    if (getMode() === "reorder") {
       // Reorder element within the flex/grid container
       const siblings = Array.from(parent.children).filter(
         (c) => !isOverlayElement(c)
@@ -209,40 +221,28 @@ function onKeyDown(e: KeyboardEvent): void {
       const currentIndex = siblings.indexOf(selected);
       if (currentIndex === -1) return;
 
-      // Determine direction based on flex-direction / grid flow
+      // Map all arrows to forward/backward: Right/Down = forward, Left/Up = backward
+      // Respects flex-direction reverse variants
       const parentComputed = window.getComputedStyle(parent);
       const flexDir = parentComputed.flexDirection || "row";
-      const isVertical = flexDir === "column" || flexDir === "column-reverse";
       const isReversed = flexDir === "row-reverse" || flexDir === "column-reverse";
 
-      let moveForward: boolean;
-      if (isVertical) {
-        if (e.key !== "ArrowUp" && e.key !== "ArrowDown") return;
-        moveForward = isReversed
-          ? e.key === "ArrowUp"
-          : e.key === "ArrowDown";
-      } else {
-        if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
-        moveForward = isReversed
-          ? e.key === "ArrowLeft"
-          : e.key === "ArrowRight";
-      }
+      const forwardKey = e.key === "ArrowRight" || e.key === "ArrowDown";
+      const moveForward = isReversed ? !forwardKey : forwardKey;
 
       const fromParent = generateSelector(parent);
       const fromIndex = currentIndex;
 
       if (moveForward && currentIndex < siblings.length - 1) {
-        // Move after the next sibling
         const nextSibling = siblings[currentIndex + 1];
         parent.insertBefore(nextSibling, selected);
         recordMoveChange(selected, fromParent, fromIndex, fromParent, fromIndex + 1);
       } else if (!moveForward && currentIndex > 0) {
-        // Move before the previous sibling
         const prevSibling = siblings[currentIndex - 1];
         parent.insertBefore(selected, prevSibling);
         recordMoveChange(selected, fromParent, fromIndex, fromParent, fromIndex - 1);
       } else {
-        return; // Already at the edge
+        return;
       }
 
       callbacks.refreshSelection();
@@ -250,11 +250,10 @@ function onKeyDown(e: KeyboardEvent): void {
       return;
     }
 
-    // Not in auto-layout — nudge position by pixels
+    // Position mode — nudge by pixels
     const amount = e.shiftKey ? 10 : 1;
     const computed = window.getComputedStyle(selected);
 
-    // Ensure element is positioned for movement
     const position = computed.position;
     if (position === "static") {
       selected.style.setProperty("position", "relative", "important");

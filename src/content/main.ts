@@ -23,6 +23,7 @@ import { startInlineEdit, stopInlineEdit, isEditing } from "./inline-edit";
 import { initDragDrop, isDragActive, cancelDrag } from "./drag-drop";
 import { tryStartResize, isResizeActive } from "./resize";
 import { showImageToolbar, hideImageToolbar } from "./image-replace";
+import { showMoveToolbar, hideMoveToolbar } from "./move-mode";
 import { initKeyboard, destroyKeyboard } from "./keyboard";
 import { showSpacing, hideSpacing } from "./spacing-overlay";
 import {
@@ -392,6 +393,7 @@ function deactivate(): void {
   stopInlineEdit();
   cancelDrag();
   hideImageToolbar();
+  hideMoveToolbar();
   hideMultiEditOverlays();
   clearAllForcedStates();
   multiEditEnabled = false;
@@ -406,6 +408,7 @@ function deactivate(): void {
 
 function onElementSelected(element: Element | null): void {
   hideImageToolbar();
+  hideMoveToolbar();
   hideMultiEditOverlays();
   hideMultiSelectOverlays();
   hideSpacing();
@@ -415,6 +418,11 @@ function onElementSelected(element: Element | null): void {
     try { showSpacing(element); } catch { /* spacing overlay is optional */ }
     if (element.tagName.toLowerCase() === "img") {
       showImageToolbar(element);
+    }
+    if (element instanceof HTMLElement) {
+      showMoveToolbar(element, () => {
+        refreshSelection();
+      });
     }
     // Show multi-edit overlays if enabled
     if (multiEditEnabled) {

@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useMemo, useEffect } from "react";
 import { NumberInput, ColorPicker } from "../controls";
+import { ChevronDown, PlusIcon } from "../icons";
 import "./sections.css";
 
 interface ShadowSectionProps {
@@ -155,9 +156,9 @@ export const ShadowSection: React.FC<ShadowSectionProps> = ({
       >
         <span className="pd-section__title">Shadow{sectionDisabled ? " (N/A)" : ""}</span>
         {collapsed && !hasValue ? (
-          <button className="pd-section__plus-btn" onClick={(e) => { e.stopPropagation(); setCollapsed(false); }} type="button">+</button>
+          <button className="pd-section__plus-btn" onClick={(e) => { e.stopPropagation(); setCollapsed(false); }} type="button"><PlusIcon size={12} /></button>
         ) : (
-          <span className={`pd-section__arrow${collapsed ? " pd-section__arrow--collapsed" : ""}`}>&#9662;</span>
+          <span className={`pd-section__arrow${collapsed ? " pd-section__arrow--collapsed" : ""}`}><ChevronDown size={12} /></span>
         )}
       </div>
       {!collapsed && (

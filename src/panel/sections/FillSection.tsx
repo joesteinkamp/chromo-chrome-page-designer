@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useRef, useEffect } from "react";
 import { ColorPicker, SliderInput } from "../controls";
 import { VarLabel } from "./VarLabel";
+import { ChevronDown, PlusIcon, EyeIcon, EyeOffIcon } from "../icons";
 import "./sections.css";
 
 interface FillSectionProps {
@@ -105,9 +106,9 @@ export const FillSection: React.FC<FillSectionProps> = ({
       >
         <span className="pd-section__title">Fill{sectionDisabled ? " (N/A)" : ""}</span>
         {collapsed && !hasValue ? (
-          <button className="pd-section__plus-btn" onClick={(e) => { e.stopPropagation(); setCollapsed(false); }} type="button">+</button>
+          <button className="pd-section__plus-btn" onClick={(e) => { e.stopPropagation(); setCollapsed(false); }} type="button"><PlusIcon size={12} /></button>
         ) : (
-          <span className={`pd-section__arrow${collapsed ? " pd-section__arrow--collapsed" : ""}`}>&#9662;</span>
+          <span className={`pd-section__arrow${collapsed ? " pd-section__arrow--collapsed" : ""}`}><ChevronDown size={12} /></span>
         )}
       </div>
       {!collapsed && (
@@ -126,7 +127,7 @@ export const FillSection: React.FC<FillSectionProps> = ({
                   type="button"
                   title={disabled ? "Show fill" : "Hide fill"}
                 >
-                  {disabled ? "\u{1F441}\u{200D}\u{1F5E8}" : "\u{1F441}"}
+                  {disabled ? <EyeOffIcon size={14} /> : <EyeIcon size={14} />}
                 </button>
               </div>
               <div className="pd-fill__gradient-label">Gradient</div>
@@ -147,7 +148,7 @@ export const FillSection: React.FC<FillSectionProps> = ({
                   type="button"
                   title={disabled ? "Show fill" : "Hide fill"}
                 >
-                  {disabled ? "\u{1F441}\u{200D}\u{1F5E8}" : "\u{1F441}"}
+                  {disabled ? <EyeOffIcon size={14} /> : <EyeIcon size={14} />}
                 </button>
               </div>
               <VarLabel authoredStyles={authoredStyles} property="background-color" />

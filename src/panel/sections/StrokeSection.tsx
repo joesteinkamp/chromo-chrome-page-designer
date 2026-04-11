@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { ColorPicker, NumberInput, SelectDropdown } from "../controls";
 import { VarLabel } from "./VarLabel";
+import { ChevronDown, PlusIcon, GearIcon } from "../icons";
 import "./sections.css";
 
 interface StrokeSectionProps {
@@ -154,9 +155,9 @@ export const StrokeSection: React.FC<StrokeSectionProps> = ({
       >
         <span className="pd-section__title">Stroke</span>
         {collapsed && !hasValue ? (
-          <button className="pd-section__plus-btn" onClick={(e) => { e.stopPropagation(); setCollapsed(false); }} type="button">+</button>
+          <button className="pd-section__plus-btn" onClick={(e) => { e.stopPropagation(); setCollapsed(false); }} type="button"><PlusIcon size={12} /></button>
         ) : (
-          <span className={`pd-section__arrow${collapsed ? " pd-section__arrow--collapsed" : ""}`}>&#9662;</span>
+          <span className={`pd-section__arrow${collapsed ? " pd-section__arrow--collapsed" : ""}`}><ChevronDown size={12} /></span>
         )}
       </div>
       {!collapsed && (
@@ -188,7 +189,7 @@ export const StrokeSection: React.FC<StrokeSectionProps> = ({
                 title="Width options"
                 onClick={() => setPopoverOpen((o) => !o)}
               >
-                &#x2699;
+                <GearIcon size={14} />
               </button>
             </div>
 

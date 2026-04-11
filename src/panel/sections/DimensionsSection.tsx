@@ -1,5 +1,6 @@
 import React, { useState, useCallback } from "react";
 import { UnitInput } from "../controls";
+import { ChevronDown } from "../icons";
 import "./sections.css";
 
 interface DimensionsSectionProps {
@@ -51,7 +52,7 @@ export const DimensionsSection: React.FC<DimensionsSectionProps> = ({
         <span
           className={`pd-section__arrow${collapsed ? " pd-section__arrow--collapsed" : ""}`}
         >
-          &#9662;
+          <ChevronDown size={12} />
         </span>
       </div>
       {!collapsed && (

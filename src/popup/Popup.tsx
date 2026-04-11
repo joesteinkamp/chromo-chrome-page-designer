@@ -1,4 +1,5 @@
 import type { Message } from "../shared/messages";
+import { DiamondFilledIcon } from "../panel/icons";
 
 export function Popup() {
   const handleActivate = () => {
@@ -11,7 +12,7 @@ export function Popup() {
   return (
     <div className="pd-popup">
       <div className="pd-popup__header">
-        <span className="pd-popup__icon">◆</span>
+        <span className="pd-popup__icon"><DiamondFilledIcon size={16} /></span>
         <span className="pd-popup__title">Chromo Design</span>
       </div>
       <p className="pd-popup__desc">

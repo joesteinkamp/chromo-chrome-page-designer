@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { ALL_FONTS } from "../../shared/google-fonts";
+import { ChevronDown } from "../icons";
 import "./controls.css";
 
 interface FontPickerProps {
@@ -72,7 +73,7 @@ export const FontPicker: React.FC<FontPickerProps> = ({ value, onChange }) => {
         onClick={() => setOpen((o) => !o)}
       >
         <span className="pd-font-picker__value">{displayLabel}</span>
-        <span className="pd-font-picker__arrow">&#9662;</span>
+        <span className="pd-font-picker__arrow"><ChevronDown size={12} /></span>
       </button>
 
       {open && (

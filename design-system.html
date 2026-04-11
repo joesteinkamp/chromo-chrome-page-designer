@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Chromo Design — Design System</title>
+  <style>
+    /* Showcase-specific layout — uses the real design tokens from panel.css */
+    .ds-page {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: var(--pd-space-9) var(--pd-space-6);
+    }
+
+    .ds-page h1 {
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--pd-text);
+      margin-bottom: var(--pd-space-2);
+    }
+
+    .ds-page .ds-subtitle {
+      font-size: var(--pd-text-md);
+      color: var(--pd-text-dim);
+      margin-bottom: var(--pd-space-9);
+    }
+
+    .ds-section {
+      margin-bottom: var(--pd-space-9);
+    }
+
+    .ds-section h2 {
+      font-size: var(--pd-text-xl);
+      font-weight: 600;
+      color: var(--pd-text);
+      margin-bottom: var(--pd-space-5);
+      padding-bottom: var(--pd-space-3);
+      border-bottom: 1px solid var(--pd-border);
+    }
+
+    .ds-section h3 {
+      font-size: var(--pd-text-md);
+      font-weight: 500;
+      color: var(--pd-text-dim);
+      margin-bottom: var(--pd-space-4);
+      margin-top: var(--pd-space-6);
+    }
+
+    /* ── Color Swatches ── */
+    .ds-colors {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+      gap: var(--pd-space-4);
+    }
+
+    .ds-swatch {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: var(--pd-space-2);
+    }
+
+    .ds-swatch__box {
+      width: 64px;
+      height: 48px;
+      border-radius: var(--pd-radius-md);
+      border: 1px solid var(--pd-border);
+    }
+
+    .ds-swatch__label {
+      font-family: var(--pd-mono);
+      font-size: var(--pd-text-xs);
+      color: var(--pd-text-muted);
+      text-align: center;
+      word-break: break-all;
+    }
+
+    /* ── Typography ── */
+    .ds-type-row {
+      display: flex;
+      align-items: baseline;
+      gap: var(--pd-space-6);
+      margin-bottom: var(--pd-space-4);
+    }
+
+    .ds-type-label {
+      font-family: var(--pd-mono);
+      font-size: var(--pd-text-xs);
+      color: var(--pd-text-muted);
+      min-width: 100px;
+      flex-shrink: 0;
+    }
+
+    .ds-type-sample {
+      color: var(--pd-text);
+    }
+
+    /* ── Spacing ── */
+    .ds-spacing-row {
+      display: flex;
+      align-items: center;
+      gap: var(--pd-space-4);
+      margin-bottom: var(--pd-space-3);
+    }
+
+    .ds-spacing-bar {
+      height: 20px;
+      background: var(--pd-accent-dim);
+      border: 1px solid var(--pd-accent);
+      border-radius: 2px;
+    }
+
+    .ds-spacing-label {
+      font-family: var(--pd-mono);
+      font-size: var(--pd-text-xs);
+      color: var(--pd-text-muted);
+      min-width: 80px;
+      flex-shrink: 0;
+    }
+
+    .ds-spacing-px {
+      font-family: var(--pd-mono);
+      font-size: var(--pd-text-xs);
+      color: var(--pd-text-dim);
+    }
+
+    /* ── Elevation ── */
+    .ds-shadows {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: var(--pd-space-6);
+    }
+
+    .ds-shadow-card {
+      padding: var(--pd-space-8);
+      border-radius: var(--pd-radius-lg);
+      background: var(--pd-bg-raised);
+      text-align: center;
+    }
+
+    .ds-shadow-card span {
+      font-family: var(--pd-mono);
+      font-size: var(--pd-text-sm);
+      color: var(--pd-text-dim);
+    }
+
+    /* ── Radius ── */
+    .ds-radii {
+      display: flex;
+      gap: var(--pd-space-6);
+      align-items: end;
+    }
+
+    .ds-radius-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: var(--pd-space-3);
+    }
+
+    .ds-radius-box {
+      width: 64px;
+      height: 48px;
+      background: var(--pd-accent-dim);
+      border: 2px solid var(--pd-accent);
+    }
+
+    .ds-radius-label {
+      font-family: var(--pd-mono);
+      font-size: var(--pd-text-xs);
+      color: var(--pd-text-muted);
+    }
+
+    /* ── Animation ── */
+    .ds-anim-row {
+      display: flex;
+      gap: var(--pd-space-4);
+      margin-bottom: var(--pd-space-4);
+    }
+
+    .ds-anim-btn {
+      padding: var(--pd-space-4) var(--pd-space-6);
+      border-radius: var(--pd-radius);
+      border: 1px solid var(--pd-border);
+      background: var(--pd-bg-raised);
+      color: var(--pd-text);
+      font-family: var(--pd-font);
+      font-size: var(--pd-text-base);
+      cursor: pointer;
+    }
+
+    .ds-anim-btn--fast {
+      transition: all var(--pd-duration-fast) var(--pd-ease);
+    }
+
+    .ds-anim-btn--normal {
+      transition: all var(--pd-duration-normal) var(--pd-ease);
+    }
+
+    .ds-anim-btn--slow {
+      transition: all var(--pd-duration-slow) var(--pd-ease);
+    }
+
+    .ds-anim-btn:hover {
+      background: var(--pd-accent);
+      color: #fff;
+      border-color: var(--pd-accent);
+      transform: translateY(-2px);
+    }
+
+    .ds-anim-btn:active {
+      transform: scale(0.97);
+    }
+
+    /* ── Badges ── */
+    .ds-badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--pd-space-3);
+    }
+
+    /* ── Buttons ── */
+    .ds-buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--pd-space-4);
+      align-items: center;
+    }
+
+    .ds-btn {
+      padding: var(--pd-space-3) var(--pd-space-5);
+      border-radius: var(--pd-radius);
+      font-family: var(--pd-font);
+      font-size: var(--pd-text-base);
+      font-weight: 500;
+      cursor: pointer;
+      transition: all var(--pd-duration-fast) var(--pd-ease);
+    }
+
+    .ds-btn:active { transform: scale(0.97); }
+
+    .ds-btn--primary {
+      background: var(--pd-accent);
+      color: #fff;
+      border: 1px solid var(--pd-accent);
+    }
+    .ds-btn--primary:hover { background: var(--pd-accent-hover); }
+
+    .ds-btn--secondary {
+      background: var(--pd-bg-raised);
+      color: var(--pd-text);
+      border: 1px solid var(--pd-border);
+    }
+    .ds-btn--secondary:hover { background: var(--pd-bg-hover); }
+
+    .ds-btn--ghost {
+      background: none;
+      color: var(--pd-text-dim);
+      border: 1px solid transparent;
+    }
+    .ds-btn--ghost:hover { background: var(--pd-bg-hover); color: var(--pd-text); }
+
+    .ds-btn--danger {
+      background: var(--pd-danger);
+      color: #fff;
+      border: 1px solid var(--pd-danger);
+    }
+    .ds-btn--danger:hover { opacity: 0.9; }
+
+    .ds-btn--disabled {
+      opacity: 0.35;
+      cursor: default;
+      pointer-events: none;
+    }
+
+    /* ── Section mock ── */
+    .ds-section-mock {
+      border: 1px solid var(--pd-border);
+      border-radius: var(--pd-radius-md);
+      overflow: hidden;
+      max-width: 320px;
+    }
+
+    .ds-section-mock__header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: var(--pd-space-4) var(--pd-space-5);
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .ds-section-mock__header:hover {
+      background: var(--pd-bg-hover);
+    }
+
+    .ds-section-mock__title {
+      font-size: var(--pd-text-base);
+      font-weight: 600;
+      color: var(--pd-text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .ds-section-mock__arrow {
+      font-size: var(--pd-text-sm);
+      color: var(--pd-text-muted);
+    }
+
+    .ds-section-mock__content {
+      padding: 0 var(--pd-space-5) var(--pd-space-4);
+      font-size: var(--pd-text-base);
+      color: var(--pd-text-dim);
+    }
+
+    /* ── Controls gallery card ── */
+    .ds-control-card {
+      padding: var(--pd-space-6);
+      border: 1px solid var(--pd-border);
+      border-radius: var(--pd-radius-md);
+      background: var(--pd-bg-raised);
+      margin-bottom: var(--pd-space-4);
+    }
+
+    .ds-control-card__label {
+      font-family: var(--pd-mono);
+      font-size: var(--pd-text-sm);
+      color: var(--pd-accent);
+      margin-bottom: var(--pd-space-4);
+    }
+
+    .ds-controls-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: var(--pd-space-4);
+    }
+  </style>
+</head>
+<body>
+  <div class="ds-page">
+    <h1>Chromo Design System</h1>
+    <p class="ds-subtitle">Visual reference for all design tokens, controls, and components. Open with Page Designer to tune values.</p>
+
+    <!-- ════════ COLORS ════════ -->
+    <div class="ds-section">
+      <h2>Color Palette</h2>
+
+      <h3>Backgrounds</h3>
+      <div class="ds-colors">
+        <div class="ds-swatch">
+          <div class="ds-swatch__box" style="background: var(--pd-bg);"></div>
+          <span class="ds-swatch__label">--pd-bg</span>
+        </div>
+        <div class="ds-swatch">
+          <div class="ds-swatch__box" style="background: var(--pd-bg-raised);"></div>
+          <span class="ds-swatch__label">--pd-bg-raised</span>
+        </div>
+        <div class="ds-swatch">
+          <div class="ds-swatch__box" style="background: var(--pd-bg-hover);"></div>
+          <span class="ds-swatch__label">--pd-bg-hover</span>
+        </div>
+        <div class="ds-swatch">
+          <div class="ds-swatch__box" style="background: var(--pd-bg-input);"></div>
+          <span class="ds-swatch__label">--pd-bg-input</span>
+        </div>
+        <div class="ds-swatch">
+          <div class="ds-swatch__box" style="background: var(--pd-border);"></div>
+          <span class="ds-swatch__label">--pd-border</span>
+        </div>
+      </div>
+
+      <h3>Text</h3>
+      <div class="ds-colors">
+        <div class="ds-swatch">
+          <div class="ds-swatch__box" style="background: var(--pd-text);"></div>
+          <span class="ds-swatch__label">--pd-text</span>
+        </div>
+        <div class="ds-swatch">
+          <div class="ds-swatch__box" style="background: var(--pd-text-dim);"></div>
+          <span class="ds-swatch__label">--pd-text-dim</span>
+        </div>
+        <div class="ds-swatch">
+          <div class="ds-swatch__box" style="background: var(--pd-text-muted);"></div>
+          <span class="ds-swatch__label">--pd-text-muted</span>
+        </div>
+      </div>
+
+      <h3>Accent & Semantic</h3>
+      <div class="ds-colors">
+        <div class="ds-swatch">
+          <div class="ds-swatch__box" style="background: var(--pd-accent);"></div>
+          <span class="ds-swatch__label">--pd-accent</span>
+        </div>
+        <div class="ds-swatch">
+          <div class="ds-swatch__box" style="background: var(--pd-accent-hover);"></div>
+          <span class="ds-swatch__label">--pd-accent-hover</span>
+        </div>
+        <div class="ds-swatch">
+          <div class="ds-swatch__box" style="background: var(--pd-accent-dim);"></div>
+          <span class="ds-swatch__label">--pd-accent-dim</span>
+        </div>
+        <div class="ds-swatch">
+          <div class="ds-swatch__box" style="background: var(--pd-green);"></div>
+          <span class="ds-swatch__label">--pd-green</span>
+        </div>
+        <div class="ds-swatch">
+          <div class="ds-swatch__box" style="background: var(--pd-danger);"></div>
+          <span class="ds-swatch__label">--pd-danger</span>
+        </div>
+        <div class="ds-swatch">
+          <div class="ds-swatch__box" style="background: var(--pd-danger-dim);"></div>
+          <span class="ds-swatch__label">--pd-danger-dim</span>
+        </div>
+      </div>
+
+      <h3>Overlays</h3>
+      <div class="ds-colors">
+        <div class="ds-swatch">
+          <div class="ds-swatch__box" style="background: var(--pd-overlay-subtle); border: 1px dashed var(--pd-border);"></div>
+          <span class="ds-swatch__label">--pd-overlay-subtle</span>
+        </div>
+        <div class="ds-swatch">
+          <div class="ds-swatch__box" style="background: var(--pd-overlay-light); border: 1px dashed var(--pd-border);"></div>
+          <span class="ds-swatch__label">--pd-overlay-light</span>
+        </div>
+        <div class="ds-swatch">
+          <div class="ds-swatch__box" style="background: var(--pd-overlay-medium); border: 1px dashed var(--pd-border);"></div>
+          <span class="ds-swatch__label">--pd-overlay-medium</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════ TYPOGRAPHY ════════ -->
+    <div class="ds-section">
+      <h2>Typography</h2>
+
+      <h3>Scale (System Font)</h3>
+      <div class="ds-type-row">
+        <span class="ds-type-label">--pd-text-xs (9px)</span>
+        <span class="ds-type-sample" style="font-size: var(--pd-text-xs);">The quick brown fox jumps over the lazy dog</span>
+      </div>
+      <div class="ds-type-row">
+        <span class="ds-type-label">--pd-text-sm (10px)</span>
+        <span class="ds-type-sample" style="font-size: var(--pd-text-sm);">The quick brown fox jumps over the lazy dog</span>
+      </div>
+      <div class="ds-type-row">
+        <span class="ds-type-label">--pd-text-base (11px)</span>
+        <span class="ds-type-sample" style="font-size: var(--pd-text-base);">The quick brown fox jumps over the lazy dog</span>
+      </div>
+      <div class="ds-type-row">
+        <span class="ds-type-label">--pd-text-md (12px)</span>
+        <span class="ds-type-sample" style="font-size: var(--pd-text-md);">The quick brown fox jumps over the lazy dog</span>
+      </div>
+      <div class="ds-type-row">
+        <span class="ds-type-label">--pd-text-lg (13px)</span>
+        <span class="ds-type-sample" style="font-size: var(--pd-text-lg);">The quick brown fox jumps over the lazy dog</span>
+      </div>
+      <div class="ds-type-row">
+        <span class="ds-type-label">--pd-text-xl (14px)</span>
+        <span class="ds-type-sample" style="font-size: var(--pd-text-xl);">The quick brown fox jumps over the lazy dog</span>
+      </div>
+
+      <h3>Monospace</h3>
+      <div class="ds-type-row">
+        <span class="ds-type-label">--pd-mono</span>
+        <span class="ds-type-sample" style="font-family: var(--pd-mono); font-size: var(--pd-text-base);">.selector { color: #4f9eff; font-size: 14px; }</span>
+      </div>
+
+      <h3>Font Weights</h3>
+      <div class="ds-type-row">
+        <span class="ds-type-label">400 (regular)</span>
+        <span class="ds-type-sample" style="font-size: var(--pd-text-xl); font-weight: 400;">Auto Layout Section</span>
+      </div>
+      <div class="ds-type-row">
+        <span class="ds-type-label">500 (medium)</span>
+        <span class="ds-type-sample" style="font-size: var(--pd-text-xl); font-weight: 500;">Auto Layout Section</span>
+      </div>
+      <div class="ds-type-row">
+        <span class="ds-type-label">600 (semibold)</span>
+        <span class="ds-type-sample" style="font-size: var(--pd-text-xl); font-weight: 600;">Auto Layout Section</span>
+      </div>
+      <div class="ds-type-row">
+        <span class="ds-type-label">700 (bold)</span>
+        <span class="ds-type-sample" style="font-size: var(--pd-text-xl); font-weight: 700;">Auto Layout Section</span>
+      </div>
+    </div>
+
+    <!-- ════════ SPACING ════════ -->
+    <div class="ds-section">
+      <h2>Spacing Scale</h2>
+      <div class="ds-spacing-row">
+        <span class="ds-spacing-label">--pd-space-1</span>
+        <div class="ds-spacing-bar" style="width: 2px;"></div>
+        <span class="ds-spacing-px">2px</span>
+      </div>
+      <div class="ds-spacing-row">
+        <span class="ds-spacing-label">--pd-space-2</span>
+        <div class="ds-spacing-bar" style="width: 4px;"></div>
+        <span class="ds-spacing-px">4px</span>
+      </div>
+      <div class="ds-spacing-row">
+        <span class="ds-spacing-label">--pd-space-3</span>
+        <div class="ds-spacing-bar" style="width: 6px;"></div>
+        <span class="ds-spacing-px">6px</span>
+      </div>
+      <div class="ds-spacing-row">
+        <span class="ds-spacing-label">--pd-space-4</span>
+        <div class="ds-spacing-bar" style="width: 8px;"></div>
+        <span class="ds-spacing-px">8px</span>
+      </div>
+      <div class="ds-spacing-row">
+        <span class="ds-spacing-label">--pd-space-5</span>
+        <div class="ds-spacing-bar" style="width: 12px;"></div>
+        <span class="ds-spacing-px">12px</span>
+      </div>
+      <div class="ds-spacing-row">
+        <span class="ds-spacing-label">--pd-space-6</span>
+        <div class="ds-spacing-bar" style="width: 16px;"></div>
+        <span class="ds-spacing-px">16px</span>
+      </div>
+      <div class="ds-spacing-row">
+        <span class="ds-spacing-label">--pd-space-7</span>
+        <div class="ds-spacing-bar" style="width: 20px;"></div>
+        <span class="ds-spacing-px">20px</span>
+      </div>
+      <div class="ds-spacing-row">
+        <span class="ds-spacing-label">--pd-space-8</span>
+        <div class="ds-spacing-bar" style="width: 24px;"></div>
+        <span class="ds-spacing-px">24px</span>
+      </div>
+      <div class="ds-spacing-row">
+        <span class="ds-spacing-label">--pd-space-9</span>
+        <div class="ds-spacing-bar" style="width: 32px;"></div>
+        <span class="ds-spacing-px">32px</span>
+      </div>
+    </div>
+
+    <!-- ════════ ELEVATION ════════ -->
+    <div class="ds-section">
+      <h2>Elevation / Shadows</h2>
+      <div class="ds-shadows">
+        <div class="ds-shadow-card" style="box-shadow: var(--pd-shadow-sm);">
+          <span>--pd-shadow-sm</span>
+        </div>
+        <div class="ds-shadow-card" style="box-shadow: var(--pd-shadow-md);">
+          <span>--pd-shadow-md</span>
+        </div>
+        <div class="ds-shadow-card" style="box-shadow: var(--pd-shadow-lg);">
+          <span>--pd-shadow-lg</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════ BORDER RADIUS ════════ -->
+    <div class="ds-section">
+      <h2>Border Radius</h2>
+      <div class="ds-radii">
+        <div class="ds-radius-item">
+          <div class="ds-radius-box" style="border-radius: var(--pd-radius);"></div>
+          <span class="ds-radius-label">--pd-radius (4px)</span>
+        </div>
+        <div class="ds-radius-item">
+          <div class="ds-radius-box" style="border-radius: var(--pd-radius-md);"></div>
+          <span class="ds-radius-label">--pd-radius-md (6px)</span>
+        </div>
+        <div class="ds-radius-item">
+          <div class="ds-radius-box" style="border-radius: var(--pd-radius-lg);"></div>
+          <span class="ds-radius-label">--pd-radius-lg (8px)</span>
+        </div>
+        <div class="ds-radius-item">
+          <div class="ds-radius-box" style="border-radius: 50%;"></div>
+          <span class="ds-radius-label">50% (circle)</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════ ANIMATION ════════ -->
+    <div class="ds-section">
+      <h2>Animation / Transitions</h2>
+      <p style="font-size: var(--pd-text-base); color: var(--pd-text-dim); margin-bottom: var(--pd-space-4);">Hover each button to see the timing difference.</p>
+      <div class="ds-anim-row">
+        <button class="ds-anim-btn ds-anim-btn--fast" type="button">Fast (120ms)</button>
+        <button class="ds-anim-btn ds-anim-btn--normal" type="button">Normal (200ms)</button>
+        <button class="ds-anim-btn ds-anim-btn--slow" type="button">Slow (320ms)</button>
+      </div>
+    </div>
+
+    <!-- ════════ BADGES ════════ -->
+    <div class="ds-section">
+      <h2>Badges</h2>
+      <div class="ds-badges">
+        <span class="pd-element-info__badge pd-element-info__badge--flex">Auto layout</span>
+        <span class="pd-element-info__badge pd-element-info__badge--grid">Grid</span>
+        <span class="pd-element-info__badge pd-element-info__badge--img">Image</span>
+        <span class="pd-element-info__badge pd-element-info__badge--text">Text</span>
+        <span class="pd-element-info__badge" style="color: #38bdf8; background: rgba(56,189,248,0.15);">React</span>
+      </div>
+    </div>
+
+    <!-- ════════ BUTTONS ════════ -->
+    <div class="ds-section">
+      <h2>Buttons</h2>
+      <div class="ds-buttons">
+        <button class="ds-btn ds-btn--primary" type="button">Primary</button>
+        <button class="ds-btn ds-btn--secondary" type="button">Secondary</button>
+        <button class="ds-btn ds-btn--ghost" type="button">Ghost</button>
+        <button class="ds-btn ds-btn--danger" type="button">Danger</button>
+        <button class="ds-btn ds-btn--primary ds-btn--disabled" type="button">Disabled</button>
+      </div>
+
+      <h3>Toggle Buttons</h3>
+      <div class="ds-buttons" style="margin-top: var(--pd-space-4);">
+        <button class="pd-section__toggle-btn" type="button">Inactive</button>
+        <button class="pd-section__toggle-btn pd-section__toggle-btn--active" type="button">Active</button>
+      </div>
+
+      <h3>Add Button</h3>
+      <div style="max-width: 280px; margin-top: var(--pd-space-4);">
+        <button class="pd-section__add-btn" type="button">+ Add auto layout</button>
+      </div>
+    </div>
+
+    <!-- ════════ SECTION MOCK ════════ -->
+    <div class="ds-section">
+      <h2>Section Headers</h2>
+      <div style="display: flex; gap: var(--pd-space-6);">
+        <div class="ds-section-mock">
+          <div class="ds-section-mock__header">
+            <span class="ds-section-mock__title">Expanded Section</span>
+            <span class="ds-section-mock__arrow">&#9662;</span>
+          </div>
+          <div class="ds-section-mock__content">
+            Section content is visible when expanded.
+          </div>
+        </div>
+        <div class="ds-section-mock">
+          <div class="ds-section-mock__header">
+            <span class="ds-section-mock__title">Collapsed Section</span>
+            <span class="ds-section-mock__arrow" style="transform: rotate(-90deg);">&#9662;</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════ CONTROLS GALLERY (React-mounted) ════════ -->
+    <div class="ds-section">
+      <h2>Controls Gallery</h2>
+      <div id="controls-root"></div>
+    </div>
+
+    <!-- ════════ FOCUS RING ════════ -->
+    <div class="ds-section">
+      <h2>Focus Ring</h2>
+      <p style="font-size: var(--pd-text-base); color: var(--pd-text-dim); margin-bottom: var(--pd-space-4);">Tab to each element to see the focus ring.</p>
+      <div class="ds-buttons">
+        <button class="ds-btn ds-btn--secondary" type="button" style="box-shadow: var(--pd-focus-ring);">Focus ring preview</button>
+        <input type="text" value="Focused input" style="padding: var(--pd-space-3) var(--pd-space-3); border: 1px solid var(--pd-border); border-radius: var(--pd-radius); background: var(--pd-bg-input); color: var(--pd-text); font-family: var(--pd-font); font-size: var(--pd-text-base); box-shadow: var(--pd-focus-ring);" />
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="/src/design-system/index.tsx"></script>
+</body>
+</html>

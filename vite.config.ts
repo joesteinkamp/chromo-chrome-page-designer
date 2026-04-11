@@ -49,6 +49,7 @@ export default defineConfig({
         panel: resolve(__dirname, "panel.html"),
         popup: resolve(__dirname, "popup.html"),
         options: resolve(__dirname, "options.html"),
+        "design-system": resolve(__dirname, "design-system.html"),
         "content/main": resolve(__dirname, "src/content/main.ts"),
         "content/main-world-bridge": resolve(
           __dirname,

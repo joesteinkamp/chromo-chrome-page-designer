@@ -1,27 +1,71 @@
 /* Chromo Design Side Panel — adapts to OS light/dark preference */
 
 :root {
+  /* ── Colors ── */
   --pd-bg: #1e1e1e;
   --pd-bg-raised: #2c2c2c;
   --pd-bg-hover: #363636;
+  --pd-bg-input: #1e1e1e;
   --pd-border: #3e3e3e;
   --pd-text: #e0e0e0;
   --pd-text-dim: #999;
   --pd-text-muted: #666;
   --pd-accent: #4f9eff;
+  --pd-accent-hover: #3a8ef0;
   --pd-accent-dim: rgba(79, 158, 255, 0.15);
   --pd-green: #34c759;
   --pd-danger: #ff453a;
   --pd-danger-dim: rgba(255, 69, 58, 0.15);
-  --pd-radius: 4px;
-  --pd-font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-    "Helvetica Neue", sans-serif;
   --pd-overlay-subtle: rgba(255, 255, 255, 0.03);
   --pd-overlay-light: rgba(255, 255, 255, 0.06);
   --pd-overlay-medium: rgba(255, 255, 255, 0.12);
-  --pd-scrollbar-hover: #555;
-  --pd-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
   --pd-checker: #444;
+
+  /* ── Spacing scale (4px base) ── */
+  --pd-space-1: 2px;
+  --pd-space-2: 4px;
+  --pd-space-3: 6px;
+  --pd-space-4: 8px;
+  --pd-space-5: 12px;
+  --pd-space-6: 16px;
+  --pd-space-7: 20px;
+  --pd-space-8: 24px;
+  --pd-space-9: 32px;
+
+  /* ── Typography ── */
+  --pd-text-xs: 9px;
+  --pd-text-sm: 10px;
+  --pd-text-base: 11px;
+  --pd-text-md: 12px;
+  --pd-text-lg: 13px;
+  --pd-text-xl: 14px;
+  --pd-font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "Helvetica Neue", sans-serif;
+  --pd-mono: "SF Mono", "Fira Code", "Cascadia Code", monospace;
+
+  /* ── Border radius ── */
+  --pd-radius: 4px;
+  --pd-radius-md: 6px;
+  --pd-radius-lg: 8px;
+
+  /* ── Elevation ── */
+  --pd-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
+  --pd-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+  --pd-shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
+  --pd-shadow: var(--pd-shadow-lg);
+
+  /* ── Focus ── */
+  --pd-focus-ring: 0 0 0 2px var(--pd-accent-dim);
+
+  /* ── Animation ── */
+  --pd-ease: cubic-bezier(0.2, 0, 0, 1);
+  --pd-ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --pd-duration-fast: 120ms;
+  --pd-duration-normal: 200ms;
+  --pd-duration-slow: 320ms;
+
+  /* ── Scrollbar ── */
+  --pd-scrollbar-hover: #555;
 }
 
 @media (prefers-color-scheme: light) {
@@ -29,11 +73,13 @@
     --pd-bg: #ffffff;
     --pd-bg-raised: #f5f5f5;
     --pd-bg-hover: #ebebeb;
+    --pd-bg-input: #ffffff;
     --pd-border: #e5e5e5;
     --pd-text: #1a1a1a;
     --pd-text-dim: #666;
     --pd-text-muted: #b3b3b3;
     --pd-accent: #0c8ce9;
+    --pd-accent-hover: #0a7bd4;
     --pd-accent-dim: rgba(12, 140, 233, 0.08);
     --pd-green: #1ea446;
     --pd-danger: #e5342d;
@@ -41,9 +87,11 @@
     --pd-overlay-subtle: rgba(0, 0, 0, 0.02);
     --pd-overlay-light: rgba(0, 0, 0, 0.04);
     --pd-overlay-medium: rgba(0, 0, 0, 0.06);
-    --pd-scrollbar-hover: #ccc;
-    --pd-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
     --pd-checker: #d9d9d9;
+    --pd-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
+    --pd-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.1);
+    --pd-shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.12);
+    --pd-scrollbar-hover: #ccc;
   }
 }
 

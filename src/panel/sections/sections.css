@@ -2,8 +2,8 @@
 
 /* CSS variable label */
 .pd-var-label {
-  font-size: 10px;
-  font-family: "SF Mono", "Fira Code", monospace;
+  font-size: var(--pd-text-sm);
+  font-family: var(--pd-mono);
   color: var(--pd-accent);
   background: var(--pd-accent-dim);
   padding: 1px 6px;
@@ -25,7 +25,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 12px;
+  padding: var(--pd-space-4) var(--pd-space-5);
   cursor: pointer;
   user-select: none;
 }
@@ -35,7 +35,7 @@
 }
 
 .pd-section__title {
-  font-size: 11px;
+  font-size: var(--pd-text-base);
   font-weight: 600;
   color: var(--pd-text-dim);
   text-transform: uppercase;
@@ -43,9 +43,9 @@
 }
 
 .pd-section__arrow {
-  font-size: 10px;
+  font-size: var(--pd-text-sm);
   color: var(--pd-text-muted);
-  transition: transform 0.15s ease;
+  transition: transform var(--pd-duration-fast) var(--pd-ease);
 }
 
 .pd-section__arrow--collapsed {
@@ -53,15 +53,15 @@
 }
 
 .pd-section__content {
-  padding: 0 12px 8px;
+  padding: 0 var(--pd-space-5) var(--pd-space-4);
 }
 
 /* Row layouts */
 .pd-section__row {
   display: flex;
   align-items: center;
-  gap: 6px;
-  margin-bottom: 6px;
+  gap: var(--pd-space-3);
+  margin-bottom: var(--pd-space-3);
 }
 
 .pd-section__row:last-child {
@@ -79,7 +79,7 @@
 
 /* Label used inline in rows */
 .pd-section__label {
-  font-size: 11px;
+  font-size: var(--pd-text-base);
   color: var(--pd-text-dim);
   min-width: 24px;
   flex-shrink: 0;

@@ -103,7 +103,7 @@
 
 body {
   font-family: var(--pd-font);
-  font-size: 12px;
+  font-size: var(--pd-text-md);
   color: var(--pd-text);
   background: var(--pd-bg);
   overflow-x: hidden;
@@ -120,17 +120,17 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 6px 8px;
+  padding: var(--pd-space-3) var(--pd-space-4);
   border-bottom: 1px solid var(--pd-border);
   background: var(--pd-bg-raised);
-  gap: 4px;
+  gap: var(--pd-space-2);
 }
 
 .pd-panel__header-left,
 .pd-panel__header-right {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--pd-space-2);
 }
 
 /* Icon buttons (undo/redo) */
@@ -145,7 +145,12 @@ body {
   background: none;
   color: var(--pd-text-dim);
   cursor: pointer;
-  transition: all 0.12s;
+  transition: all var(--pd-duration-fast);
+}
+
+.pd-panel__icon-btn:focus-visible {
+  outline: none;
+  box-shadow: var(--pd-focus-ring);
 }
 
 .pd-panel__icon-btn:hover:not(:disabled) {
@@ -161,7 +166,7 @@ body {
 }
 
 .pd-panel__status {
-  font-size: 11px;
+  font-size: var(--pd-text-base);
   color: var(--pd-text-muted);
 }
 
@@ -179,12 +184,21 @@ body {
   color: #fff;
   padding: 5px 10px;
   border-radius: var(--pd-radius);
-  font-size: 11px;
+  font-size: var(--pd-text-base);
   font-weight: 600;
   font-family: var(--pd-font);
   cursor: pointer;
-  transition: opacity 0.12s;
+  transition: opacity var(--pd-duration-fast);
   white-space: nowrap;
+}
+
+.pd-panel__send-btn:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.pd-panel__send-btn:focus-visible {
+  outline: none;
+  box-shadow: var(--pd-focus-ring);
 }
 
 .pd-panel__send-btn:hover:not(:disabled) {
@@ -199,14 +213,14 @@ body {
 
 .pd-panel__send-menu {
   position: absolute;
-  top: calc(100% + 4px);
+  top: calc(100% + var(--pd-space-2));
   right: 0;
   z-index: 100;
   min-width: 190px;
   background: var(--pd-bg-raised);
   border: 1px solid var(--pd-border);
-  border-radius: 6px;
-  padding: 4px;
+  border-radius: var(--pd-radius-md);
+  padding: var(--pd-space-2);
   box-shadow: var(--pd-shadow);
 }
 
@@ -219,10 +233,10 @@ body {
   color: var(--pd-text);
   padding: 7px 10px;
   border-radius: var(--pd-radius);
-  font-size: 12px;
+  font-size: var(--pd-text-md);
   font-family: var(--pd-font);
   cursor: pointer;
-  transition: background 0.1s;
+  transition: background var(--pd-duration-fast);
 }
 
 .pd-panel__send-menu-item:hover {
@@ -237,10 +251,10 @@ body {
   border: none;
   background: none;
   color: var(--pd-text-muted);
-  font-size: 11px;
+  font-size: var(--pd-text-base);
   font-family: var(--pd-font);
   cursor: pointer;
-  padding: 2px 0 2px 4px;
+  padding: var(--pd-space-1) 0 var(--pd-space-1) var(--pd-space-2);
 }
 
 .pd-panel__toggle-track {
@@ -249,7 +263,7 @@ body {
   height: 16px;
   border-radius: 8px;
   background: var(--pd-overlay-medium);
-  transition: background 0.2s;
+  transition: background var(--pd-duration-normal);
 }
 
 .pd-panel__toggle--on .pd-panel__toggle-track {

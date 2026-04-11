@@ -4,11 +4,11 @@
 .pd-number-input {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--pd-space-3);
 }
 
 .pd-number-input__label {
-  font-size: 11px;
+  font-size: var(--pd-text-base);
   color: var(--pd-text-dim);
   cursor: ew-resize;
   user-select: none;
@@ -22,14 +22,16 @@
   background: var(--pd-bg);
   border: 1px solid var(--pd-border);
   border-radius: var(--pd-radius);
-  padding: 0 6px;
+  padding: 0 var(--pd-space-3);
   height: 24px;
   flex: 1;
   min-width: 0;
+  transition: border-color var(--pd-duration-fast) var(--pd-ease);
 }
 
 .pd-number-input__field-wrap:focus-within {
   border-color: var(--pd-accent);
+  box-shadow: var(--pd-focus-ring);
 }
 
 .pd-number-input__input {
@@ -38,7 +40,7 @@
   outline: none;
   color: var(--pd-text);
   font-family: var(--pd-font);
-  font-size: 11px;
+  font-size: var(--pd-text-base);
   width: 100%;
   min-width: 0;
   padding: 0;
@@ -51,9 +53,9 @@
 }
 
 .pd-number-input__suffix {
-  font-size: 10px;
+  font-size: var(--pd-text-sm);
   color: var(--pd-text-muted);
-  margin-left: 2px;
+  margin-left: var(--pd-space-1);
   flex-shrink: 0;
 }
 
@@ -61,11 +63,11 @@
 .pd-unit-input {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--pd-space-2);
 }
 
 .pd-unit-input__label {
-  font-size: 11px;
+  font-size: var(--pd-text-base);
   color: var(--pd-text-dim);
   min-width: 24px;
   white-space: nowrap;
@@ -82,28 +84,30 @@
   border-radius: var(--pd-radius);
   color: var(--pd-text-dim);
   font-family: var(--pd-font);
-  font-size: 10px;
-  padding: 0 4px;
+  font-size: var(--pd-text-sm);
+  padding: 0 var(--pd-space-2);
   height: 24px;
   cursor: pointer;
   outline: none;
   min-width: 42px;
+  transition: border-color var(--pd-duration-fast) var(--pd-ease);
 }
 
 .pd-unit-input__unit-select:focus {
   border-color: var(--pd-accent);
+  box-shadow: var(--pd-focus-ring);
 }
 
 /* ── ColorPicker ── */
 .pd-color-picker {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--pd-space-3);
   position: relative;
 }
 
 .pd-color-picker__label {
-  font-size: 11px;
+  font-size: var(--pd-text-base);
   color: var(--pd-text-dim);
   min-width: 24px;
   white-space: nowrap;
@@ -114,6 +118,7 @@
   height: 24px;
   border-radius: var(--pd-radius);
   border: 1px solid var(--pd-border);
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,0.15);
   cursor: pointer;
   flex-shrink: 0;
   position: relative;
@@ -143,8 +148,8 @@
   border-radius: var(--pd-radius);
   color: var(--pd-text);
   font-family: var(--pd-font);
-  font-size: 11px;
-  padding: 0 6px;
+  font-size: var(--pd-text-base);
+  padding: 0 var(--pd-space-3);
   height: 24px;
   width: 72px;
   outline: none;
@@ -156,14 +161,14 @@
 
 .pd-color-picker__popover {
   position: absolute;
-  top: calc(100% + 6px);
+  top: calc(100% + var(--pd-space-3));
   left: 0;
   z-index: 1000;
   background: var(--pd-bg-raised);
   border: 1px solid var(--pd-border);
-  border-radius: 6px;
+  border-radius: var(--pd-radius-lg);
   padding: 10px;
-  box-shadow: var(--pd-shadow);
+  box-shadow: var(--pd-shadow-lg);
   width: 220px;
 }
 

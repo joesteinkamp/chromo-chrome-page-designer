@@ -1,3 +1,4 @@
+import { EyedropperIcon } from "../icons";
 import React, {
   useState,
   useRef,
@@ -545,7 +546,7 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({
                   } catch { /* user cancelled */ }
                 }}
               >
-                &#x1F4A7;
+                <EyedropperIcon size={14} />
               </button>
             )}
           </div>

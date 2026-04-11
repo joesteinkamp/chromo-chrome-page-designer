@@ -1,4 +1,5 @@
-import React, { useCallback } from "react";
+import React, { useCallback, type ReactNode } from "react";
+import { ArrowRight, ArrowDown, ArrowLeft, ArrowUp } from "../icons";
 import "./controls.css";
 
 interface DirectionToggleProps {
@@ -7,12 +8,12 @@ interface DirectionToggleProps {
   className?: string;
 }
 
-const DIRECTIONS = [
-  { value: "row", icon: "\u2192", title: "Row" },
-  { value: "column", icon: "\u2193", title: "Column" },
-  { value: "row-reverse", icon: "\u2190", title: "Row Reverse" },
-  { value: "column-reverse", icon: "\u2191", title: "Column Reverse" },
-] as const;
+const DIRECTIONS: readonly { value: string; icon: ReactNode; title: string }[] = [
+  { value: "row", icon: <ArrowRight size={14} />, title: "Row" },
+  { value: "column", icon: <ArrowDown size={14} />, title: "Column" },
+  { value: "row-reverse", icon: <ArrowLeft size={14} />, title: "Row Reverse" },
+  { value: "column-reverse", icon: <ArrowUp size={14} />, title: "Column Reverse" },
+];
 
 export const DirectionToggle: React.FC<DirectionToggleProps> = ({
   value,

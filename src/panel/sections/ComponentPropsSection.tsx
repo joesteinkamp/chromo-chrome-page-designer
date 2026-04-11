@@ -1,5 +1,6 @@
 import React, { useState, useCallback } from "react";
 import { NumberInput } from "../controls";
+import { ChevronDown } from "../icons";
 import type { ElementData } from "../../shared/types";
 import type { Message } from "../../shared/messages";
 import "./sections.css";
@@ -38,7 +39,7 @@ export const ComponentPropsSection: React.FC<ComponentPropsSectionProps> = ({
         <span className="pd-section__title">
           Component Props
         </span>
-        <span className={`pd-section__arrow${collapsed ? " pd-section__arrow--collapsed" : ""}`}>&#9662;</span>
+        <span className={`pd-section__arrow${collapsed ? " pd-section__arrow--collapsed" : ""}`}><ChevronDown size={12} /></span>
       </div>
       {!collapsed && (
         <div className="pd-section__content">

@@ -4,6 +4,7 @@ import {
   AlignmentGrid,
   NumberInput,
 } from "../controls";
+import { ChevronDown } from "../icons";
 import "./sections.css";
 
 interface AutoLayoutSectionProps {
@@ -84,7 +85,7 @@ export const AutoLayoutSection: React.FC<AutoLayoutSectionProps> = ({
         <span
           className={`pd-section__arrow${collapsed ? " pd-section__arrow--collapsed" : ""}`}
         >
-          &#9662;
+          <ChevronDown size={12} />
         </span>
       </div>
       {!collapsed && (

@@ -62,7 +62,36 @@
     return !!name && !INTERNAL_RE.test(name) && !LIBRARY_INTERNAL_RE.test(name);
   }
 
-  /** Extract props from a fiber's memoizedProps */
+  /**
+   * Props that are standard HTML/DOM attributes or accessibility-only —
+   * not useful for visual design. Filter these out of the component props panel.
+   */
+  var NON_VISUAL_PROPS = new Set([
+    // React internals / DOM plumbing
+    "children", "key", "ref", "dangerouslySetInnerHTML",
+    // HTML attributes forwarded to DOM (not visual)
+    "id", "role", "tabIndex", "tabindex", "title", "lang", "dir",
+    "htmlFor", "name", "type", "value", "defaultValue", "defaultChecked",
+    "checked", "disabled", "readOnly", "required", "autoFocus", "autoComplete",
+    "placeholder", "form", "action", "method", "target", "rel", "href",
+    "src", "alt", "loading", "decoding", "crossOrigin",
+    "download", "media", "scope", "colSpan", "rowSpan", "wrap",
+    "autoPlay", "controls", "loop", "muted", "preload",
+    "sandbox", "allow", "allowFullScreen", "frameBorder",
+    "contentEditable", "spellCheck", "draggable", "hidden",
+    "inputMode", "enterKeyHint", "is", "slot", "part",
+    "suppressContentEditableWarning", "suppressHydrationWarning",
+  ]);
+
+  /** Prop name patterns that are never visually relevant */
+  function isNonVisualProp(name: string): boolean {
+    if (NON_VISUAL_PROPS.has(name)) return true;
+    // aria-*, data-*, on* (event handlers already filtered by type, but just in case)
+    if (name.startsWith("aria-") || name.startsWith("data-") || name.startsWith("on")) return true;
+    return false;
+  }
+
+  /** Extract props from a fiber's memoizedProps, keeping only visually relevant ones */
   function extractProps(fiber: any): Array<{ name: string; value: any; type: string }> {
     var props: Array<{ name: string; value: any; type: string }> = [];
     if (!fiber.memoizedProps) return props;
@@ -71,7 +100,7 @@
     for (var i = 0; i < entries.length; i++) {
       var pkey = entries[i][0];
       var pval = entries[i][1];
-      if (pkey === "children" || pkey === "key" || pkey === "ref") continue;
+      if (isNonVisualProp(pkey)) continue;
       if (pval === null || pval === undefined) {
         props.push({ name: pkey, value: null, type: "null" });
       } else if (typeof pval === "string") {
@@ -236,6 +265,7 @@
                 for (var vi = 0; vi < vpEntries.length; vi++) {
                   var vpKey = vpEntries[vi][0];
                   var vpVal = vpEntries[vi][1];
+                  if (isNonVisualProp(vpKey)) continue;
                   if (vpVal === null || vpVal === undefined) {
                     result.props.push({ name: vpKey, value: null, type: "null" });
                   } else if (typeof vpVal === "string") {
@@ -290,6 +320,7 @@
                 for (var v2i = 0; v2i < v2pEntries.length; v2i++) {
                   var v2pKey = v2pEntries[v2i][0];
                   var v2pVal = v2pEntries[v2i][1];
+                  if (isNonVisualProp(v2pKey)) continue;
                   if (v2pVal === null || v2pVal === undefined) {
                     result.props.push({ name: v2pKey, value: null, type: "null" });
                   } else if (typeof v2pVal === "string") {
@@ -333,6 +364,7 @@
               var spName = spEntries[si][0] as string;
               var spIdx = spEntries[si][1] as number;
               var spVal = svelteCtxArr[spIdx];
+              if (isNonVisualProp(spName)) continue;
               if (spVal === null || spVal === undefined) {
                 result.props.push({ name: spName, value: null, type: "null" });
               } else if (typeof spVal === "string") {

@@ -199,6 +199,14 @@ export function TextIcon({ size = defaults.size, className = defaults.className 
   );
 }
 
+export function CommentIcon({ size = defaults.size, className = defaults.className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" className={`pd-icon ${className}`}>
+      <path d="M2.5 4a1.5 1.5 0 011.5-1.5h8A1.5 1.5 0 0113.5 4v5A1.5 1.5 0 0112 10.5H7l-3 3v-3h0A1.5 1.5 0 012.5 9V4z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 export function MoveIcon({ size = defaults.size, className = defaults.className }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 16 16" fill="none" className={`pd-icon ${className}`}>

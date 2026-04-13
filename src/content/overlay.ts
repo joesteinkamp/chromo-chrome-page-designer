@@ -6,8 +6,18 @@
 let hoverOverlay: HTMLDivElement;
 let selectionOverlay: HTMLDivElement;
 let badge: HTMLDivElement;
+let commentButton: HTMLButtonElement;
 let resizeHandles: HTMLDivElement[] = [];
 let multiSelectOverlays: HTMLDivElement[] = [];
+
+/** Comment pin markers: key is changeId, value is the DOM badge + target selector */
+interface CommentPin {
+  el: HTMLDivElement;
+  selector: string;
+}
+const commentPins = new Map<string, CommentPin>();
+let commentButtonClickHandler: (() => void) | null = null;
+let commentPinClickHandler: ((changeId: string) => void) | null = null;
 
 const HANDLE_POSITIONS = ["nw", "n", "ne", "e", "se", "s", "sw", "w"] as const;
 
@@ -47,14 +57,34 @@ export function initOverlay(): void {
   document.documentElement.appendChild(hoverOverlay);
   document.documentElement.appendChild(selectionOverlay);
   document.documentElement.appendChild(badge);
+
+  // (+) button shown at the top-right of the selected element to add a comment
+  commentButton = document.createElement("button");
+  commentButton.type = "button";
+  commentButton.className = "__pd-comment-btn";
+  commentButton.setAttribute("aria-label", "Add comment");
+  commentButton.innerHTML = '<svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M7 2v10M2 7h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
+  commentButton.addEventListener("mousedown", (e) => {
+    // Prevent the picker's capture-phase mousedown from starting a drag
+    e.stopPropagation();
+  });
+  commentButton.addEventListener("click", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    commentButtonClickHandler?.();
+  });
+  document.documentElement.appendChild(commentButton);
 }
 
 export function destroyOverlay(): void {
   hoverOverlay?.remove();
   selectionOverlay?.remove();
   badge?.remove();
+  commentButton?.remove();
   resizeHandles.forEach((h) => h.remove());
   resizeHandles = [];
+  commentPins.forEach((pin) => pin.el.remove());
+  commentPins.clear();
 }
 
 export function showHover(rect: DOMRect): void {
@@ -85,12 +115,16 @@ export function showSelection(element: Element): void {
   // Position resize handles
   positionHandles(rect);
   resizeHandles.forEach((h) => h.classList.add("__pd-handle--visible"));
+
+  positionCommentButton(rect);
+  commentButton.classList.add("__pd-comment-btn--visible");
 }
 
 export function hideSelection(): void {
   selectionOverlay.classList.remove("__pd-overlay--visible");
   badge.classList.remove("__pd-badge--visible");
   resizeHandles.forEach((h) => h.classList.remove("__pd-handle--visible"));
+  commentButton?.classList.remove("__pd-comment-btn--visible");
 }
 
 export function updateSelection(element: Element): void {
@@ -107,6 +141,8 @@ export function updateSelection(element: Element): void {
   `;
 
   positionHandles(rect);
+  positionCommentButton(rect);
+  updateCommentPins();
 }
 
 // --- Multi-edit overlays (dotted borders on matching elements) ---
@@ -195,6 +231,106 @@ export function getHandleDirection(
     return target.dataset.pdHandle as (typeof HANDLE_POSITIONS)[number];
   }
   return null;
+}
+
+// --- Comment button ---
+
+export function setCommentButtonHandler(handler: () => void): void {
+  commentButtonClickHandler = handler;
+}
+
+function positionCommentButton(rect: DOMRect): void {
+  const size = 24;
+  const offset = 4;
+  // Anchor slightly outside the top-right corner of the element
+  const left = rect.right - size / 2 + offset;
+  const top = rect.top - size / 2 - offset;
+  commentButton.style.cssText = `
+    left: ${left}px !important;
+    top: ${top}px !important;
+  `;
+}
+
+// --- Comment pins (numbered badges that persist on commented elements) ---
+
+export function setCommentPinClickHandler(
+  handler: (changeId: string) => void
+): void {
+  commentPinClickHandler = handler;
+}
+
+/**
+ * Sync the set of pin markers to match the given comments.
+ * Creates pins for new comments, removes pins for deleted ones, and updates
+ * the number displayed on any that changed.
+ */
+export function setCommentPins(
+  comments: Array<{ id: string; number: number; selector: string }>
+): void {
+  const seen = new Set<string>();
+  for (const c of comments) {
+    seen.add(c.id);
+    let pin = commentPins.get(c.id);
+    if (!pin) {
+      const el = document.createElement("div");
+      el.className = "__pd-comment-pin";
+      el.setAttribute("role", "button");
+      el.setAttribute("tabindex", "0");
+      el.dataset.pdCommentId = c.id;
+      el.addEventListener("mousedown", (e) => {
+        e.stopPropagation();
+      });
+      el.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const id = el.dataset.pdCommentId;
+        if (id) commentPinClickHandler?.(id);
+      });
+      document.documentElement.appendChild(el);
+      pin = { el, selector: c.selector };
+      commentPins.set(c.id, pin);
+    }
+    pin.selector = c.selector;
+    pin.el.textContent = String(c.number);
+    pin.el.setAttribute("aria-label", `Comment #${c.number}`);
+  }
+  // Remove pins whose comments were deleted
+  for (const [id, pin] of commentPins) {
+    if (!seen.has(id)) {
+      pin.el.remove();
+      commentPins.delete(id);
+    }
+  }
+  updateCommentPins();
+}
+
+/** Reposition every pin to the top-right corner of its target element. */
+export function updateCommentPins(): void {
+  if (commentPins.size === 0) return;
+  const size = 20;
+  for (const pin of commentPins.values()) {
+    let target: Element | null = null;
+    try {
+      target = document.querySelector(pin.selector);
+    } catch {
+      target = null;
+    }
+    if (!target) {
+      pin.el.style.setProperty("display", "none", "important");
+      continue;
+    }
+    const rect = target.getBoundingClientRect();
+    // If element has no size or is off-screen far away, hide.
+    if (rect.width === 0 && rect.height === 0) {
+      pin.el.style.setProperty("display", "none", "important");
+      continue;
+    }
+    const left = rect.right - size / 2;
+    const top = rect.top - size / 2;
+    pin.el.style.setProperty("left", `${left}px`, "important");
+    pin.el.style.setProperty("top", `${top}px`, "important");
+    pin.el.style.setProperty("display", "flex", "important");
+  }
 }
 
 // --- Helpers ---

@@ -215,6 +215,11 @@ export function exportAsSummary(
         case "duplicate":
           lines.push(`- **Duplicated** element`);
           break;
+        case "comment":
+          lines.push(
+            `- **Comment #${change.number} (designer intent):** ${change.text}`
+          );
+          break;
       }
     }
 
@@ -254,6 +259,8 @@ function summarizeChanges(changes: Change[]): string {
     parts.push(`${counts.wrap} group wrap${counts.wrap > 1 ? "s" : ""}`);
   if (counts.duplicate)
     parts.push(`${counts.duplicate} duplication${counts.duplicate > 1 ? "s" : ""}`);
+  if (counts.comment)
+    parts.push(`${counts.comment} comment${counts.comment > 1 ? "s" : ""}`);
 
   return parts.join(", ") || "No changes";
 }

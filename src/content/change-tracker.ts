@@ -15,12 +15,18 @@ import type {
   HideChange,
   WrapChange,
   DuplicateChange,
+  CommentChange,
 } from "../shared/types";
 
 let changes: Change[] = [];
 let redoStack: Change[] = [];
 let nextId = 1;
 let currentBatchId: string | null = null;
+/** Counter for numbering comment pins across the session. Does not decrement on delete — keeps references stable. */
+let nextCommentNumber = 1;
+/** Listeners notified whenever the comment list changes (create/update/delete) — used by the overlay to sync pin markers. */
+type CommentsListener = (comments: CommentChange[]) => void;
+const commentsListeners = new Set<CommentsListener>();
 const selectorCache = new WeakMap<Element, string>();
 /** Direct element references for move changes — selectors are unreliable after DOM reorder */
 const moveElementRefs = new Map<string, Element>();
@@ -272,6 +278,68 @@ export function recordWrapChange(
   return change;
 }
 
+export function recordCommentChange(
+  element: Element,
+  text: string
+): CommentChange {
+  const selector = getSelector(element);
+  const number = nextCommentNumber++;
+  const change: CommentChange = {
+    id: makeId(),
+    timestamp: Date.now(),
+    selector,
+    description: `Comment #${number}: "${truncate(text, 60)}"`,
+    type: "comment",
+    text,
+    number,
+  };
+  changes.push(change);
+  redoStack = [];
+  broadcastChanges();
+  notifyCommentsChanged();
+  return change;
+}
+
+export function updateCommentChange(id: string, text: string): boolean {
+  const change = changes.find((c) => c.id === id);
+  if (!change || change.type !== "comment") return false;
+  change.text = text;
+  change.timestamp = Date.now();
+  change.description = `Comment #${change.number}: "${truncate(text, 60)}"`;
+  broadcastChanges();
+  notifyCommentsChanged();
+  return true;
+}
+
+export function deleteCommentChange(id: string): boolean {
+  const index = changes.findIndex((c) => c.id === id && c.type === "comment");
+  if (index === -1) return false;
+  changes.splice(index, 1);
+  broadcastChanges();
+  notifyCommentsChanged();
+  return true;
+}
+
+export function getComments(): CommentChange[] {
+  return changes.filter((c): c is CommentChange => c.type === "comment");
+}
+
+export function subscribeComments(listener: CommentsListener): () => void {
+  commentsListeners.add(listener);
+  return () => commentsListeners.delete(listener);
+}
+
+function notifyCommentsChanged(): void {
+  const comments = getComments();
+  for (const l of commentsListeners) {
+    try {
+      l(comments);
+    } catch {
+      /* ignore */
+    }
+  }
+}
+
 export function recordDuplicateChange(
   original: Element,
   clone: Element
@@ -305,6 +373,7 @@ export function undoChange(changeId: string): boolean {
   changes.splice(index, 1);
   redoStack.push(change);
   broadcastChanges();
+  if (change.type === "comment") notifyCommentsChanged();
   return true;
 }
 
@@ -344,6 +413,7 @@ export function redoLast(): boolean {
 
   changes.push(change);
   broadcastChanges();
+  if (change.type === "comment") notifyCommentsChanged();
   return true;
 }
 
@@ -443,6 +513,12 @@ function applyUndo(change: Change): boolean {
       if (clone) clone.remove();
       return true;
     }
+
+    case "comment": {
+      // No DOM change to revert — the comment pin will disappear when the
+      // change is removed from the list and commentsListeners are notified.
+      return true;
+    }
   }
 }
 
@@ -526,6 +602,11 @@ function applyRedo(change: Change): boolean {
       element.after(clone);
       return true;
     }
+
+    case "comment": {
+      // Same as undo — the pin will re-appear via commentsListeners.
+      return true;
+    }
   }
 }
 
@@ -556,7 +637,9 @@ export function clearChanges(): void {
   changes = [];
   redoStack = [];
   moveElementRefs.clear();
+  nextCommentNumber = 1;
   broadcastChanges();
+  notifyCommentsChanged();
 }
 
 /** Load changes from storage (for persistence replay) */
@@ -566,7 +649,22 @@ export function replayChanges(
   let applied = 0;
   let failed = 0;
 
+  let hasComment = false;
   for (const change of savedChanges) {
+    // Comments have no DOM effect — restore even if the element is gone.
+    if (change.type === "comment") {
+      const replayed = {
+        ...change,
+        id: makeId(),
+        timestamp: Date.now(),
+      };
+      changes.push(replayed);
+      nextCommentNumber = Math.max(nextCommentNumber, change.number + 1);
+      applied++;
+      hasComment = true;
+      continue;
+    }
+
     const element = resolveSelector(change.selector);
     if (!element || !(element instanceof HTMLElement)) {
       failed++;
@@ -612,6 +710,7 @@ export function replayChanges(
   }
 
   if (applied > 0) broadcastChanges();
+  if (hasComment) notifyCommentsChanged();
   return { applied, failed };
 }
 

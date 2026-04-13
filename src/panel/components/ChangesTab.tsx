@@ -2,7 +2,7 @@ import React, { useState, useCallback, useEffect, useRef, type ReactNode } from 
 import type { Change } from "../../shared/types";
 import { generateVisualDiffAnnotations, collapseBatches } from "../../shared/export";
 import type { Message } from "../../shared/messages";
-import { PaletteIcon, TextIcon, MoveIcon, ResizeIcon, ImageIcon, DeleteIcon, HideIcon, WrapIcon, DuplicateIcon } from "../icons";
+import { PaletteIcon, TextIcon, MoveIcon, ResizeIcon, ImageIcon, DeleteIcon, HideIcon, WrapIcon, DuplicateIcon, CommentIcon } from "../icons";
 import "./changes.css";
 
 interface Props {
@@ -24,6 +24,7 @@ const TYPE_ICONS: Record<Change["type"], ReactNode> = {
   hide: <HideIcon size={14} />,
   wrap: <WrapIcon size={14} />,
   duplicate: <DuplicateIcon size={14} />,
+  comment: <CommentIcon size={14} />,
 };
 
 function relativeTime(timestamp: number): string {

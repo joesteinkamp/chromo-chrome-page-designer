@@ -7,6 +7,7 @@ interface CornerRadiusSectionProps {
   computedStyles: Record<string, string>;
   authoredStyles?: Record<string, string>;
   onStyleChange: (property: string, value: string) => void;
+  pageValues?: number[];
 }
 
 const CORNER_PROPS = [
@@ -19,6 +20,7 @@ const CORNER_PROPS = [
 export const CornerRadiusSection: React.FC<CornerRadiusSectionProps> = ({
   computedStyles,
   onStyleChange,
+  pageValues,
 }) => {
   const values: [string, string, string, string] = [
     computedStyles["border-top-left-radius"] || "0px",
@@ -65,7 +67,7 @@ export const CornerRadiusSection: React.FC<CornerRadiusSectionProps> = ({
       </div>
       {!collapsed && (
         <div className="pd-section__content">
-          <CornerRadiusInput values={values} onChange={handleChange} />
+          <CornerRadiusInput values={values} onChange={handleChange} pageValues={pageValues} />
         </div>
       )}
     </div>

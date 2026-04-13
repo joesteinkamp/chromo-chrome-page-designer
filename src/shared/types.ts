@@ -34,6 +34,12 @@ export interface ElementData {
   designTokens: Array<{ name: string; value: string }>;
   /** Unique color values found across the page's stylesheets */
   pageColors: string[];
+  /** Unique numerical values (px) found on the page, grouped by usage */
+  pageValues: {
+    spacing: number[];     // padding / margin / gap
+    radius: number[];      // border-*-radius
+    strokeWidth: number[]; // border-*-width
+  };
   /** Tailwind CSS utility classes on this element */
   tailwindClasses?: string[];
   /** Whether Tailwind CSS is detected on the page */

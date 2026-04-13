@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useMemo } from "react";
 import { NumberInput } from "./NumberInput";
+import { PageValuePicker } from "./PageValuePicker";
 import { LinkIcon, UnlinkIcon } from "../icons";
 import "./controls.css";
 
@@ -7,6 +8,7 @@ interface CornerRadiusInputProps {
   values: [string, string, string, string]; // TL, TR, BR, BL
   onChange: (values: [string, string, string, string]) => void;
   className?: string;
+  pageValues?: number[];
 }
 
 const CORNER_LABELS = ["TL", "TR", "BR", "BL"] as const;
@@ -20,6 +22,7 @@ export const CornerRadiusInput: React.FC<CornerRadiusInputProps> = ({
   values,
   onChange,
   className,
+  pageValues,
 }) => {
   const [linked, setLinked] = useState(true);
 
@@ -85,6 +88,12 @@ export const CornerRadiusInput: React.FC<CornerRadiusInputProps> = ({
           ))}
         </div>
       )}
+
+      <PageValuePicker
+        values={pageValues ?? []}
+        onChange={handleLinkedChange}
+        currentValue={linked && allSame ? parseRadius(values[0]) : undefined}
+      />
     </div>
   );
 };

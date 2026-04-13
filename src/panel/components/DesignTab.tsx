@@ -47,11 +47,13 @@ export const DesignTab = React.memo(function DesignTab({
         computedStyles={computedStyles}
         authoredStyles={data.authoredStyles}
         onStyleChange={onStyleChange}
+        pageValues={data.pageValues.spacing}
       />
       <AutoLayoutSection
         computedStyles={computedStyles}
         authoredStyles={data.authoredStyles}
         onStyleChange={onStyleChange}
+        pageValues={data.pageValues.spacing}
       />
       {hasTextContent && (
         <TypographyTab
@@ -71,12 +73,14 @@ export const DesignTab = React.memo(function DesignTab({
         computedStyles={computedStyles}
         authoredStyles={data.authoredStyles}
         pageColors={data.pageColors}
+        pageStrokeWidths={data.pageValues.strokeWidth}
         onStyleChange={onStyleChange}
       />
       <CornerRadiusSection
         computedStyles={computedStyles}
         authoredStyles={data.authoredStyles}
         onStyleChange={onStyleChange}
+        pageValues={data.pageValues.radius}
       />
       <ShadowSection
         computedStyles={computedStyles}

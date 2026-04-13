@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useMemo, useEffect, useRef } from "react";
-import { ColorPicker, NumberInput, SelectDropdown } from "../controls";
+import { ColorPicker, NumberInput, PageValuePicker, SelectDropdown } from "../controls";
 import { VarLabel } from "./VarLabel";
 import { ChevronDown, PlusIcon, GearIcon } from "../icons";
 import "./sections.css";
@@ -8,6 +8,7 @@ interface StrokeSectionProps {
   computedStyles: Record<string, string>;
   authoredStyles?: Record<string, string>;
   pageColors?: string[];
+  pageStrokeWidths?: number[];
   onStyleChange: (property: string, value: string) => void;
 }
 
@@ -50,6 +51,7 @@ export const StrokeSection: React.FC<StrokeSectionProps> = ({
   computedStyles,
   authoredStyles,
   pageColors,
+  pageStrokeWidths,
   onStyleChange,
 }) => {
   const sideColors = [
@@ -216,6 +218,12 @@ export const StrokeSection: React.FC<StrokeSectionProps> = ({
                 </div>
               </>
             )}
+
+            <PageValuePicker
+              values={pageStrokeWidths ?? []}
+              onChange={handleWidthChange}
+              currentValue={mode === "single" ? parsePx(sideWidths[0]) : undefined}
+            />
 
             {popoverOpen && (
               <div className="pd-spacing__popover" ref={popoverRef}>

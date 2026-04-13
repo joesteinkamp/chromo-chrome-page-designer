@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect, useRef } from "react";
-import { NumberInput } from "../controls";
+import { NumberInput, PageValuePicker } from "../controls";
 import { ChevronDown, PlusIcon, GearIcon } from "../icons";
 import "./sections.css";
 
@@ -7,6 +7,7 @@ interface SpacingSectionProps {
   computedStyles: Record<string, string>;
   authoredStyles?: Record<string, string>;
   onStyleChange: (property: string, value: string) => void;
+  pageValues?: number[];
 }
 
 type SpacingMode = "single" | "hv" | "sides";
@@ -40,11 +41,13 @@ interface SpacingGroupProps {
   onChangeVert: (v: number) => void;
   onChangeSide: (side: string, v: number) => void;
   sidePrefix: string;
+  pageValues?: number[];
 }
 
 function SpacingGroup({
   label, top, right, bottom, left, min,
   onChangeAll, onChangeHoriz, onChangeVert, onChangeSide, sidePrefix,
+  pageValues,
 }: SpacingGroupProps) {
   const [mode, setMode] = useState<SpacingMode>(() => detectMode(top, right, bottom, left));
   const [popoverOpen, setPopoverOpen] = useState(false);
@@ -119,6 +122,12 @@ function SpacingGroup({
         </>
       )}
 
+      <PageValuePicker
+        values={pageValues ?? []}
+        onChange={onChangeAll}
+        currentValue={mode === "single" ? top : undefined}
+      />
+
       {popoverOpen && (
         <div className="pd-spacing__popover" ref={popoverRef}>
           <div className="pd-spacing__popover-title">{label} Values</div>
@@ -143,6 +152,7 @@ function SpacingGroup({
 export const SpacingSection: React.FC<SpacingSectionProps> = ({
   computedStyles,
   onStyleChange,
+  pageValues,
 }) => {
   const hasValue = ALL_PROPS.some((p) => {
     const v = computedStyles[p] || "0px";
@@ -210,6 +220,7 @@ export const SpacingSection: React.FC<SpacingSectionProps> = ({
             onChangeVert={handlePadVert}
             onChangeSide={handleSide}
             sidePrefix="padding"
+            pageValues={pageValues}
           />
           <SpacingGroup
             label="Margin"
@@ -219,6 +230,7 @@ export const SpacingSection: React.FC<SpacingSectionProps> = ({
             onChangeVert={handleMarVert}
             onChangeSide={handleSide}
             sidePrefix="margin"
+            pageValues={pageValues}
           />
         </div>
       )}

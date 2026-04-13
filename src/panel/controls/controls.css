@@ -821,6 +821,50 @@
   color: var(--pd-text-muted);
 }
 
+/* ── PageValuePicker ── */
+.pd-page-values {
+  margin-top: var(--pd-space-2);
+}
+
+.pd-page-values__label {
+  font-size: var(--pd-text-xs);
+  font-weight: 600;
+  color: var(--pd-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: var(--pd-space-2);
+}
+
+.pd-page-values__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.pd-page-values__chip {
+  border: 1px solid var(--pd-border);
+  background: var(--pd-input-bg, transparent);
+  color: var(--pd-text, inherit);
+  border-radius: 3px;
+  font-size: var(--pd-text-xs);
+  padding: 2px 6px;
+  min-width: 22px;
+  cursor: pointer;
+  line-height: 1.4;
+  transition: border-color var(--pd-duration-fast) var(--pd-ease),
+              color var(--pd-duration-fast) var(--pd-ease);
+}
+
+.pd-page-values__chip:hover {
+  border-color: var(--pd-accent);
+  color: var(--pd-accent);
+}
+
+.pd-page-values__chip--active {
+  border-color: var(--pd-accent);
+  color: var(--pd-accent);
+}
+
 /* ── Animations ── */
 @keyframes pd-popover-in {
   from { opacity: 0; transform: translateY(4px) scale(0.97); }

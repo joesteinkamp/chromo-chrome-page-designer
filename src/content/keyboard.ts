@@ -18,7 +18,7 @@ import { isEditing } from "./inline-edit";
 import { isDragActive } from "./drag-drop";
 import { isResizeActive } from "./resize";
 import { generateSelector } from "../shared/selector";
-import { getMode, setMode, isAutoLayoutParent } from "./move-mode";
+import { getMode, setMode, canReorderElement } from "./move-mode";
 import {
   recordStyleChange,
   recordDeleteChange,
@@ -190,9 +190,10 @@ function onKeyDown(e: KeyboardEvent): void {
     return;
   }
 
-  // R — switch to reorder mode (only when parent is flex/grid)
+  // R — switch to reorder mode (works for any element with a parent,
+  // including non-flex/grid siblings like two block-level <div>s)
   if ((e.key === "r" || e.key === "R") && !isMeta) {
-    if (isAutoLayoutParent(selected)) {
+    if (canReorderElement(selected)) {
       e.preventDefault();
       e.stopPropagation();
       setMode("reorder");
@@ -214,15 +215,17 @@ function onKeyDown(e: KeyboardEvent): void {
     if (!parent) return;
 
     if (getMode() === "reorder") {
-      // Reorder element within the flex/grid container
+      // Reorder element among its DOM siblings. Works for any parent —
+      // flex/grid containers, regular block flow, etc.
       const siblings = Array.from(parent.children).filter(
         (c) => !isOverlayElement(c)
       );
       const currentIndex = siblings.indexOf(selected);
       if (currentIndex === -1) return;
 
-      // Map all arrows to forward/backward: Right/Down = forward, Left/Up = backward
-      // Respects flex-direction reverse variants
+      // Map all arrows to forward/backward: Right/Down = forward, Left/Up = backward.
+      // For flex containers, respect flex-direction reverse variants. For other
+      // layouts, flex-direction defaults to "row" so this is a no-op.
       const parentComputed = window.getComputedStyle(parent);
       const flexDir = parentComputed.flexDirection || "row";
       const isReversed = flexDir === "row-reverse" || flexDir === "column-reverse";

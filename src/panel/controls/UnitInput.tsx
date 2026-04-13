@@ -60,12 +60,12 @@ export const UnitInput: React.FC<UnitInputProps> = ({
 
   return (
     <div className={`pd-unit-input ${className || ""}`}>
-      {label && <label className="pd-unit-input__label">{label}</label>}
       <div className="pd-unit-input__number">
         <NumberInput
           value={isAuto ? 0 : parsed.num}
           onChange={handleNumberChange}
           step={parsed.unit === "rem" || parsed.unit === "em" ? 0.125 : 1}
+          label={label}
         />
       </div>
       <select

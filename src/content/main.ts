@@ -26,6 +26,7 @@ import { showImageToolbar, hideImageToolbar } from "./image-replace";
 import { showMoveToolbar, hideMoveToolbar } from "./move-mode";
 import { initKeyboard, destroyKeyboard } from "./keyboard";
 import { showSpacing, hideSpacing } from "./spacing-overlay";
+import { recordSelectionChange, clearSelectionHistory } from "./selection-history";
 import {
   recordStyleChange,
   recordTextChange,
@@ -402,11 +403,16 @@ function deactivate(): void {
   stopPicker();
   destroyKeyboard();
   destroyOverlay();
+  clearSelectionHistory();
 }
 
 // --- Selection callback ---
 
 function onElementSelected(element: Element | null): void {
+  // Record the selection transition for Figma-style undo/redo of selection
+  // state. No-op when suppressed (i.e. when we're restoring from history).
+  recordSelectionChange(element);
+
   hideImageToolbar();
   hideMoveToolbar();
   hideMultiEditOverlays();

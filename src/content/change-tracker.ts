@@ -542,6 +542,16 @@ export function canRedo(): boolean {
   return redoStack.length > 0;
 }
 
+/** Timestamp of the most recent recorded change, or 0 if none. */
+export function lastChangeTimestamp(): number {
+  return changes.length > 0 ? changes[changes.length - 1].timestamp : 0;
+}
+
+/** Timestamp of the most recent entry on the redo stack, or 0 if none. */
+export function lastRedoChangeTimestamp(): number {
+  return redoStack.length > 0 ? redoStack[redoStack.length - 1].timestamp : 0;
+}
+
 export function clearChanges(): void {
   changes = [];
   redoStack = [];

@@ -3,8 +3,8 @@
  *
  * Esc — deselect element
  * Tab / Shift+Tab — cycle through sibling elements
- * Cmd+Z / Ctrl+Z — undo last change
- * Cmd+Shift+Z / Ctrl+Shift+Z — redo
+ * Cmd+Z / Ctrl+Z — undo last action (edit OR selection change, Figma-style)
+ * Cmd+Shift+Z / Ctrl+Shift+Z — redo last undone action
  * Enter — enter inline edit mode on selected element
  * Arrow keys — nudge position by 1px (Shift = 10px)
  * Delete/Backspace — delete selected element from DOM
@@ -26,7 +26,16 @@ import {
   recordMoveChange,
   undoLast,
   redoLast,
+  lastChangeTimestamp,
+  lastRedoChangeTimestamp,
 } from "./change-tracker";
+import {
+  undoSelection,
+  redoSelection,
+  lastSelectionUndoTimestamp,
+  lastSelectionRedoTimestamp,
+  withSuppressedRecording,
+} from "./selection-history";
 
 interface KeyboardCallbacks {
   getSelectedElement: () => Element | null;
@@ -83,24 +92,62 @@ function onKeyDown(e: KeyboardEvent): void {
     return;
   }
 
-  // Cmd+Z / Ctrl+Z — undo
+  // Cmd+Z / Ctrl+Z — undo. Figma-style: the history is a single interleaved
+  // timeline of edits and selection changes, so we undo whichever action
+  // happened most recently.
   if (isMeta && !e.shiftKey && e.key === "z") {
     e.preventDefault();
     e.stopPropagation();
-    if (undoLast()) {
-      callbacks.refreshSelection();
-      if (selected) callbacks.sendElementData(selected);
+
+    const changeTs = lastChangeTimestamp();
+    const selectionTs = lastSelectionUndoTimestamp();
+
+    if (selectionTs > 0 && selectionTs >= changeTs) {
+      // Restore previous selection. Suppress recording so the restoration
+      // itself doesn't push a fresh entry onto the history stack.
+      withSuppressedRecording(() => {
+        const restored = undoSelection();
+        if (restored === undefined) return;
+        if (restored === null) {
+          callbacks!.clearSelection();
+        } else {
+          callbacks!.selectElement(restored);
+        }
+      });
+    } else if (changeTs > 0) {
+      if (undoLast()) {
+        callbacks.refreshSelection();
+        const after = callbacks.getSelectedElement();
+        if (after) callbacks.sendElementData(after);
+      }
     }
     return;
   }
 
-  // Cmd+Shift+Z / Ctrl+Shift+Z — redo
+  // Cmd+Shift+Z / Ctrl+Shift+Z — redo (mirrors the undo decision).
   if (isMeta && e.shiftKey && (e.key === "z" || e.key === "Z")) {
     e.preventDefault();
     e.stopPropagation();
-    if (redoLast()) {
-      callbacks.refreshSelection();
-      if (selected) callbacks.sendElementData(selected);
+
+    const changeRedoTs = lastRedoChangeTimestamp();
+    const selectionRedoTs = lastSelectionRedoTimestamp();
+
+    if (selectionRedoTs > 0 && selectionRedoTs >= changeRedoTs) {
+      withSuppressedRecording(() => {
+        const restored = redoSelection();
+        if (restored === undefined) return;
+        if (restored === null) {
+          callbacks!.clearSelection();
+        } else {
+          callbacks!.selectElement(restored);
+        }
+      });
+    } else if (changeRedoTs > 0) {
+      if (redoLast()) {
+        callbacks.refreshSelection();
+        const after = callbacks.getSelectedElement();
+        if (after) callbacks.sendElementData(after);
+      }
     }
     return;
   }

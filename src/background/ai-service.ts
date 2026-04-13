@@ -24,7 +24,7 @@ async function callAnthropic(
       "content-type": "application/json",
     },
     body: JSON.stringify({
-      model: "claude-sonnet-4-20250514",  // Latest Claude Sonnet
+      model: "claude-sonnet-4-6",  // Latest Claude Sonnet
       max_tokens: maxTokens,
       system,
       messages: [{ role: "user", content: userContent }],

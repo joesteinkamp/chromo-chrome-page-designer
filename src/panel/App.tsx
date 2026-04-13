@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from "react";
+import { DiamondIcon, UndoIcon, RedoIcon } from "./icons";
 import { useElementData } from "./hooks/useElementData";
 import { useStyleChange } from "./hooks/useStyleChange";
 import { ElementInfo } from "./components/ElementInfo";
@@ -332,10 +333,7 @@ export function App() {
             disabled={changes.length === 0}
             title="Undo"
           >
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-              <path d="M3 7h6a4 4 0 0 1 0 8H7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-              <path d="M6 4L3 7l3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
+            <UndoIcon size={16} />
           </button>
           <button
             className={`pd-panel__icon-btn ${!canRedo ? "pd-panel__icon-btn--disabled" : ""}`}
@@ -343,10 +341,7 @@ export function App() {
             disabled={!canRedo}
             title="Redo"
           >
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-              <path d="M13 7H7a4 4 0 0 0 0 8h2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-              <path d="M10 4l3 3-3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
+            <RedoIcon size={16} />
           </button>
         </div>
 
@@ -468,7 +463,7 @@ export function App() {
                 </div>
               </div>
             )}
-            <div className="pd-panel__empty-icon">◇</div>
+            <div className="pd-panel__empty-icon"><DiamondIcon size={36} /></div>
             <div className="pd-panel__empty-title">Select an element</div>
             <div className="pd-panel__empty-subtitle">
               Hover over the page and click an element to inspect and edit its

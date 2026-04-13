@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useEffect, useRef } from "react";
 import { NumberInput } from "../controls";
+import { ChevronDown, PlusIcon, GearIcon } from "../icons";
 import "./sections.css";
 
 interface SpacingSectionProps {
@@ -88,7 +89,7 @@ function SpacingGroup({
           title={`${label} options`}
           onClick={() => setPopoverOpen((o) => !o)}
         >
-          &#x2699;
+          <GearIcon size={14} />
         </button>
       </div>
 
@@ -193,9 +194,9 @@ export const SpacingSection: React.FC<SpacingSectionProps> = ({
       <div className="pd-section__header" onClick={() => setCollapsed((c) => !c)}>
         <span className="pd-section__title">Spacing</span>
         {collapsed && !hasValue ? (
-          <button className="pd-section__plus-btn" onClick={(e) => { e.stopPropagation(); setCollapsed(false); }} type="button">+</button>
+          <button className="pd-section__plus-btn" onClick={(e) => { e.stopPropagation(); setCollapsed(false); }} type="button"><PlusIcon size={12} /></button>
         ) : (
-          <span className={`pd-section__arrow${collapsed ? " pd-section__arrow--collapsed" : ""}`}>&#9662;</span>
+          <span className={`pd-section__arrow${collapsed ? " pd-section__arrow--collapsed" : ""}`}><ChevronDown size={12} /></span>
         )}
       </div>
       {!collapsed && (

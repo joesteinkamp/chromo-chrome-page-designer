@@ -1,6 +1,7 @@
 import React, { useCallback, useMemo, useState, useRef, useEffect } from "react";
 import { NumberInput, SelectDropdown, ColorPicker, FontPicker } from "../controls";
 import { ALL_FONTS } from "../../shared/google-fonts";
+import { GearIcon, CloseIcon, ChevronDown } from "../icons";
 import "./typography.css";
 
 interface Props {
@@ -144,13 +145,13 @@ export function TypographyTab({ computedStyles, onStyleChange }: Props) {
             title="Type details"
             onClick={() => setPopoverOpen((o) => !o)}
           >
-            &#x2699;
+            <GearIcon size={14} />
           </button>
           <span
             className={`pd-section__arrow${collapsed ? " pd-section__arrow--collapsed" : ""}`}
             onClick={() => setCollapsed((c) => !c)}
           >
-            &#9662;
+            <ChevronDown size={12} />
           </span>
         </div>
       </div>
@@ -235,7 +236,7 @@ export function TypographyTab({ computedStyles, onStyleChange }: Props) {
               type="button"
               onClick={() => setPopoverOpen(false)}
             >
-              &times;
+              <CloseIcon size={12} />
             </button>
           </div>
 

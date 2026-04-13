@@ -1,7 +1,8 @@
-import React, { useState, useCallback, useEffect, useRef } from "react";
+import React, { useState, useCallback, useEffect, useRef, type ReactNode } from "react";
 import type { Change } from "../../shared/types";
 import { generateVisualDiffAnnotations, collapseBatches } from "../../shared/export";
 import type { Message } from "../../shared/messages";
+import { PaletteIcon, TextIcon, MoveIcon, ResizeIcon, ImageIcon, DeleteIcon, HideIcon, WrapIcon, DuplicateIcon } from "../icons";
 import "./changes.css";
 
 interface Props {
@@ -13,16 +14,16 @@ interface Props {
   url: string;
 }
 
-const TYPE_ICONS: Record<Change["type"], string> = {
-  style: "\uD83C\uDFA8",
-  text: "\uD83D\uDCDD",
-  move: "\u2195",
-  resize: "\u2194",
-  image: "\uD83D\uDDBC",
-  delete: "\u2716",
-  hide: "\uD83D\uDC41",
-  wrap: "\u25A1",
-  duplicate: "\u2750",
+const TYPE_ICONS: Record<Change["type"], ReactNode> = {
+  style: <PaletteIcon size={14} />,
+  text: <TextIcon size={14} />,
+  move: <MoveIcon size={14} />,
+  resize: <ResizeIcon size={14} />,
+  image: <ImageIcon size={14} />,
+  delete: <DeleteIcon size={14} />,
+  hide: <HideIcon size={14} />,
+  wrap: <WrapIcon size={14} />,
+  duplicate: <DuplicateIcon size={14} />,
 };
 
 function relativeTime(timestamp: number): string {

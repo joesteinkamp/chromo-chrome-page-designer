@@ -28,11 +28,11 @@
   background: var(--pd-bg-raised);
   color: var(--pd-text-dim);
   font-family: var(--pd-font);
-  font-size: 11px;
+  font-size: var(--pd-text-base);
   font-weight: 500;
   cursor: pointer;
-  transition: background 0.1s, color 0.1s;
-  padding: 0 4px;
+  transition: background var(--pd-duration-fast) var(--pd-ease), color var(--pd-duration-fast) var(--pd-ease);
+  padding: 0 var(--pd-space-2);
   white-space: nowrap;
 }
 
@@ -59,34 +59,35 @@
 .pd-typography__btn--sm {
   height: 24px;
   min-width: 28px;
-  font-size: 10px;
+  font-size: var(--pd-text-sm);
 }
 
 /* ── Details popover ── */
 .pd-typography__popover {
   position: absolute;
   top: 100%;
-  right: 12px;
+  right: var(--pd-space-5);
   z-index: 1000;
   width: 240px;
   background: var(--pd-bg-raised);
   border: 1px solid var(--pd-border);
-  border-radius: 6px;
-  box-shadow: var(--pd-shadow);
+  border-radius: var(--pd-radius-lg);
+  box-shadow: var(--pd-shadow-lg);
   padding: 0;
-  margin-top: 4px;
+  margin-top: var(--pd-space-2);
+  animation: pd-popover-in var(--pd-duration-normal) var(--pd-ease);
 }
 
 .pd-typography__popover-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 10px;
+  padding: var(--pd-space-4) 10px;
   border-bottom: 1px solid var(--pd-border);
 }
 
 .pd-typography__popover-title {
-  font-size: 11px;
+  font-size: var(--pd-text-base);
   font-weight: 600;
   color: var(--pd-text);
 }
@@ -116,7 +117,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 6px 10px;
+  padding: var(--pd-space-3) 10px;
   border-bottom: 1px solid var(--pd-border);
 }
 
@@ -125,7 +126,7 @@
 }
 
 .pd-typography__popover-label {
-  font-size: 11px;
+  font-size: var(--pd-text-base);
   color: var(--pd-text-dim);
   flex-shrink: 0;
   min-width: 70px;

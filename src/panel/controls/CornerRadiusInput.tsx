@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useMemo } from "react";
 import { NumberInput } from "./NumberInput";
+import { LinkIcon, UnlinkIcon } from "../icons";
 import "./controls.css";
 
 interface CornerRadiusInputProps {
@@ -57,7 +58,7 @@ export const CornerRadiusInput: React.FC<CornerRadiusInputProps> = ({
           type="button"
           title={linked ? "Unlink corners" : "Link corners"}
         >
-          {linked ? "\u{1F517}" : "\u2022\u2022"}
+          {linked ? <LinkIcon size={14} /> : <UnlinkIcon size={14} />}
         </button>
         {linked && (
           <NumberInput

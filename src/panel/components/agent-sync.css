@@ -1,7 +1,7 @@
 /* Agent Sync — footer section for MCP connection */
 
 .pd-agent-sync {
-  padding: 10px 12px;
+  padding: 10px var(--pd-space-5);
   border-top: 1px solid var(--pd-border);
   background: var(--pd-bg-raised);
   flex-shrink: 0;
@@ -14,7 +14,7 @@
 }
 
 .pd-agent-sync__label {
-  font-size: 11px;
+  font-size: var(--pd-text-base);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -29,7 +29,7 @@
   border: none;
   cursor: pointer;
   padding: 2px;
-  border-radius: 8px;
+  border-radius: var(--pd-radius-lg);
 }
 
 .pd-agent-sync__toggle-track {
@@ -38,7 +38,7 @@
   height: 16px;
   border-radius: 8px;
   background: var(--pd-bg-hover);
-  transition: background 0.15s;
+  transition: background var(--pd-duration-fast);
 }
 
 .pd-agent-sync__toggle--on .pd-agent-sync__toggle-track {
@@ -53,7 +53,7 @@
   height: 12px;
   border-radius: 50%;
   background: #fff;
-  transition: left 0.15s;
+  transition: left var(--pd-duration-normal) var(--pd-ease-spring);
 }
 
 .pd-agent-sync__toggle--on .pd-agent-sync__toggle-thumb {
@@ -62,17 +62,17 @@
 
 /* Details (when enabled) */
 .pd-agent-sync__details {
-  margin-top: 8px;
+  margin-top: var(--pd-space-4);
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--pd-space-3);
 }
 
 .pd-agent-sync__status {
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 11px;
+  gap: var(--pd-space-3);
+  font-size: var(--pd-text-base);
   color: var(--pd-text-dim);
 }
 
@@ -102,17 +102,17 @@
 }
 
 .pd-agent-sync__status-text {
-  font-size: 11px;
+  font-size: var(--pd-text-base);
 }
 
 .pd-agent-sync__endpoint {
-  font-family: "SF Mono", "Fira Code", monospace;
-  font-size: 10px;
+  font-family: var(--pd-mono);
+  font-size: var(--pd-text-sm);
   color: var(--pd-text-muted);
   background: var(--pd-bg);
   border: 1px solid var(--pd-border);
   border-radius: var(--pd-radius);
-  padding: 4px 8px;
+  padding: var(--pd-space-2) var(--pd-space-4);
   word-break: break-all;
 }
 
@@ -127,9 +127,9 @@
   background: var(--pd-bg);
   color: var(--pd-text-dim);
   font-family: var(--pd-font);
-  font-size: 11px;
+  font-size: var(--pd-text-base);
   cursor: pointer;
-  transition: all 0.15s;
+  transition: all var(--pd-duration-fast);
   align-self: flex-start;
 }
 
@@ -139,14 +139,14 @@
 }
 
 .pd-agent-sync__note {
-  font-size: 10px;
+  font-size: var(--pd-text-sm);
   color: var(--pd-text-muted);
   line-height: 1.4;
 }
 
 /* Description (when disabled) */
 .pd-agent-sync__description {
-  margin-top: 4px;
-  font-size: 11px;
+  margin-top: var(--pd-space-2);
+  font-size: var(--pd-text-base);
   color: var(--pd-text-muted);
 }

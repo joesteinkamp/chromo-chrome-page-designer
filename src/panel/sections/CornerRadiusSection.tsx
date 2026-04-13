@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useEffect } from "react";
 import { CornerRadiusInput } from "../controls";
+import { ChevronDown, PlusIcon } from "../icons";
 import "./sections.css";
 
 interface CornerRadiusSectionProps {
@@ -57,9 +58,9 @@ export const CornerRadiusSection: React.FC<CornerRadiusSectionProps> = ({
       >
         <span className="pd-section__title">Corner Radius</span>
         {collapsed && !hasValue ? (
-          <button className="pd-section__plus-btn" onClick={(e) => { e.stopPropagation(); setCollapsed(false); }} type="button">+</button>
+          <button className="pd-section__plus-btn" onClick={(e) => { e.stopPropagation(); setCollapsed(false); }} type="button"><PlusIcon size={12} /></button>
         ) : (
-          <span className={`pd-section__arrow${collapsed ? " pd-section__arrow--collapsed" : ""}`}>&#9662;</span>
+          <span className={`pd-section__arrow${collapsed ? " pd-section__arrow--collapsed" : ""}`}><ChevronDown size={12} /></span>
         )}
       </div>
       {!collapsed && (

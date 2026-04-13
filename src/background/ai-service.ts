@@ -129,7 +129,12 @@ async function callGemini(
   }
 
   const data = await response.json();
-  const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+  // gemini-2.5-flash is a thinking model: parts may include thought tokens (thought: true)
+  // before the actual response. Find the first non-thought text part.
+  const parts: Array<{ text?: string; thought?: boolean }> =
+    data.candidates?.[0]?.content?.parts ?? [];
+  const textPart = parts.find((p) => !p.thought && p.text);
+  const text = textPart?.text;
   if (!text) throw new Error("No text response from Gemini API");
   return text;
 }

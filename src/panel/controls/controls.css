@@ -4,35 +4,28 @@
 .pd-number-input {
   display: flex;
   align-items: center;
-  gap: var(--pd-space-3);
-}
-
-.pd-number-input__label {
-  font-size: var(--pd-text-base);
-  color: var(--pd-text-dim);
-  cursor: ew-resize;
-  user-select: none;
-  min-width: 24px;
-  white-space: nowrap;
-  text-align: right;
-}
-
-.pd-number-input__field-wrap {
-  display: flex;
-  align-items: center;
   background: var(--pd-bg);
   border: 1px solid var(--pd-border);
   border-radius: var(--pd-radius);
   padding: 0 var(--pd-space-3);
   height: 24px;
-  flex: 1;
   min-width: 0;
   transition: border-color var(--pd-duration-fast) var(--pd-ease);
 }
 
-.pd-number-input__field-wrap:focus-within {
+.pd-number-input:focus-within {
   border-color: var(--pd-accent);
   box-shadow: var(--pd-focus-ring);
+}
+
+.pd-number-input__label {
+  font-size: var(--pd-text-base);
+  color: var(--pd-text-muted);
+  cursor: ew-resize;
+  user-select: none;
+  white-space: nowrap;
+  flex-shrink: 0;
+  margin-right: var(--pd-space-2);
 }
 
 .pd-number-input__input {
@@ -65,14 +58,6 @@
   display: flex;
   align-items: center;
   gap: var(--pd-space-2);
-}
-
-.pd-unit-input__label {
-  font-size: var(--pd-text-base);
-  color: var(--pd-text-dim);
-  min-width: 24px;
-  white-space: nowrap;
-  text-align: right;
 }
 
 .pd-unit-input__number {

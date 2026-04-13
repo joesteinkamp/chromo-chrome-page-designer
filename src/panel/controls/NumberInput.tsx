@@ -113,18 +113,16 @@ export const NumberInput: React.FC<NumberInputProps> = ({
           {label}
         </label>
       )}
-      <div className="pd-number-input__field-wrap">
-        <input
-          ref={inputRef}
-          className="pd-number-input__input"
-          type="text"
-          value={localValue}
-          onChange={handleInputChange}
-          onBlur={handleInputBlur}
-          onKeyDown={handleInputKeyDown}
-        />
-        {suffix && <span className="pd-number-input__suffix">{suffix}</span>}
-      </div>
+      <input
+        ref={inputRef}
+        className="pd-number-input__input"
+        type="text"
+        value={localValue}
+        onChange={handleInputChange}
+        onBlur={handleInputBlur}
+        onKeyDown={handleInputKeyDown}
+      />
+      {suffix && <span className="pd-number-input__suffix">{suffix}</span>}
     </div>
   );
 };

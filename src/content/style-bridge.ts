@@ -16,6 +16,9 @@ const loadedGoogleFonts = new Set<string>();
 /** Cached page colors — extracted once per page load */
 let cachedPageColors: string[] | null = null;
 
+/** Cached page values — extracted once per page load */
+let cachedPageValues: ElementData["pageValues"] | null = null;
+
 /**
  * System/web-safe fonts that don't need Google Fonts loading.
  * Any font NOT in this set is assumed to be a Google Font candidate.
@@ -49,6 +52,12 @@ export function extractElementData(element: Element): ElementData {
   // Extract page colors (cached — only computed once per page)
   if (!cachedPageColors) {
     try { cachedPageColors = extractPageColors(); } catch { cachedPageColors = []; }
+  }
+
+  // Extract page values (cached — only computed once per page)
+  if (!cachedPageValues) {
+    try { cachedPageValues = extractPageValues(); }
+    catch { cachedPageValues = { spacing: [], radius: [], strokeWidth: [] }; }
   }
 
   // Detect Tailwind CSS
@@ -95,6 +104,7 @@ export function extractElementData(element: Element): ElementData {
     matchCount: countMatchingElements(element),
     designTokens,
     pageColors: cachedPageColors || [],
+    pageValues: cachedPageValues || { spacing: [], radius: [], strokeWidth: [] },
     tailwindClasses: tailwindClasses.length > 0 ? tailwindClasses : undefined,
     tailwindDetected: tailwindDetected || undefined,
     cssVariables: Object.keys(cssVariables).length > 0 ? cssVariables : undefined,
@@ -270,6 +280,76 @@ const SKIP_COLORS = new Set([
   "#000000", "#ffffff", "#000", "#fff",
   "rgba(0, 0, 0, 0)", "transparent",
 ]);
+
+/** Numerical properties grouped by category for page-value extraction */
+const SPACING_PROPS = [
+  "padding-top", "padding-right", "padding-bottom", "padding-left",
+  "margin-top", "margin-right", "margin-bottom", "margin-left",
+  "gap", "row-gap", "column-gap",
+];
+const RADIUS_PROPS = [
+  "border-top-left-radius", "border-top-right-radius",
+  "border-bottom-right-radius", "border-bottom-left-radius",
+];
+const STROKE_PROPS = [
+  "border-top-width", "border-right-width",
+  "border-bottom-width", "border-left-width",
+];
+
+/** Parse a CSS length in px. Returns null for NaN / <=0 / >2000; rounds to 1 decimal for dedupe. */
+function parsePxValue(raw: string): number | null {
+  if (!raw) return null;
+  const n = parseFloat(raw);
+  if (isNaN(n) || n <= 0 || n > 2000) return null;
+  return Math.round(n * 10) / 10;
+}
+
+/**
+ * Walk visible DOM elements and extract unique numerical values from computed styles,
+ * grouped by usage (spacing, radius, stroke width).
+ */
+function extractPageValues(): ElementData["pageValues"] {
+  const spacing = new Set<number>();
+  const radius = new Set<number>();
+  const strokeWidth = new Set<number>();
+
+  const elements = document.querySelectorAll("body *");
+  const limit = Math.min(elements.length, 500);
+
+  for (let i = 0; i < limit; i++) {
+    const el = elements[i];
+    if ((el as HTMLElement).offsetParent === null) continue;
+    if (el.className && typeof el.className === "string" && el.className.includes("__pd-")) continue;
+
+    const computed = window.getComputedStyle(el);
+
+    if (spacing.size < 24) {
+      for (const prop of SPACING_PROPS) {
+        const v = parsePxValue(computed.getPropertyValue(prop));
+        if (v !== null) spacing.add(v);
+      }
+    }
+    if (radius.size < 24) {
+      for (const prop of RADIUS_PROPS) {
+        const v = parsePxValue(computed.getPropertyValue(prop));
+        if (v !== null) radius.add(v);
+      }
+    }
+    if (strokeWidth.size < 24) {
+      for (const prop of STROKE_PROPS) {
+        const v = parsePxValue(computed.getPropertyValue(prop));
+        if (v !== null) strokeWidth.add(v);
+      }
+    }
+  }
+
+  const sortAndCap = (s: Set<number>) => Array.from(s).sort((a, b) => a - b).slice(0, 12);
+  return {
+    spacing: sortAndCap(spacing),
+    radius: sortAndCap(radius),
+    strokeWidth: sortAndCap(strokeWidth),
+  };
+}
 
 /**
  * Walk visible DOM elements and extract unique colors from computed styles.

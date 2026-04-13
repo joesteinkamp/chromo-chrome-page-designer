@@ -3,6 +3,7 @@ import {
   DirectionToggle,
   AlignmentGrid,
   NumberInput,
+  PageValuePicker,
 } from "../controls";
 import { ChevronDown } from "../icons";
 import "./sections.css";
@@ -11,6 +12,7 @@ interface AutoLayoutSectionProps {
   computedStyles: Record<string, string>;
   authoredStyles?: Record<string, string>;
   onStyleChange: (property: string, value: string) => void;
+  pageValues?: number[];
 }
 
 function parseGap(val: string): number {
@@ -21,6 +23,7 @@ function parseGap(val: string): number {
 export const AutoLayoutSection: React.FC<AutoLayoutSectionProps> = ({
   computedStyles,
   onStyleChange,
+  pageValues,
 }) => {
   const [collapsed, setCollapsed] = useState(false);
 
@@ -130,6 +133,11 @@ export const AutoLayoutSection: React.FC<AutoLayoutSectionProps> = ({
                   Wrap
                 </button>
               </div>
+              <PageValuePicker
+                values={pageValues ?? []}
+                onChange={handleGapChange}
+                currentValue={parseGap(computedStyles["gap"] || "0")}
+              />
             </>
           ) : (
             /* Grid controls */
@@ -178,6 +186,11 @@ export const AutoLayoutSection: React.FC<AutoLayoutSectionProps> = ({
                   Column flow
                 </button>
               </div>
+              <PageValuePicker
+                values={pageValues ?? []}
+                onChange={handleGapChange}
+                currentValue={parseGap(computedStyles["gap"] || "0")}
+              />
             </>
           )}
         </div>

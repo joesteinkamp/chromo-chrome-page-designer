@@ -17,6 +17,7 @@ import { isOverlayElement } from "./overlay";
 import { isEditing } from "./inline-edit";
 import { isDragActive } from "./drag-drop";
 import { isResizeActive } from "./resize";
+import { isPopoverOpen, isInsidePopover } from "./comment-popover";
 import { generateSelector } from "../shared/selector";
 import { getMode, setMode, canReorderElement } from "./move-mode";
 import {
@@ -65,6 +66,10 @@ function onKeyDown(e: KeyboardEvent): void {
 
   // Don't intercept when in inline edit, drag, or resize mode
   if (isEditing() || isDragActive() || isResizeActive()) return;
+
+  // Don't intercept while the comment popover is open — its own handlers
+  // manage Esc/Enter and the user is typing free-form text.
+  if (isPopoverOpen() && isInsidePopover(document.activeElement)) return;
 
   // Don't intercept when user is typing in an input/textarea on the page
   const active = document.activeElement;

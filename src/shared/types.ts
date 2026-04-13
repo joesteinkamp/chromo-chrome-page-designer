@@ -79,7 +79,8 @@ export type Change =
   | DeleteChange
   | HideChange
   | WrapChange
-  | DuplicateChange;
+  | DuplicateChange
+  | CommentChange;
 
 export interface BaseChange {
   id: string;
@@ -147,6 +148,19 @@ export interface DuplicateChange extends BaseChange {
   type: "duplicate";
   /** Selector of the cloned element */
   cloneSelector: string;
+}
+
+/**
+ * A freeform instruction attached to an element for the downstream AI coding
+ * tool. Not a visual change — used when the desired edit isn't expressible as
+ * a style tweak (e.g. "use a dropdown instead of buttons").
+ */
+export interface CommentChange extends BaseChange {
+  type: "comment";
+  /** The instruction text */
+  text: string;
+  /** Session-wide enumeration (1, 2, 3…) shown in the badge */
+  number: number;
 }
 
 /** Exported changeset format for Claude Code / Codex */

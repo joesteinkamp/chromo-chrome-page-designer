@@ -4,7 +4,25 @@
  * tracks changes, and handles persistence replay.
  */
 
-import { initOverlay, destroyOverlay, getHandleDirection, showMultiEditOverlays, hideMultiEditOverlays, updateMultiEditOverlays, showMultiSelectOverlays, hideMultiSelectOverlays } from "./overlay";
+import {
+  initOverlay,
+  destroyOverlay,
+  getHandleDirection,
+  showMultiEditOverlays,
+  hideMultiEditOverlays,
+  updateMultiEditOverlays,
+  showMultiSelectOverlays,
+  hideMultiSelectOverlays,
+  setCommentButtonHandler,
+  setCommentPinClickHandler,
+  setCommentPins,
+  updateCommentPins,
+} from "./overlay";
+import {
+  openCommentPopover,
+  closeCommentPopover,
+  isPopoverOpen,
+} from "./comment-popover";
 import { forcePseudoState, clearAllForcedStates } from "./pseudo-state";
 import {
   startPicker,
@@ -48,6 +66,11 @@ import {
   recordDuplicateChange,
   startBatch,
   endBatch,
+  recordCommentChange,
+  updateCommentChange,
+  deleteCommentChange,
+  getComments,
+  subscribeComments,
 } from "./change-tracker";
 import type { Message } from "../shared/messages";
 
@@ -55,6 +78,8 @@ let isActive = false;
 let multiEditEnabled = false;
 /** Whether this content script is running inside an iframe */
 const isInIframe = window !== window.top;
+/** Unsubscribe callback for comments listener (set up on activate) */
+let unsubscribeComments: (() => void) | null = null;
 
 /** Safely send a message — auto-deactivate if extension context is invalidated */
 function safeSendMessage(message: Message, responseCallback?: (response: any) => void): void {
@@ -363,6 +388,36 @@ function activate(): void {
   if (isActive) return;
   isActive = true;
   initOverlay();
+
+  // Wire up comment interactions: clicking the (+) button opens the popover
+  // anchored to the current selection; clicking an existing pin opens it in
+  // edit mode with the existing comment loaded.
+  setCommentButtonHandler(() => openCommentPopoverForSelection());
+  setCommentPinClickHandler((changeId) => openCommentPopoverForPin(changeId));
+
+  // Sync comment pin markers whenever the comment list changes (add / edit /
+  // delete / undo / redo / replay from saved edits).
+  unsubscribeComments = subscribeComments((comments) => {
+    setCommentPins(comments.map((c) => ({
+      id: c.id,
+      number: c.number,
+      selector: c.selector,
+    })));
+  });
+  // Hydrate pins from any existing comments (e.g. after a replay).
+  setCommentPins(getComments().map((c) => ({
+    id: c.id,
+    number: c.number,
+    selector: c.selector,
+  })));
+
+  // Keep pins aligned when the page scrolls or resizes. Selection-overlay
+  // reposition already calls updateCommentPins() internally, but we also need
+  // updates when nothing is selected.
+  window.addEventListener("scroll", updateCommentPins, true);
+  document.addEventListener("scroll", updateCommentPins, true);
+  window.addEventListener("resize", updateCommentPins);
+
   startPicker({
     onSelect: onElementSelected,
     onMultiSelect: onMultiSelect,
@@ -422,6 +477,13 @@ function deactivate(): void {
   clearAllForcedStates();
   multiEditEnabled = false;
   hideSpacing();
+
+  closeCommentPopover();
+  unsubscribeComments?.();
+  unsubscribeComments = null;
+  window.removeEventListener("scroll", updateCommentPins, true);
+  document.removeEventListener("scroll", updateCommentPins, true);
+  window.removeEventListener("resize", updateCommentPins);
 
   stopPicker();
   destroyKeyboard();
@@ -536,6 +598,71 @@ function onElementMouseDown(
     refreshSelection();
     const sel = getSelectedElement();
     if (sel) sendElementData(sel);
+  });
+}
+
+// --- Comment popover helpers ---
+
+function buildCommentContextLabel(element: Element): string {
+  const data = extractElementData(element);
+  const component = data.componentInfo?.componentName;
+  const tag = data.tag;
+  // Short text preview for context
+  const text = element.textContent?.trim().replace(/\s+/g, " ") ?? "";
+  const textPreview = text.length > 40 ? text.slice(0, 40) + "\u2026" : text;
+  const base = component ? `<${component}> ${tag}` : `<${tag}>`;
+  return textPreview ? `${base} "${textPreview}"` : base;
+}
+
+function openCommentPopoverForSelection(): void {
+  if (isPopoverOpen()) {
+    closeCommentPopover();
+    return;
+  }
+  const el = getSelectedElement();
+  if (!el) return;
+  suspendPicker();
+  openCommentPopover({
+    anchorRect: el.getBoundingClientRect(),
+    contextLabel: buildCommentContextLabel(el),
+    onSave: (text) => {
+      recordCommentChange(el, text);
+    },
+    onClose: () => {
+      resumePicker();
+    },
+  });
+}
+
+function openCommentPopoverForPin(changeId: string): void {
+  const comments = getComments();
+  const existing = comments.find((c) => c.id === changeId);
+  if (!existing) return;
+  let target: Element | null = null;
+  try {
+    target = document.querySelector(existing.selector);
+  } catch {
+    target = null;
+  }
+  const anchorRect = target
+    ? target.getBoundingClientRect()
+    : new DOMRect(window.innerWidth / 2, window.innerHeight / 3, 0, 0);
+  suspendPicker();
+  openCommentPopover({
+    anchorRect,
+    contextLabel: target
+      ? buildCommentContextLabel(target)
+      : existing.selector,
+    existing,
+    onUpdate: (text) => {
+      updateCommentChange(changeId, text);
+    },
+    onDelete: () => {
+      deleteCommentChange(changeId);
+    },
+    onClose: () => {
+      resumePicker();
+    },
   });
 }
 

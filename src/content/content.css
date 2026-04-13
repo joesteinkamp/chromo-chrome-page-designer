@@ -163,6 +163,180 @@
   animation: __pd-flash 0.4s ease-out !important;
 }
 
+/* Comment (+) button shown at the top-right of the selected element */
+.__pd-comment-btn {
+  position: fixed !important;
+  z-index: 2147483647 !important;
+  width: 24px !important;
+  height: 24px !important;
+  padding: 0 !important;
+  border: none !important;
+  border-radius: 50% !important;
+  background: #4f9eff !important;
+  color: #fff !important;
+  cursor: pointer !important;
+  display: none !important;
+  align-items: center !important;
+  justify-content: center !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25) !important;
+  pointer-events: auto !important;
+  font-family: -apple-system, BlinkMacSystemFont, sans-serif !important;
+  box-sizing: border-box !important;
+  transition: transform 0.1s ease-out !important;
+}
+
+.__pd-comment-btn--visible {
+  display: flex !important;
+}
+
+.__pd-comment-btn:hover {
+  transform: scale(1.1) !important;
+  background: #6aabff !important;
+}
+
+.__pd-comment-btn svg {
+  display: block !important;
+  pointer-events: none !important;
+}
+
+/* Numbered comment pin — persistent badge on commented elements */
+.__pd-comment-pin {
+  position: fixed !important;
+  z-index: 2147483647 !important;
+  min-width: 20px !important;
+  height: 20px !important;
+  padding: 0 5px !important;
+  border-radius: 10px !important;
+  background: #4f9eff !important;
+  color: #fff !important;
+  cursor: pointer !important;
+  display: none;
+  align-items: center !important;
+  justify-content: center !important;
+  pointer-events: auto !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  line-height: 1 !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25) !important;
+  border: 2px solid #0d1117 !important;
+  box-sizing: border-box !important;
+  user-select: none !important;
+  transition: transform 0.1s ease-out !important;
+}
+
+.__pd-comment-pin:hover {
+  transform: scale(1.12) !important;
+}
+
+/* Comment popover (Agentation-style) */
+.__pd-comment-popover {
+  position: fixed !important;
+  z-index: 2147483647 !important;
+  background: #1c1c1c !important;
+  border: 1px solid #333 !important;
+  border-radius: 10px !important;
+  padding: 12px !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5) !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+  pointer-events: auto !important;
+  box-sizing: border-box !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 10px !important;
+}
+
+.__pd-comment-popover__header {
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  color: #8a8a8a !important;
+  font-size: 11px !important;
+  font-weight: 500 !important;
+  line-height: 1.3 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+.__pd-comment-popover__chevron {
+  color: #666 !important;
+  flex-shrink: 0 !important;
+}
+
+.__pd-comment-popover__context {
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+.__pd-comment-popover__textarea {
+  width: 100% !important;
+  min-height: 60px !important;
+  padding: 10px 12px !important;
+  background: #0f0f0f !important;
+  color: #fff !important;
+  border: 1px solid #4f9eff !important;
+  border-radius: 6px !important;
+  font-family: inherit !important;
+  font-size: 13px !important;
+  line-height: 1.4 !important;
+  resize: none !important;
+  outline: none !important;
+  box-sizing: border-box !important;
+}
+
+.__pd-comment-popover__textarea::placeholder {
+  color: #666 !important;
+}
+
+.__pd-comment-popover__actions {
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+}
+
+.__pd-comment-popover__actions-spacer {
+  flex: 1 !important;
+}
+
+.__pd-comment-popover__btn {
+  padding: 6px 14px !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  font-family: inherit !important;
+  border-radius: 999px !important;
+  border: none !important;
+  background: transparent !important;
+  color: #ccc !important;
+  cursor: pointer !important;
+  box-sizing: border-box !important;
+}
+
+.__pd-comment-popover__btn:hover {
+  background: rgba(255, 255, 255, 0.06) !important;
+  color: #fff !important;
+}
+
+.__pd-comment-popover__btn--primary {
+  background: #4f9eff !important;
+  color: #fff !important;
+}
+
+.__pd-comment-popover__btn--primary:hover {
+  background: #6aabff !important;
+  color: #fff !important;
+}
+
+.__pd-comment-popover__btn--danger {
+  color: #ff6a6a !important;
+}
+
+.__pd-comment-popover__btn--danger:hover {
+  background: rgba(255, 106, 106, 0.1) !important;
+  color: #ff8a8a !important;
+}
+
 /* Spacing visualization overlays */
 .__pd-spacing-margin {
   position: fixed !important;

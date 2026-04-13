@@ -3,7 +3,12 @@
  *
  * Two modes:
  *   "position" — pixel movement via CSS top/left
- *   "reorder"  — DOM sibling reordering within flex/grid containers
+ *   "reorder"  — DOM sibling reordering (works for any parent, not just
+ *               flex/grid — e.g. swapping two <div>s in normal block flow)
+ *
+ * Reorder mode is the default when the parent is an auto-layout container
+ * (flex/grid), matching Figma's UX. For other layouts, position is the
+ * default but reorder is still available via the toolbar or the R shortcut.
  *
  * Renders a floating toolbar at the bottom center of the viewport
  * (like Figma's toolbar) showing the current mode with a toggle.
@@ -41,6 +46,20 @@ export function isAutoLayoutParent(element: Element): boolean {
   return d === "flex" || d === "inline-flex" || d === "grid" || d === "inline-grid";
 }
 
+/**
+ * Whether reorder mode is meaningful for this element.
+ *
+ * Reorder works on any element that has a parent and isn't a top-level
+ * structural node (body/html). This is broader than isAutoLayoutParent —
+ * swapping two sibling <div>s in normal block flow is a valid reorder.
+ */
+export function canReorderElement(element: Element): boolean {
+  const parent = element.parentElement;
+  if (!parent) return false;
+  if (element === document.body || element === document.documentElement) return false;
+  return true;
+}
+
 export function showMoveToolbar(
   element: HTMLElement,
   onModeChange: (mode: MoveMode) => void
@@ -49,8 +68,9 @@ export function showMoveToolbar(
 
   currentElement = element;
   onModeChangeCb = onModeChange;
-  canReorder = isAutoLayoutParent(element);
-  currentMode = canReorder ? "reorder" : "position";
+  canReorder = canReorderElement(element);
+  // Default to reorder for auto-layout parents (Figma-style), otherwise position.
+  currentMode = isAutoLayoutParent(element) ? "reorder" : "position";
 
   toolbar = document.createElement("div");
   toolbar.className = "__pd-move-toolbar";

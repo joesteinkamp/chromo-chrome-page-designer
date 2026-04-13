@@ -6,9 +6,10 @@
  *   "reorder"  — DOM sibling reordering (works for any parent, not just
  *               flex/grid — e.g. swapping two <div>s in normal block flow)
  *
- * Reorder mode is the default when the parent is an auto-layout container
- * (flex/grid), matching Figma's UX. For other layouts, position is the
- * default but reorder is still available via the toolbar or the R shortcut.
+ * Reorder is the default whenever reordering is possible. The user's most
+ * recent explicit choice (via the toolbar buttons or P/R shortcuts) is
+ * remembered and reapplied to subsequent selections, so clicking a new
+ * element doesn't revert their preferred mode.
  *
  * Renders a floating toolbar at the bottom center of the viewport
  * (like Figma's toolbar) showing the current mode with a toggle.
@@ -24,6 +25,9 @@ let hintSpan: HTMLSpanElement | null = null;
 let currentElement: HTMLElement | null = null;
 let canReorder = false;
 let onModeChangeCb: ((mode: MoveMode) => void) | null = null;
+// Sticky preference — tracks the user's last explicit mode choice so it
+// persists across element selections. Null until the user picks a mode.
+let preferredMode: MoveMode | null = null;
 
 // --- Public API ---
 
@@ -33,6 +37,7 @@ export function getMode(): MoveMode {
 
 export function setMode(mode: MoveMode): void {
   if (mode === "reorder" && !canReorder) return;
+  preferredMode = mode;
   if (mode === currentMode) return;
   currentMode = mode;
   updateToolbarState();
@@ -69,8 +74,15 @@ export function showMoveToolbar(
   currentElement = element;
   onModeChangeCb = onModeChange;
   canReorder = canReorderElement(element);
-  // Default to reorder for auto-layout parents (Figma-style), otherwise position.
-  currentMode = isAutoLayoutParent(element) ? "reorder" : "position";
+  // Honor the user's last explicit mode choice when it's valid for this
+  // element; otherwise default to reorder whenever possible.
+  if (preferredMode === "reorder" && canReorder) {
+    currentMode = "reorder";
+  } else if (preferredMode === "position") {
+    currentMode = "position";
+  } else {
+    currentMode = canReorder ? "reorder" : "position";
+  }
 
   toolbar = document.createElement("div");
   toolbar.className = "__pd-move-toolbar";

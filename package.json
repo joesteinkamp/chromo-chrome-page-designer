@@ -4,8 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite build --watch",
-    "build": "vite build",
+    "dev": "vite build --watch & vite build --mode content-main --watch & vite build --mode content-bridge --watch",
+    "build": "vite build && vite build --mode content-main && vite build --mode content-bridge",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

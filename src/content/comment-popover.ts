@@ -114,6 +114,12 @@ export function openCommentPopover(options: OpenOptions): void {
   el.addEventListener("mousedown", (e) => e.stopPropagation());
   el.addEventListener("click", (e) => e.stopPropagation());
 
+  // Pre-set width before measuring so layout is stable.
+  el.style.setProperty("width", "300px", "important");
+  // Render off-screen briefly so we can measure height without a flash.
+  el.style.setProperty("left", "-9999px", "important");
+  el.style.setProperty("top", "-9999px", "important");
+
   document.documentElement.appendChild(el);
   popoverEl = el;
 
@@ -183,12 +189,33 @@ export function closeCommentPopover(): void {
 }
 
 function positionPopover(el: HTMLDivElement, anchor: DOMRect): void {
-  // Default: place below the anchor's top-right corner, offset to the left so
-  // the popover doesn't run off the right edge.
+  // The (+) button sits at the top-right of the selection (see overlay.ts
+  // positionCommentButton). Anchor the popover to that point so it always
+  // opens adjacent to the button — not at the far corner of a huge element.
+  const btnSize = 24;
+  const btnCenterX = anchor.right + 4;
+  const btnCenterY = anchor.top - 4;
+  const btnRight = btnCenterX + btnSize / 2;
+  const btnBottom = btnCenterY + btnSize / 2;
+  const btnTop = btnCenterY - btnSize / 2;
+
   const width = 300;
   const margin = 8;
-  let left = anchor.right - width + 12;
-  let top = anchor.top - margin;
+  const gap = 8;
+
+  // Measure actual height after the popover is in the DOM so the flip logic
+  // knows the real size (the popover has variable content height).
+  const height = el.offsetHeight || 140;
+
+  // Default: below the button, right-aligned so the (+) feels attached to
+  // the popover's top-right corner.
+  let left = btnRight - width;
+  let top = btnBottom + gap;
+
+  // Flip above if it would overflow the viewport bottom
+  if (top + height > window.innerHeight - margin) {
+    top = btnTop - height - gap;
+  }
 
   // Clamp horizontally
   if (left + width > window.innerWidth - margin) {
@@ -196,23 +223,13 @@ function positionPopover(el: HTMLDivElement, anchor: DOMRect): void {
   }
   if (left < margin) left = margin;
 
-  // If there's not enough room above, flip below the anchor
-  // (first render — we use a small estimated height since the element
-  // isn't measurable until after reflow)
-  const estimatedHeight = 160;
-  if (top - estimatedHeight < margin) {
-    top = anchor.bottom + margin;
-  } else {
-    top = top - estimatedHeight;
+  // Clamp vertically (in case both above and below would overflow)
+  if (top < margin) top = margin;
+  if (top + height > window.innerHeight - margin) {
+    top = Math.max(margin, window.innerHeight - height - margin);
   }
 
-  if (top + estimatedHeight > window.innerHeight - margin) {
-    top = Math.max(margin, window.innerHeight - estimatedHeight - margin);
-  }
-
-  el.style.cssText = `
-    left: ${left}px !important;
-    top: ${top}px !important;
-    width: ${width}px !important;
-  `;
+  el.style.setProperty("left", `${left}px`, "important");
+  el.style.setProperty("top", `${top}px`, "important");
+  el.style.setProperty("width", `${width}px`, "important");
 }

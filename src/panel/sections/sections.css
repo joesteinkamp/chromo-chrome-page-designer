@@ -68,6 +68,10 @@
   margin-bottom: 0;
 }
 
+.pd-section__row--half {
+  gap: var(--pd-space-5);
+}
+
 .pd-section__row--half > * {
   flex: 1;
   min-width: 0;

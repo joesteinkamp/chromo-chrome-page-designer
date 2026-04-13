@@ -247,6 +247,15 @@ export function DuplicateIcon({ size = defaults.size, className = defaults.class
   );
 }
 
+export function LayersIcon({ size = defaults.size, className = defaults.className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" className={`pd-icon ${className}`}>
+      <rect x="2" y="2" width="12" height="12" rx="1.5" stroke="currentColor" strokeWidth="1.5" />
+      <path d="M2 6h12M2 10h12M6 2v12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 /* ── Brand / Misc ── */
 
 export function DiamondIcon({ size = defaults.size, className = defaults.className }: IconProps) {

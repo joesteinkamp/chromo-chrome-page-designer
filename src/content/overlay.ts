@@ -176,6 +176,17 @@ export function isOverlayElement(el: Element): boolean {
   return el.className.includes("__pd-");
 }
 
+/** Check if an element lives inside the layers pane (any descendant). */
+export function isInsideLayersPane(el: Element | null): boolean {
+  let cur: Element | null = el;
+  while (cur) {
+    const cls = typeof cur.className === "string" ? cur.className : "";
+    if (cls.includes("__pd-layers-")) return true;
+    cur = cur.parentElement;
+  }
+  return false;
+}
+
 /** Get the resize handle direction from a mousedown target, or null */
 export function getHandleDirection(
   target: Element

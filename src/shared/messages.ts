@@ -21,6 +21,9 @@ export type Message =
   | { type: "ELEMENT_DESELECTED" }
   // Multi-edit
   | { type: "TOGGLE_MULTI_EDIT"; enabled: boolean }
+  // Layers / hierarchy pane (left-aligned in-page overlay)
+  | { type: "TOGGLE_LAYERS_PANE"; enabled: boolean }
+  | { type: "LAYERS_PANE_STATE"; enabled: boolean }
   // Style changes (panel → content script)
   | { type: "APPLY_STYLE"; property: string; value: string }
   | { type: "APPLY_STYLE_TO_MATCHING"; className: string; property: string; value: string }

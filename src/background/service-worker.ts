@@ -106,6 +106,16 @@ chrome.runtime.onMessage.addListener(
         });
         forwardToContentScript(message);
         break;
+      case "TOGGLE_LAYERS_PANE":
+        // Persist preference and forward to the active tab
+        chrome.storage.local.set({ layersPaneEnabled: message.enabled }).catch(() => {});
+        forwardToContentScript(message);
+        // Echo state back to the panel so its toggle button reflects it
+        chrome.runtime.sendMessage({
+          type: "LAYERS_PANE_STATE",
+          enabled: message.enabled,
+        } satisfies Message).catch(() => {});
+        break;
       case "TOGGLE_MULTI_EDIT":
       case "APPLY_STYLE":
       case "APPLY_STYLE_TO_MATCHING":

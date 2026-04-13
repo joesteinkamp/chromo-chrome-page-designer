@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from "react";
-import { DiamondIcon, UndoIcon, RedoIcon } from "./icons";
+import { DiamondIcon, UndoIcon, RedoIcon, LayersIcon } from "./icons";
 import { useElementData } from "./hooks/useElementData";
 import { useStyleChange } from "./hooks/useStyleChange";
 import { ElementInfo } from "./components/ElementInfo";
@@ -38,6 +38,7 @@ export function App() {
   const [critiqueResponse, setCritiqueResponse] = useState<AISuggestion[] | null>(null);
   const [nlEditResponse, setNlEditResponse] = useState<Array<{ property: string; value: string }> | null>(null);
   const [aiError, setAiError] = useState<string | null>(null);
+  const [layersPaneEnabled, setLayersPaneEnabled] = useState(false);
 
   // Accumulate component context as elements are selected
   useEffect(() => {
@@ -67,6 +68,15 @@ export function App() {
     } satisfies Message);
   }, [editMode]);
 
+  const handleToggleLayersPane = useCallback(() => {
+    const next = !layersPaneEnabled;
+    setLayersPaneEnabled(next);
+    chrome.runtime.sendMessage({
+      type: "TOGGLE_LAYERS_PANE",
+      enabled: next,
+    } satisfies Message);
+  }, [layersPaneEnabled]);
+
   const handleToggleMultiEdit = useCallback(() => {
     const next = !multiEdit;
     setMultiEdit(next);
@@ -92,6 +102,17 @@ export function App() {
         case "STATE_RESPONSE":
           if (message.isActive) {
             setInjectionFailed(false);
+            // Re-apply the layers-pane preference on (re)activation — covers
+            // navigation to a new page where the content script was freshly
+            // injected and has no local state yet.
+            chrome.storage.local.get("layersPaneEnabled").then((result) => {
+              if (result.layersPaneEnabled) {
+                chrome.runtime.sendMessage({
+                  type: "TOGGLE_LAYERS_PANE",
+                  enabled: true,
+                } satisfies Message).catch(() => {});
+              }
+            }).catch(() => {});
           }
           break;
         case "AGENT_SYNC_STATUS":
@@ -110,6 +131,9 @@ export function App() {
           break;
         case "AI_ERROR":
           setAiError(message.error);
+          break;
+        case "LAYERS_PANE_STATE":
+          setLayersPaneEnabled(message.enabled);
           break;
       }
     };
@@ -132,6 +156,19 @@ export function App() {
 
     chrome.runtime.sendMessage({ type: "GET_CHANGES" } satisfies Message);
     chrome.runtime.sendMessage({ type: "GET_AGENT_SYNC_STATUS" } satisfies Message);
+
+    // Restore the layers-pane preference. If it was enabled previously, push
+    // it to the content script so the pane re-mounts on this page.
+    chrome.storage.local.get("layersPaneEnabled").then((result) => {
+      const enabled = Boolean(result.layersPaneEnabled);
+      setLayersPaneEnabled(enabled);
+      if (enabled) {
+        chrome.runtime.sendMessage({
+          type: "TOGGLE_LAYERS_PANE",
+          enabled: true,
+        } satisfies Message).catch(() => {});
+      }
+    }).catch(() => {});
 
     // When the user switches tabs, reset to inactive
     const onTabActivated = () => {
@@ -342,6 +379,14 @@ export function App() {
             title="Redo"
           >
             <RedoIcon size={16} />
+          </button>
+          <button
+            className={`pd-panel__icon-btn ${layersPaneEnabled ? "pd-panel__icon-btn--active" : ""}`}
+            onClick={handleToggleLayersPane}
+            title={layersPaneEnabled ? "Hide Layers pane" : "Show Layers pane (on-page hierarchy)"}
+            aria-pressed={layersPaneEnabled}
+          >
+            <LayersIcon size={16} />
           </button>
         </div>
 

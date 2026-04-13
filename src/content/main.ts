@@ -28,6 +28,12 @@ import { initKeyboard, destroyKeyboard } from "./keyboard";
 import { showSpacing, hideSpacing } from "./spacing-overlay";
 import { recordSelectionChange, clearSelectionHistory } from "./selection-history";
 import {
+  mountLayersPanel,
+  unmountLayersPanel,
+  isMounted as isLayersPaneMounted,
+  setSelectedInTree,
+} from "./layers-panel";
+import {
   recordStyleChange,
   recordTextChange,
   undoChange,
@@ -106,6 +112,23 @@ chrome.runtime.onMessage.addListener(
           hideSpacing();
         }
         break;
+
+      case "TOGGLE_LAYERS_PANE": {
+        if (isInIframe) break; // Only mount in the top frame
+        if (message.enabled) {
+          if (!isLayersPaneMounted()) {
+            mountLayersPanel((el) => {
+              // Click in the tree → route through the standard selection flow
+              onElementSelected(el);
+            });
+            const sel = getSelectedElement();
+            if (sel) setSelectedInTree(sel);
+          }
+        } else {
+          unmountLayersPanel();
+        }
+        break;
+      }
 
       case "TOGGLE_MULTI_EDIT": {
         multiEditEnabled = message.enabled;
@@ -404,6 +427,7 @@ function deactivate(): void {
   destroyKeyboard();
   destroyOverlay();
   clearSelectionHistory();
+  unmountLayersPanel();
 }
 
 // --- Selection callback ---
@@ -418,6 +442,11 @@ function onElementSelected(element: Element | null): void {
   hideMultiEditOverlays();
   hideMultiSelectOverlays();
   hideSpacing();
+
+  // Keep the layers pane (if open) in sync with the active selection.
+  if (isLayersPaneMounted()) {
+    setSelectedInTree(element);
+  }
 
   if (element) {
     sendElementData(element);

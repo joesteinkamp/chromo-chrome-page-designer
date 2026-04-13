@@ -1,6 +1,5 @@
-import React, { useState, useCallback, useMemo } from "react";
+import React, { useState, useCallback } from "react";
 import { NumberInput } from "./NumberInput";
-import { PageValuePicker } from "./PageValuePicker";
 import { LinkIcon, UnlinkIcon } from "../icons";
 import "./controls.css";
 
@@ -25,11 +24,6 @@ export const CornerRadiusInput: React.FC<CornerRadiusInputProps> = ({
   pageValues,
 }) => {
   const [linked, setLinked] = useState(true);
-
-  const allSame = useMemo(
-    () => values[0] === values[1] && values[1] === values[2] && values[2] === values[3],
-    [values]
-  );
 
   const handleLinkedChange = useCallback(
     (v: number) => {
@@ -70,6 +64,7 @@ export const CornerRadiusInput: React.FC<CornerRadiusInputProps> = ({
             min={0}
             suffix="px"
             label="All"
+            suggestions={pageValues}
           />
         )}
       </div>
@@ -84,16 +79,11 @@ export const CornerRadiusInput: React.FC<CornerRadiusInputProps> = ({
               min={0}
               suffix="px"
               label={corner}
+              suggestions={pageValues}
             />
           ))}
         </div>
       )}
-
-      <PageValuePicker
-        values={pageValues ?? []}
-        onChange={handleLinkedChange}
-        currentValue={linked && allSame ? parseRadius(values[0]) : undefined}
-      />
     </div>
   );
 };

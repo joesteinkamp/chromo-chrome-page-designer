@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useMemo, useEffect, useRef } from "react";
-import { ColorPicker, NumberInput, PageValuePicker, SelectDropdown } from "../controls";
+import { ColorPicker, NumberInput, SelectDropdown } from "../controls";
 import { VarLabel } from "./VarLabel";
 import { ChevronDown, PlusIcon, GearIcon } from "../icons";
 import "./sections.css";
@@ -202,6 +202,7 @@ export const StrokeSection: React.FC<StrokeSectionProps> = ({
                   onChange={handleWidthChange}
                   min={0}
                   suffix="px"
+                  suggestions={pageStrokeWidths}
                 />
               </div>
             )}
@@ -209,21 +210,15 @@ export const StrokeSection: React.FC<StrokeSectionProps> = ({
             {mode === "sides" && (
               <>
                 <div className="pd-section__row pd-section__row--half">
-                  <NumberInput label="T" value={parsePx(sideWidths[0])} onChange={(v) => handleSideWidthChange(0, v)} min={0} suffix="px" />
-                  <NumberInput label="R" value={parsePx(sideWidths[1])} onChange={(v) => handleSideWidthChange(1, v)} min={0} suffix="px" />
+                  <NumberInput label="T" value={parsePx(sideWidths[0])} onChange={(v) => handleSideWidthChange(0, v)} min={0} suffix="px" suggestions={pageStrokeWidths} />
+                  <NumberInput label="R" value={parsePx(sideWidths[1])} onChange={(v) => handleSideWidthChange(1, v)} min={0} suffix="px" suggestions={pageStrokeWidths} />
                 </div>
                 <div className="pd-section__row pd-section__row--half">
-                  <NumberInput label="B" value={parsePx(sideWidths[2])} onChange={(v) => handleSideWidthChange(2, v)} min={0} suffix="px" />
-                  <NumberInput label="L" value={parsePx(sideWidths[3])} onChange={(v) => handleSideWidthChange(3, v)} min={0} suffix="px" />
+                  <NumberInput label="B" value={parsePx(sideWidths[2])} onChange={(v) => handleSideWidthChange(2, v)} min={0} suffix="px" suggestions={pageStrokeWidths} />
+                  <NumberInput label="L" value={parsePx(sideWidths[3])} onChange={(v) => handleSideWidthChange(3, v)} min={0} suffix="px" suggestions={pageStrokeWidths} />
                 </div>
               </>
             )}
-
-            <PageValuePicker
-              values={pageStrokeWidths ?? []}
-              onChange={handleWidthChange}
-              currentValue={mode === "single" ? parsePx(sideWidths[0]) : undefined}
-            />
 
             {popoverOpen && (
               <div className="pd-spacing__popover" ref={popoverRef}>

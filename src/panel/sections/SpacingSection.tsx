@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect, useRef } from "react";
-import { NumberInput, PageValuePicker } from "../controls";
+import { NumberInput } from "../controls";
 import { ChevronDown, PlusIcon, GearIcon } from "../icons";
 import "./sections.css";
 
@@ -98,35 +98,29 @@ function SpacingGroup({
 
       {mode === "single" && (
         <div className="pd-section__row">
-          <NumberInput value={top} onChange={onChangeAll} min={min} suffix="px" />
+          <NumberInput value={top} onChange={onChangeAll} min={min} suffix="px" suggestions={pageValues} />
         </div>
       )}
 
       {mode === "hv" && (
         <div className="pd-section__row pd-section__row--half">
-          <NumberInput label={"\u2195"} value={top} onChange={onChangeVert} min={min} suffix="px" />
-          <NumberInput label={"\u2194"} value={left} onChange={onChangeHoriz} min={min} suffix="px" />
+          <NumberInput label={"\u2195"} value={top} onChange={onChangeVert} min={min} suffix="px" suggestions={pageValues} />
+          <NumberInput label={"\u2194"} value={left} onChange={onChangeHoriz} min={min} suffix="px" suggestions={pageValues} />
         </div>
       )}
 
       {mode === "sides" && (
         <>
           <div className="pd-section__row pd-section__row--half">
-            <NumberInput label="T" value={top} onChange={(v) => onChangeSide(`${sidePrefix}-top`, v)} min={min} suffix="px" />
-            <NumberInput label="R" value={right} onChange={(v) => onChangeSide(`${sidePrefix}-right`, v)} min={min} suffix="px" />
+            <NumberInput label="T" value={top} onChange={(v) => onChangeSide(`${sidePrefix}-top`, v)} min={min} suffix="px" suggestions={pageValues} />
+            <NumberInput label="R" value={right} onChange={(v) => onChangeSide(`${sidePrefix}-right`, v)} min={min} suffix="px" suggestions={pageValues} />
           </div>
           <div className="pd-section__row pd-section__row--half">
-            <NumberInput label="B" value={bottom} onChange={(v) => onChangeSide(`${sidePrefix}-bottom`, v)} min={min} suffix="px" />
-            <NumberInput label="L" value={left} onChange={(v) => onChangeSide(`${sidePrefix}-left`, v)} min={min} suffix="px" />
+            <NumberInput label="B" value={bottom} onChange={(v) => onChangeSide(`${sidePrefix}-bottom`, v)} min={min} suffix="px" suggestions={pageValues} />
+            <NumberInput label="L" value={left} onChange={(v) => onChangeSide(`${sidePrefix}-left`, v)} min={min} suffix="px" suggestions={pageValues} />
           </div>
         </>
       )}
-
-      <PageValuePicker
-        values={pageValues ?? []}
-        onChange={onChangeAll}
-        currentValue={mode === "single" ? top : undefined}
-      />
 
       {popoverOpen && (
         <div className="pd-spacing__popover" ref={popoverRef}>

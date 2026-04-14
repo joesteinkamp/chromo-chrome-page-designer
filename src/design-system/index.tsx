@@ -2,6 +2,34 @@
  * Design System Showcase — React entry point.
  * Mounts interactive control demos into design-system.html.
  */
+
+// Mock the chrome extension APIs so panel components render without errors.
+// Handlers that call sendMessage will no-op silently.
+if (typeof (window as any).chrome === "undefined") {
+  (window as any).chrome = {
+    runtime: {
+      sendMessage: () => Promise.resolve({}),
+      onMessage: { addListener: () => {}, removeListener: () => {} },
+    },
+    tabs: {
+      query: (_: unknown, cb: (tabs: { url: string }[]) => void) =>
+        cb([{ url: "https://example.com" }]),
+      onActivated: { addListener: () => {}, removeListener: () => {} },
+      onUpdated: { addListener: () => {}, removeListener: () => {} },
+    },
+    storage: {
+      local: {
+        get: () => Promise.resolve({}),
+        set: () => Promise.resolve(),
+      },
+      sync: {
+        get: (_: unknown, cb: (result: Record<string, unknown>) => void) => cb({}),
+        set: () => Promise.resolve(),
+      },
+    },
+  };
+}
+
 import { createRoot } from "react-dom/client";
 import { useState, useCallback } from "react";
 import {
@@ -15,9 +43,14 @@ import {
   CornerRadiusInput,
 } from "../panel/controls";
 import * as Icons from "../panel/icons";
+import { SidebarSelected, SidebarEmpty } from "./SidebarPreview";
 import "../panel/panel.css";
 import "../panel/controls/controls.css";
 import "../panel/sections/sections.css";
+import "../panel/components/changes.css";
+import "../panel/components/ai.css";
+import "../panel/components/typography.css";
+import "../panel/components/agent-sync.css";
 
 function IconsGallery() {
   // Render every exported icon from the icons module
@@ -155,4 +188,14 @@ if (iconsRoot) {
 const controlsRoot = document.getElementById("controls-root");
 if (controlsRoot) {
   createRoot(controlsRoot).render(<ControlsGallery />);
+}
+
+const sidebarSelectedRoot = document.getElementById("sidebar-selected-root");
+if (sidebarSelectedRoot) {
+  createRoot(sidebarSelectedRoot).render(<SidebarSelected />);
+}
+
+const sidebarEmptyRoot = document.getElementById("sidebar-empty-root");
+if (sidebarEmptyRoot) {
+  createRoot(sidebarEmptyRoot).render(<SidebarEmpty />);
 }

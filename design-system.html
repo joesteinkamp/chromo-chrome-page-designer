@@ -334,6 +334,44 @@
       grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
       gap: var(--pd-space-4);
     }
+
+    /* ── Icons gallery ── */
+    .ds-icons-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+      gap: var(--pd-space-3);
+    }
+
+    .ds-icon-card {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: var(--pd-space-3);
+      padding: var(--pd-space-5) var(--pd-space-4);
+      border: 1px solid var(--pd-border);
+      border-radius: var(--pd-radius-md);
+      background: var(--pd-bg-raised);
+      color: var(--pd-text);
+      transition: border-color var(--pd-duration-fast) var(--pd-ease), color var(--pd-duration-fast) var(--pd-ease);
+    }
+
+    .ds-icon-card:hover {
+      border-color: var(--pd-accent);
+      color: var(--pd-accent);
+    }
+
+    .ds-icon-card__name {
+      font-family: var(--pd-mono);
+      font-size: var(--pd-text-sm);
+      color: var(--pd-text-dim);
+      text-align: center;
+      transition: color var(--pd-duration-fast) var(--pd-ease);
+    }
+
+    .ds-icon-card:hover .ds-icon-card__name {
+      color: var(--pd-accent);
+    }
   </style>
 </head>
 <body>
@@ -640,6 +678,13 @@
           </div>
         </div>
       </div>
+    </div>
+
+    <!-- ════════ ICONS GALLERY (React-mounted) ════════ -->
+    <div class="ds-section">
+      <h2>Icons</h2>
+      <p style="font-size: var(--pd-text-base); color: var(--pd-text-dim); margin-bottom: var(--pd-space-5);">All SVG icons from <code style="font-family: var(--pd-mono); color: var(--pd-accent);">src/panel/icons/index.tsx</code>. Hover to highlight.</p>
+      <div id="icons-root"></div>
     </div>
 
     <!-- ════════ CONTROLS GALLERY (React-mounted) ════════ -->

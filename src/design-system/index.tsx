@@ -14,9 +14,28 @@ import {
   ColorPicker,
   CornerRadiusInput,
 } from "../panel/controls";
+import * as Icons from "../panel/icons";
 import "../panel/panel.css";
 import "../panel/controls/controls.css";
 import "../panel/sections/sections.css";
+
+function IconsGallery() {
+  // Render every exported icon from the icons module
+  const entries = Object.entries(Icons).filter(
+    ([, value]) => typeof value === "function"
+  ) as Array<[string, React.FC<{ size?: number; className?: string }>]>;
+
+  return (
+    <div className="ds-icons-grid">
+      {entries.map(([name, IconComponent]) => (
+        <div key={name} className="ds-icon-card">
+          <IconComponent size={24} />
+          <span className="ds-icon-card__name">{name}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 function ControlsGallery() {
   const [numVal, setNumVal] = useState(16);
@@ -126,6 +145,11 @@ function ControlsGallery() {
       </div>
     </div>
   );
+}
+
+const iconsRoot = document.getElementById("icons-root");
+if (iconsRoot) {
+  createRoot(iconsRoot).render(<IconsGallery />);
 }
 
 const controlsRoot = document.getElementById("controls-root");

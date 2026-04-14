@@ -211,7 +211,11 @@ function extractDesignTokens(element: Element): Array<{ name: string; value: str
 /**
  * Extract authored style values preserving original units and CSS variables.
  * Checks inline style first (our extension's APPLY_STYLE values),
- * then scans matched CSS rules for var() references.
+ * then scans matched CSS rules for any explicit declaration (preserving
+ * original units like %, rem, vw, and var() references).
+ *
+ * Note: rule-order walk (last sheet → last rule) approximates cascade order
+ * for the common case but does not account for CSS specificity.
  */
 function extractAuthoredStyles(element: Element, properties: readonly string[]): Record<string, string> {
   const result: Record<string, string> = {};
@@ -223,7 +227,7 @@ function extractAuthoredStyles(element: Element, properties: readonly string[]):
     result[prop] = inline || "";
   }
 
-  // 2. Scan matched CSS rules for var() references on properties we haven't found yet
+  // 2. Scan matched CSS rules for any explicit value on properties we haven't found yet
   const propsToCheck = properties.filter((p) => !result[p]);
   if (propsToCheck.length > 0) {
     try {
@@ -237,7 +241,7 @@ function extractAuthoredStyles(element: Element, properties: readonly string[]):
               for (const prop of propsToCheck) {
                 if (result[prop]) continue; // already found
                 const val = rule.style.getPropertyValue(prop);
-                if (val && /var\(/.test(val)) {
+                if (val) {
                   result[prop] = val;
                 }
               }

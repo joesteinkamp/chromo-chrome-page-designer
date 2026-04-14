@@ -43,7 +43,7 @@ import { tryStartResize, isResizeActive } from "./resize";
 import { showImageToolbar, hideImageToolbar } from "./image-replace";
 import { showMoveToolbar, hideMoveToolbar } from "./move-mode";
 import { initKeyboard, destroyKeyboard } from "./keyboard";
-import { showSpacing, hideSpacing } from "./spacing-overlay";
+import { showSpacing, hideSpacing, updateSpacing } from "./spacing-overlay";
 import { recordSelectionChange, clearSelectionHistory } from "./selection-history";
 import {
   mountLayersPanel,
@@ -418,6 +418,11 @@ function activate(): void {
   document.addEventListener("scroll", updateCommentPins, true);
   window.addEventListener("resize", updateCommentPins);
 
+  // Keep spacing/padding overlay in sync with the element when page scrolls or resizes.
+  window.addEventListener("scroll", updateSpacing, true);
+  document.addEventListener("scroll", updateSpacing, true);
+  window.addEventListener("resize", updateSpacing);
+
   startPicker({
     onSelect: onElementSelected,
     onMultiSelect: onMultiSelect,
@@ -484,6 +489,9 @@ function deactivate(): void {
   window.removeEventListener("scroll", updateCommentPins, true);
   document.removeEventListener("scroll", updateCommentPins, true);
   window.removeEventListener("resize", updateCommentPins);
+  window.removeEventListener("scroll", updateSpacing, true);
+  document.removeEventListener("scroll", updateSpacing, true);
+  window.removeEventListener("resize", updateSpacing);
 
   stopPicker();
   destroyKeyboard();

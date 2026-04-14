@@ -7,9 +7,11 @@ let marginOverlays: HTMLDivElement[] = [];
 let paddingOverlays: HTMLDivElement[] = [];
 let spacingLabels: HTMLDivElement[] = [];
 let distanceElements: HTMLDivElement[] = [];
+let currentSpacingElement: Element | null = null;
 
 export function showSpacing(element: Element): void {
-  hideSpacing();
+  currentSpacingElement = element;
+  clearSpacingOverlays();
 
   const computed = window.getComputedStyle(element);
   const rect = element.getBoundingClientRect();
@@ -61,6 +63,17 @@ export function showSpacing(element: Element): void {
 }
 
 export function hideSpacing(): void {
+  currentSpacingElement = null;
+  clearSpacingOverlays();
+}
+
+export function updateSpacing(): void {
+  if (currentSpacingElement) {
+    showSpacing(currentSpacingElement);
+  }
+}
+
+function clearSpacingOverlays(): void {
   marginOverlays.forEach((el) => el.remove());
   paddingOverlays.forEach((el) => el.remove());
   spacingLabels.forEach((el) => el.remove());

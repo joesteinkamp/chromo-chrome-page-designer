@@ -10,6 +10,7 @@
   padding: 0 var(--pd-space-3);
   height: 24px;
   min-width: 0;
+  position: relative;
   transition: border-color var(--pd-duration-fast) var(--pd-ease);
 }
 
@@ -51,6 +52,46 @@
   color: var(--pd-text-muted);
   margin-left: var(--pd-space-1);
   flex-shrink: 0;
+}
+
+.pd-number-input__dropdown {
+  position: absolute;
+  top: calc(100% + 2px);
+  left: 0;
+  right: 0;
+  z-index: 20;
+  margin: 0;
+  padding: var(--pd-space-1) 0;
+  list-style: none;
+  background: var(--pd-bg-elevated, var(--pd-bg));
+  border: 1px solid var(--pd-border);
+  border-radius: var(--pd-radius);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  max-height: 180px;
+  overflow-y: auto;
+  animation: pd-popover-in var(--pd-duration-fast) var(--pd-ease);
+}
+
+.pd-number-input__dropdown-item {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 3px var(--pd-space-3);
+  font-size: var(--pd-text-base);
+  color: var(--pd-text);
+  cursor: pointer;
+  user-select: none;
+}
+
+.pd-number-input__dropdown-item--active {
+  background: var(--pd-accent-dim, var(--pd-hover-bg, rgba(0, 0, 0, 0.06)));
+  color: var(--pd-accent);
+}
+
+.pd-number-input__dropdown-suffix {
+  font-size: var(--pd-text-sm);
+  color: var(--pd-text-muted);
+  margin-left: var(--pd-space-2);
 }
 
 /* ── UnitInput ── */
@@ -819,50 +860,6 @@
   text-align: center;
   font-size: var(--pd-text-base);
   color: var(--pd-text-muted);
-}
-
-/* ── PageValuePicker ── */
-.pd-page-values {
-  margin-top: var(--pd-space-2);
-}
-
-.pd-page-values__label {
-  font-size: var(--pd-text-xs);
-  font-weight: 600;
-  color: var(--pd-text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  margin-bottom: var(--pd-space-2);
-}
-
-.pd-page-values__chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-}
-
-.pd-page-values__chip {
-  border: 1px solid var(--pd-border);
-  background: var(--pd-input-bg, transparent);
-  color: var(--pd-text, inherit);
-  border-radius: 3px;
-  font-size: var(--pd-text-xs);
-  padding: 2px 6px;
-  min-width: 22px;
-  cursor: pointer;
-  line-height: 1.4;
-  transition: border-color var(--pd-duration-fast) var(--pd-ease),
-              color var(--pd-duration-fast) var(--pd-ease);
-}
-
-.pd-page-values__chip:hover {
-  border-color: var(--pd-accent);
-  color: var(--pd-accent);
-}
-
-.pd-page-values__chip--active {
-  border-color: var(--pd-accent);
-  color: var(--pd-accent);
 }
 
 /* ── Animations ── */

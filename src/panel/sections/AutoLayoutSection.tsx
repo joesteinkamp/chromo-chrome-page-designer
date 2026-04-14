@@ -3,7 +3,6 @@ import {
   DirectionToggle,
   AlignmentGrid,
   NumberInput,
-  PageValuePicker,
 } from "../controls";
 import { ChevronDown } from "../icons";
 import "./sections.css";
@@ -123,6 +122,7 @@ export const AutoLayoutSection: React.FC<AutoLayoutSectionProps> = ({
                   label="Gap"
                   min={0}
                   suffix="px"
+                  suggestions={pageValues}
                 />
                 <button
                   className={`pd-section__toggle-btn${(computedStyles["flex-wrap"] || "nowrap") === "wrap" ? " pd-section__toggle-btn--active" : ""}`}
@@ -133,11 +133,6 @@ export const AutoLayoutSection: React.FC<AutoLayoutSectionProps> = ({
                   Wrap
                 </button>
               </div>
-              <PageValuePicker
-                values={pageValues ?? []}
-                onChange={handleGapChange}
-                currentValue={parseGap(computedStyles["gap"] || "0")}
-              />
             </>
           ) : (
             /* Grid controls */
@@ -176,6 +171,7 @@ export const AutoLayoutSection: React.FC<AutoLayoutSectionProps> = ({
                   label="Gap"
                   min={0}
                   suffix="px"
+                  suggestions={pageValues}
                 />
                 <button
                   className={`pd-section__toggle-btn${(computedStyles["grid-auto-flow"] || "row") === "column" ? " pd-section__toggle-btn--active" : ""}`}
@@ -186,11 +182,6 @@ export const AutoLayoutSection: React.FC<AutoLayoutSectionProps> = ({
                   Column flow
                 </button>
               </div>
-              <PageValuePicker
-                values={pageValues ?? []}
-                onChange={handleGapChange}
-                currentValue={parseGap(computedStyles["gap"] || "0")}
-              />
             </>
           )}
         </div>

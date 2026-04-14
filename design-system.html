@@ -335,6 +335,33 @@
       gap: var(--pd-space-4);
     }
 
+    /* ── Sidebar showcase ── */
+    .ds-sidebar-row {
+      display: flex;
+      gap: var(--pd-space-9);
+      flex-wrap: wrap;
+    }
+
+    .ds-sidebar-variant {
+      display: flex;
+      flex-direction: column;
+      gap: var(--pd-space-4);
+    }
+
+    .ds-sidebar-variant__label {
+      font-family: var(--pd-mono);
+      font-size: var(--pd-text-sm);
+      color: var(--pd-accent);
+    }
+
+    .ds-sidebar-frame {
+      border: 1px solid var(--pd-border);
+      border-radius: var(--pd-radius-lg);
+      overflow: hidden;
+      box-shadow: var(--pd-shadow-md);
+      width: 320px;
+    }
+
     /* ── Icons gallery ── */
     .ds-icons-grid {
       display: grid;
@@ -378,6 +405,26 @@
   <div class="ds-page">
     <h1>Chromo Design System</h1>
     <p class="ds-subtitle">Visual reference for all design tokens, controls, and components. Open with Page Designer to tune values.</p>
+
+    <!-- ════════ SIDEBAR PREVIEW ════════ -->
+    <div class="ds-section">
+      <h2>Sidebar</h2>
+      <p style="font-size: var(--pd-text-base); color: var(--pd-text-dim); margin-bottom: var(--pd-space-6);">Live preview of both sidebar states. Open with Page Designer to tune any element.</p>
+      <div class="ds-sidebar-row">
+        <div class="ds-sidebar-variant">
+          <span class="ds-sidebar-variant__label">Selected — element active, Design tab</span>
+          <div class="ds-sidebar-frame">
+            <div id="sidebar-selected-root"></div>
+          </div>
+        </div>
+        <div class="ds-sidebar-variant">
+          <span class="ds-sidebar-variant__label">Empty — no element selected</span>
+          <div class="ds-sidebar-frame">
+            <div id="sidebar-empty-root"></div>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <!-- ════════ COLORS ════════ -->
     <div class="ds-section">

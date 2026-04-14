@@ -72,6 +72,17 @@
   animation: pd-popover-in var(--pd-duration-fast) var(--pd-ease);
 }
 
+.pd-number-input__dropdown-header {
+  font-size: var(--pd-text-xs);
+  font-weight: 600;
+  color: var(--pd-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 4px var(--pd-space-3) 2px;
+  pointer-events: none;
+  user-select: none;
+}
+
 .pd-number-input__dropdown-item {
   display: flex;
   align-items: baseline;

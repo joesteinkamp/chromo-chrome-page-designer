@@ -204,7 +204,8 @@ export const NumberInput: React.FC<NumberInputProps> = ({
       />
       {suffix && <span className="pd-number-input__suffix">{suffix}</span>}
       {showDropdown && (
-        <ul className="pd-number-input__dropdown" role="listbox">
+        <ul className="pd-number-input__dropdown" role="listbox" aria-label="Page values">
+          <li className="pd-number-input__dropdown-header" aria-hidden="true">Page values</li>
           {filtered.map((v, i) => (
             <li
               key={v}

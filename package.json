@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite build --watch & vite build --mode content-main --watch & vite build --mode content-bridge --watch",
     "build": "vite build && vite build --mode content-main && vite build --mode content-bridge",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "serve": "vite"
   },
   "dependencies": {
     "react": "^18.3.1",

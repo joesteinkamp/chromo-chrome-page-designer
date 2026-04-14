@@ -459,8 +459,11 @@ function applyUndo(change: Change): boolean {
       if (!moveEl) return false;
       const origParent = resolveSelector(change.fromParent);
       if (origParent) {
-        const children = Array.from(origParent.children);
-        const refNode = children[change.fromIndex] || null;
+        // Exclude the element itself before indexing — its current position in
+        // the DOM would otherwise shift the indices when it sits before the
+        // target slot (e.g. undoing a "move backward" operation).
+        const children = Array.from(origParent.children).filter(c => c !== moveEl);
+        const refNode = children[change.fromIndex] ?? null;
         origParent.insertBefore(moveEl, refNode);
         // Update selector to reflect restored position
         selectorCache.delete(moveEl);
@@ -560,8 +563,11 @@ function applyRedo(change: Change): boolean {
       if (!moveEl) return false;
       const newParent = resolveSelector(change.toParent);
       if (newParent) {
-        const children = Array.from(newParent.children);
-        const refNode = children[change.toIndex] || null;
+        // Exclude the element itself before indexing — its current position in
+        // the DOM would otherwise shift the indices when it sits before the
+        // target slot (e.g. redoing a "move forward" operation).
+        const children = Array.from(newParent.children).filter(c => c !== moveEl);
+        const refNode = children[change.toIndex] ?? null;
         newParent.insertBefore(moveEl, refNode);
         // Update selector to reflect new position
         selectorCache.delete(moveEl);

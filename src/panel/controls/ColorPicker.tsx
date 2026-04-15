@@ -152,7 +152,6 @@ function hslaToCSS(hsla: HSLA): string {
 interface ColorPickerProps {
   value: string;
   onChange: (v: string) => void;
-  label?: string;
   className?: string;
   /** CSS custom properties (design tokens) detected on the page */
   designTokens?: Array<{ name: string; value: string }>;
@@ -256,10 +255,14 @@ function PageColorGroups({ colors, onChange }: { colors: string[]; onChange: (v:
   );
 }
 
+// Derive 6-char uppercase hex (no #, no alpha) from an RGBA
+function toInlineHex(rgba: RGBA): string {
+  return rgbaToHex({ ...rgba, a: 1 }).replace("#", "").toUpperCase();
+}
+
 export const ColorPicker: React.FC<ColorPickerProps> = ({
   value,
   onChange,
-  label,
   className,
   designTokens,
   pageColors,
@@ -270,12 +273,17 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({
   const [isOpen, setIsOpen] = useState(false);
   // Track hue independently to avoid hue jumping when s=0 or l=0/100
   const [internalHue, setInternalHue] = useState(hsla.h);
-  const [hexInput, setHexInput] = useState(rgbaToHex(rgba));
+  const [hexInput, setHexInput] = useState(rgbaToHex(rgba)); // for popover
+  const [inlineHex, setInlineHex] = useState(() => toInlineHex(parseCSSColor(value)));
+  const [opacityInput, setOpacityInput] = useState(() => String(Math.round(parseCSSColor(value).a * 100)));
   const popoverRef = useRef<HTMLDivElement>(null);
   const satAreaRef = useRef<HTMLDivElement>(null);
 
+  // Sync all display states when external value changes
   useEffect(() => {
     setHexInput(rgbaToHex(rgba));
+    setInlineHex(toInlineHex(rgba));
+    setOpacityInput(String(Math.round(rgba.a * 100)));
   }, [rgba]);
 
   // Sync hue only when the actual color changes externally and is chromatic
@@ -301,10 +309,8 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({
   }, [isOpen]);
 
   // Convert SV (saturation-value from HSV) to HSL for output
-  // The sat area works in HSV space: x = saturation(0-1), y = value(1-0)
   const svToHsl = useCallback(
     (svS: number, svV: number): HSLA => {
-      // HSV to HSL
       const l = svV * (1 - svS / 2);
       const s =
         l === 0 || l === 1 ? 0 : (svV - l) / Math.min(l, 1 - l);
@@ -341,7 +347,6 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({
       const rect = satAreaRef.current.getBoundingClientRect();
       const x = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
       const y = Math.max(0, Math.min(1, (clientY - rect.top) / rect.height));
-      // x = saturation (HSV), y = 1 - value (HSV)
       const newHsla = svToHsl(x, 1 - y);
       emitColor(newHsla);
     },
@@ -418,6 +423,7 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({
     [handleAlphaInteraction]
   );
 
+  // Popover hex input handlers
   const handleHexInputChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       setHexInput(e.target.value);
@@ -442,6 +448,70 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({
     []
   );
 
+  // Inline hex (combined box) handlers — preserves current alpha
+  const handleInlineHexChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      setInlineHex(e.target.value);
+    },
+    []
+  );
+
+  const handleInlineHexBlur = useCallback(() => {
+    let hex = inlineHex.trim();
+    if (!hex.startsWith("#")) hex = "#" + hex;
+    if (/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(hex)) {
+      const newRgba = { ...hexToRgba(hex), a: rgba.a };
+      onChange(rgbaToHex(newRgba));
+    } else {
+      setInlineHex(toInlineHex(rgba));
+    }
+  }, [inlineHex, rgba, onChange]);
+
+  const handleInlineHexKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+    },
+    []
+  );
+
+  // Opacity (combined box) handlers
+  const handleOpacityChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      setOpacityInput(e.target.value);
+    },
+    []
+  );
+
+  const handleOpacityBlur = useCallback(() => {
+    const v = parseInt(opacityInput, 10);
+    if (!isNaN(v)) {
+      const clamped = Math.max(0, Math.min(100, v));
+      const newRgba = { ...rgba, a: clamped / 100 };
+      onChange(rgbaToHex(newRgba));
+    } else {
+      setOpacityInput(String(Math.round(rgba.a * 100)));
+    }
+  }, [opacityInput, rgba, onChange]);
+
+  const handleOpacityKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+      if (e.key === "ArrowUp") {
+        e.preventDefault();
+        const current = Math.round(rgba.a * 100);
+        const newVal = Math.min(100, current + 1);
+        onChange(rgbaToHex({ ...rgba, a: newVal / 100 }));
+      }
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        const current = Math.round(rgba.a * 100);
+        const newVal = Math.max(0, current - 1);
+        onChange(rgbaToHex({ ...rgba, a: newVal / 100 }));
+      }
+    },
+    [rgba, onChange]
+  );
+
   const { svS, svV } = hslToSv();
   const cursorLeft = `${svS * 100}%`;
   const cursorTop = `${(1 - svV) * 100}%`;
@@ -454,26 +524,40 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({
       className={`pd-color-picker ${className || ""}`}
       ref={popoverRef}
     >
-      {label && <label className="pd-color-picker__label">{label}</label>}
-      <button
-        className="pd-color-picker__swatch"
-        onClick={() => setIsOpen(!isOpen)}
-        type="button"
-      >
-        <div className="pd-color-picker__swatch-checkers" />
-        <div
-          className="pd-color-picker__swatch-color"
-          style={{ background: value }}
+      {/* Combined swatch + hex + opacity input box */}
+      <div className="pd-color-picker__combined-box">
+        <button
+          className="pd-color-picker__swatch-inline"
+          onClick={() => setIsOpen(!isOpen)}
+          type="button"
+          title="Open color picker"
+        >
+          <div className="pd-color-picker__swatch-checkers" />
+          <div
+            className="pd-color-picker__swatch-color"
+            style={{ background: value }}
+          />
+        </button>
+        <input
+          className="pd-color-picker__hex-inline"
+          type="text"
+          value={inlineHex}
+          onChange={handleInlineHexChange}
+          onBlur={handleInlineHexBlur}
+          onKeyDown={handleInlineHexKeyDown}
+          maxLength={6}
+          spellCheck={false}
         />
-      </button>
-      <input
-        className="pd-color-picker__hex-input"
-        type="text"
-        value={hexInput}
-        onChange={handleHexInputChange}
-        onBlur={handleHexInputBlur}
-        onKeyDown={handleHexInputKeyDown}
-      />
+        <input
+          className="pd-color-picker__opacity-input"
+          type="text"
+          value={opacityInput}
+          onChange={handleOpacityChange}
+          onBlur={handleOpacityBlur}
+          onKeyDown={handleOpacityKeyDown}
+        />
+        <span className="pd-color-picker__opacity-suffix">%</span>
+      </div>
 
       {isOpen && (
         <div className="pd-color-picker__popover">

@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useRef, useEffect } from "react";
-import { ColorPicker, SliderInput } from "../controls";
+import { ColorPicker } from "../controls";
 import { VarLabel } from "./VarLabel";
 import { ChevronDown, PlusIcon, EyeIcon, EyeOffIcon } from "../icons";
 import "./sections.css";
@@ -13,29 +13,6 @@ interface FillSectionProps {
   pageColors?: string[];
 }
 
-function parseOpacityFromColor(color: string): number {
-  const rgbaMatch = color.match(
-    /rgba?\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*(?:,\s*([\d.]+))?\s*\)/
-  );
-  if (rgbaMatch && rgbaMatch[1] !== undefined) {
-    return Math.round(parseFloat(rgbaMatch[1]) * 100);
-  }
-  if (color === "transparent") return 0;
-  return 100;
-}
-
-function setAlphaInColor(color: string, alpha: number): string {
-  const rgbMatch = color.match(
-    /rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*(?:,\s*[\d.]+)?\s*\)/
-  );
-  if (rgbMatch) {
-    const [, r, g, b] = rgbMatch;
-    return alpha < 1
-      ? `rgba(${r}, ${g}, ${b}, ${alpha})`
-      : `rgb(${r}, ${g}, ${b})`;
-  }
-  return color;
-}
 
 function isGradient(value: string): boolean {
   return /gradient\(/.test(value);
@@ -60,7 +37,6 @@ export const FillSection: React.FC<FillSectionProps> = ({
   const hasValue = hasSolidFill || hasGradient;
   const [collapsed, setCollapsed] = useState(!hasValue);
   useEffect(() => { setCollapsed(!hasValue); }, [hasValue]);
-  const opacity = parseOpacityFromColor(bgColor);
 
   const handleColorChange = useCallback(
     (v: string) => {
@@ -71,15 +47,6 @@ export const FillSection: React.FC<FillSectionProps> = ({
       onStyleChange("background-color", v);
     },
     [onStyleChange, hasGradient]
-  );
-
-  const handleOpacityChange = useCallback(
-    (v: number) => {
-      const alpha = v / 100;
-      const newColor = setAlphaInColor(bgColor, alpha);
-      onStyleChange("background-color", newColor);
-    },
-    [bgColor, onStyleChange]
   );
 
   const handleToggleVisibility = useCallback(() => {
@@ -138,7 +105,6 @@ export const FillSection: React.FC<FillSectionProps> = ({
                 <ColorPicker
                   value={bgColor}
                   onChange={handleColorChange}
-                  label="Color"
                   designTokens={designTokens}
                   pageColors={pageColors}
                 />
@@ -152,17 +118,6 @@ export const FillSection: React.FC<FillSectionProps> = ({
                 </button>
               </div>
               <VarLabel authoredStyles={authoredStyles} property="background-color" />
-              <div className="pd-section__row">
-                <SliderInput
-                  value={opacity}
-                  onChange={handleOpacityChange}
-                  min={0}
-                  max={100}
-                  step={1}
-                  label="Opacity"
-                  suffix="%"
-                />
-              </div>
             </>
           )}
         </div>

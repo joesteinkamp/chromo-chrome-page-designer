@@ -63,7 +63,7 @@ export function initOverlay(): void {
   commentButton.type = "button";
   commentButton.className = "__pd-comment-btn";
   commentButton.setAttribute("aria-label", "Add comment");
-  commentButton.innerHTML = '<svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor" aria-hidden="true"><path d="M1.5 0C.67 0 0 .67 0 1.5v7C0 9.33.67 10 1.5 10H4v3l3-3h5.5c.83 0 1.5-.67 1.5-1.5v-7C14 .67 13.33 0 12.5 0H1.5Z"/></svg>';
+  commentButton.innerHTML = '<svg width="12" height="12" viewBox="-1 -2 16 16" fill="currentColor" aria-hidden="true"><path d="M1.5 0C.67 0 0 .67 0 1.5v7C0 9.33.67 10 1.5 10H4v3l3-3h5.5c.83 0 1.5-.67 1.5-1.5v-7C14 .67 13.33 0 12.5 0H1.5Z"/></svg>';
   commentButton.addEventListener("mousedown", (e) => {
     // Prevent the picker's capture-phase mousedown from starting a drag
     e.stopPropagation();

@@ -290,3 +290,66 @@ export function SearchIcon({ size = defaults.size, className = defaults.classNam
     </svg>
   );
 }
+
+/* ── Text alignment (horizontal) ── */
+
+export function AlignLeftIcon({ size = defaults.size, className = defaults.className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" className={`pd-icon ${className}`}>
+      <path d="M2 4h12M2 8h8M2 12h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export function AlignCenterIcon({ size = defaults.size, className = defaults.className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" className={`pd-icon ${className}`}>
+      <path d="M2 4h12M4 8h8M3 12h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export function AlignRightIcon({ size = defaults.size, className = defaults.className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" className={`pd-icon ${className}`}>
+      <path d="M2 4h12M6 8h8M4 12h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export function AlignJustifyIcon({ size = defaults.size, className = defaults.className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" className={`pd-icon ${className}`}>
+      <path d="M2 4h12M2 8h12M2 12h12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+/* ── Text alignment (vertical) ── */
+
+export function AlignTopIcon({ size = defaults.size, className = defaults.className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" className={`pd-icon ${className}`}>
+      <path d="M2 3h12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      <path d="M8 6v7m-3-3l3 3 3-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+export function AlignMiddleIcon({ size = defaults.size, className = defaults.className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" className={`pd-icon ${className}`}>
+      <path d="M2 8h12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      <path d="M8 2v3m-2-1l2-2 2 2M8 14v-3m-2 1l2 2 2-2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+export function AlignBottomIcon({ size = defaults.size, className = defaults.className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" className={`pd-icon ${className}`}>
+      <path d="M2 13h12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      <path d="M8 3v7m-3-3l3 3 3-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}

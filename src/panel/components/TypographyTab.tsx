@@ -1,7 +1,18 @@
 import React, { useCallback, useMemo, useState, useRef, useEffect } from "react";
 import { NumberInput, SelectDropdown, ColorPicker, FontPicker } from "../controls";
 import { ALL_FONTS } from "../../shared/google-fonts";
-import { GearIcon, CloseIcon, ChevronDown } from "../icons";
+import {
+  GearIcon,
+  CloseIcon,
+  ChevronDown,
+  AlignLeftIcon,
+  AlignCenterIcon,
+  AlignRightIcon,
+  AlignJustifyIcon,
+  AlignTopIcon,
+  AlignMiddleIcon,
+  AlignBottomIcon,
+} from "../icons";
 import "./typography.css";
 
 interface Props {
@@ -21,12 +32,38 @@ const FONT_WEIGHT_OPTIONS = [
   { value: "900", label: "Black" },
 ];
 
-const ALIGNMENT_OPTIONS = [
-  { value: "left", label: "\u2590\u2500" },
-  { value: "center", label: "\u2500\u2502\u2500" },
-  { value: "right", label: "\u2500\u258C" },
-  { value: "justify", label: "\u2500\u2500" },
-] as const;
+type AlignOption = {
+  value: string;
+  title: string;
+  icon: React.ComponentType<{ size?: number; className?: string }>;
+};
+
+const ALIGNMENT_OPTIONS: readonly AlignOption[] = [
+  { value: "left", title: "Align left", icon: AlignLeftIcon },
+  { value: "center", title: "Align center", icon: AlignCenterIcon },
+  { value: "right", title: "Align right", icon: AlignRightIcon },
+];
+
+const ALIGNMENT_OPTIONS_ADVANCED: readonly AlignOption[] = [
+  { value: "left", title: "Align left", icon: AlignLeftIcon },
+  { value: "center", title: "Align center", icon: AlignCenterIcon },
+  { value: "right", title: "Align right", icon: AlignRightIcon },
+  { value: "justify", title: "Justify", icon: AlignJustifyIcon },
+];
+
+const VERTICAL_ALIGN_OPTIONS: readonly AlignOption[] = [
+  { value: "flex-start", title: "Align top", icon: AlignTopIcon },
+  { value: "center", title: "Align middle", icon: AlignMiddleIcon },
+  { value: "flex-end", title: "Align bottom", icon: AlignBottomIcon },
+];
+
+function normalizeAlignItems(raw: string | undefined): string {
+  if (!raw) return "flex-start";
+  if (raw === "start" || raw === "flex-start" || raw === "normal") return "flex-start";
+  if (raw === "end" || raw === "flex-end") return "flex-end";
+  if (raw === "center") return "center";
+  return raw;
+}
 
 const TRANSFORM_OPTIONS = [
   { value: "none", label: "\u2014" },
@@ -113,6 +150,10 @@ export function TypographyTab({ computedStyles, onStyleChange }: Props) {
     return parsePx(raw);
   }, [computedStyles["letter-spacing"]]);
   const textAlign = computedStyles["text-align"] || "left";
+  const verticalAlign = useMemo(
+    () => normalizeAlignItems(computedStyles["align-items"]),
+    [computedStyles["align-items"]]
+  );
   const textTransform = computedStyles["text-transform"] || "none";
   const textColor = computedStyles["color"] || "#000000";
   const textDecoration = useMemo(() => {
@@ -128,6 +169,10 @@ export function TypographyTab({ computedStyles, onStyleChange }: Props) {
   const handleLineHeight = useCallback((v: number) => onStyleChange("line-height", `${v}px`), [onStyleChange]);
   const handleLetterSpacing = useCallback((v: number) => onStyleChange("letter-spacing", `${v}px`), [onStyleChange]);
   const handleTextAlign = useCallback((v: string) => onStyleChange("text-align", v), [onStyleChange]);
+  const handleVerticalAlign = useCallback(
+    (v: string) => onStyleChange("align-items", v),
+    [onStyleChange]
+  );
   const handleTextTransform = useCallback((v: string) => onStyleChange("text-transform", v), [onStyleChange]);
   const handleTextColor = useCallback((v: string) => onStyleChange("color", v), [onStyleChange]);
   const handleTextDecoration = useCallback((v: string) => onStyleChange("text-decoration", v), [onStyleChange]);
@@ -202,20 +247,39 @@ export function TypographyTab({ computedStyles, onStyleChange }: Props) {
             />
           </div>
 
-          {/* Alignment buttons */}
-          <div className="pd-section__row">
+          {/* Alignment buttons — horizontal + vertical */}
+          <div className="pd-section__row pd-section__row--half">
             <div className="pd-typography__btn-group">
-              {ALIGNMENT_OPTIONS.map((opt) => (
-                <button
-                  key={opt.value}
-                  type="button"
-                  className={`pd-typography__btn${textAlign === opt.value ? " pd-typography__btn--active" : ""}`}
-                  title={opt.value}
-                  onClick={() => handleTextAlign(opt.value)}
-                >
-                  {opt.label}
-                </button>
-              ))}
+              {ALIGNMENT_OPTIONS.map((opt) => {
+                const Icon = opt.icon;
+                return (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    className={`pd-typography__btn${textAlign === opt.value ? " pd-typography__btn--active" : ""}`}
+                    title={opt.title}
+                    onClick={() => handleTextAlign(opt.value)}
+                  >
+                    <Icon size={14} />
+                  </button>
+                );
+              })}
+            </div>
+            <div className="pd-typography__btn-group">
+              {VERTICAL_ALIGN_OPTIONS.map((opt) => {
+                const Icon = opt.icon;
+                return (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    className={`pd-typography__btn${verticalAlign === opt.value ? " pd-typography__btn--active" : ""}`}
+                    title={opt.title}
+                    onClick={() => handleVerticalAlign(opt.value)}
+                  >
+                    <Icon size={14} />
+                  </button>
+                );
+              })}
             </div>
           </div>
 
@@ -240,21 +304,45 @@ export function TypographyTab({ computedStyles, onStyleChange }: Props) {
             </button>
           </div>
 
-          {/* Alignment */}
+          {/* Alignment (horizontal, incl. Justify) */}
           <div className="pd-typography__popover-row">
             <span className="pd-typography__popover-label">Alignment</span>
             <div className="pd-typography__btn-group pd-typography__btn-group--sm">
-              {ALIGNMENT_OPTIONS.map((opt) => (
-                <button
-                  key={opt.value}
-                  type="button"
-                  className={`pd-typography__btn pd-typography__btn--sm${textAlign === opt.value ? " pd-typography__btn--active" : ""}`}
-                  title={opt.value}
-                  onClick={() => handleTextAlign(opt.value)}
-                >
-                  {opt.label}
-                </button>
-              ))}
+              {ALIGNMENT_OPTIONS_ADVANCED.map((opt) => {
+                const Icon = opt.icon;
+                return (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    className={`pd-typography__btn pd-typography__btn--sm${textAlign === opt.value ? " pd-typography__btn--active" : ""}`}
+                    title={opt.title}
+                    onClick={() => handleTextAlign(opt.value)}
+                  >
+                    <Icon size={12} />
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Vertical alignment */}
+          <div className="pd-typography__popover-row">
+            <span className="pd-typography__popover-label">Vertical</span>
+            <div className="pd-typography__btn-group pd-typography__btn-group--sm">
+              {VERTICAL_ALIGN_OPTIONS.map((opt) => {
+                const Icon = opt.icon;
+                return (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    className={`pd-typography__btn pd-typography__btn--sm${verticalAlign === opt.value ? " pd-typography__btn--active" : ""}`}
+                    title={opt.title}
+                    onClick={() => handleVerticalAlign(opt.value)}
+                  >
+                    <Icon size={12} />
+                  </button>
+                );
+              })}
             </div>
           </div>
 

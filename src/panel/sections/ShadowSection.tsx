@@ -167,7 +167,6 @@ export const ShadowSection: React.FC<ShadowSectionProps> = ({
             <ColorPicker
               value={shadow.color}
               onChange={handleColorChange}
-              label="Color"
             />
             <button
               className={`pd-section__toggle-btn${shadow.inset ? " pd-section__toggle-btn--active" : ""}`}
@@ -178,7 +177,7 @@ export const ShadowSection: React.FC<ShadowSectionProps> = ({
               {shadow.inset ? "Inset" : "Drop"}
             </button>
           </div>
-          <div className="pd-section__row">
+          <div className="pd-section__row pd-section__row--half">
             <NumberInput
               value={shadow.x}
               onChange={handleXChange}
@@ -192,7 +191,7 @@ export const ShadowSection: React.FC<ShadowSectionProps> = ({
               suffix="px"
             />
           </div>
-          <div className="pd-section__row">
+          <div className="pd-section__row pd-section__row--half">
             <NumberInput
               value={shadow.blur}
               onChange={handleBlurChange}

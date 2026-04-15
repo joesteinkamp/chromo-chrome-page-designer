@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo, useEffect, useRef } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import { ColorPicker, NumberInput, SelectDropdown } from "../controls";
 import { VarLabel } from "./VarLabel";
 import { ChevronDown, PlusIcon, GearIcon } from "../icons";
@@ -34,8 +34,6 @@ const SIDE_STYLE_PROPS = [
   "border-bottom-style",
   "border-left-style",
 ];
-
-const SIDE_LABELS = ["T", "R", "B", "L"] as const;
 
 function parsePx(val: string): number {
   const num = parseFloat(val);
@@ -109,7 +107,6 @@ export const StrokeSection: React.FC<StrokeSectionProps> = ({
 
   const selectMode = (m: StrokeMode) => {
     setMode(m);
-    setPopoverOpen(false);
   };
 
   const ensureBorderStyle = useCallback(
@@ -150,90 +147,104 @@ export const StrokeSection: React.FC<StrokeSectionProps> = ({
   );
 
   return (
-    <div className="pd-section">
+    <div className="pd-section" style={{ position: "relative" }}>
+      {/* Header with gear in the title area like Typography */}
       <div
         className="pd-section__header"
         onClick={() => setCollapsed((c) => !c)}
       >
         <span className="pd-section__title">Stroke</span>
-        {collapsed && !hasValue ? (
-          <button className="pd-section__plus-btn" onClick={(e) => { e.stopPropagation(); setCollapsed(false); }} type="button"><PlusIcon size={12} /></button>
-        ) : (
-          <span className={`pd-section__arrow${collapsed ? " pd-section__arrow--collapsed" : ""}`}><ChevronDown size={12} /></span>
-        )}
+        <div className="pd-typography__header-actions" onClick={(e) => e.stopPropagation()}>
+          <button
+            ref={gearRef}
+            className={`pd-section__icon-btn${popoverOpen ? " pd-section__icon-btn--active" : ""}`}
+            type="button"
+            title="Stroke options"
+            onClick={() => setPopoverOpen((o) => !o)}
+          >
+            <GearIcon size={14} />
+          </button>
+          {collapsed && !hasValue ? (
+            <button
+              className="pd-section__plus-btn"
+              onClick={(e) => { e.stopPropagation(); setCollapsed(false); }}
+              type="button"
+            >
+              <PlusIcon size={12} />
+            </button>
+          ) : (
+            <span className={`pd-section__arrow${collapsed ? " pd-section__arrow--collapsed" : ""}`}>
+              <ChevronDown size={12} />
+            </span>
+          )}
+        </div>
       </div>
+
       {!collapsed && (
         <div className="pd-section__content">
-          <div className="pd-section__row">
-            <ColorPicker
-              value={borderColor}
-              onChange={handleColorChange}
-              label="Color"
-              pageColors={pageColors}
-            />
-          </div>
+          {/* Color + Width side-by-side 50/50 (single mode) */}
+          {mode === "single" && (
+            <div className="pd-section__row pd-section__row--half">
+              <ColorPicker
+                value={borderColor}
+                onChange={handleColorChange}
+                pageColors={pageColors}
+              />
+              <NumberInput
+                value={parsePx(sideWidths[0])}
+                onChange={handleWidthChange}
+                min={0}
+                suffix="px"
+                suggestions={pageStrokeWidths}
+              />
+            </div>
+          )}
+
+          {/* Sides mode: color full width, then T/R + B/L pairs */}
+          {mode === "sides" && (
+            <>
+              <div className="pd-section__row">
+                <ColorPicker
+                  value={borderColor}
+                  onChange={handleColorChange}
+                  pageColors={pageColors}
+                />
+              </div>
+              <div className="pd-section__row pd-section__row--half">
+                <NumberInput label="T" value={parsePx(sideWidths[0])} onChange={(v) => handleSideWidthChange(0, v)} min={0} suffix="px" suggestions={pageStrokeWidths} />
+                <NumberInput label="R" value={parsePx(sideWidths[1])} onChange={(v) => handleSideWidthChange(1, v)} min={0} suffix="px" suggestions={pageStrokeWidths} />
+              </div>
+              <div className="pd-section__row pd-section__row--half">
+                <NumberInput label="B" value={parsePx(sideWidths[2])} onChange={(v) => handleSideWidthChange(2, v)} min={0} suffix="px" suggestions={pageStrokeWidths} />
+                <NumberInput label="L" value={parsePx(sideWidths[3])} onChange={(v) => handleSideWidthChange(3, v)} min={0} suffix="px" suggestions={pageStrokeWidths} />
+              </div>
+            </>
+          )}
+
           <VarLabel authoredStyles={authoredStyles} property={["border-color", "border-top-color"]} />
-          <div className="pd-section__row">
+        </div>
+      )}
+
+      {/* Advanced options popover — stroke type + width mode */}
+      {popoverOpen && (
+        <div className="pd-spacing__popover pd-stroke__popover" ref={popoverRef}>
+          <div className="pd-spacing__popover-title">Stroke Type</div>
+          <div style={{ marginBottom: 10 }}>
             <SelectDropdown
               value={borderStyle}
               options={BORDER_STYLE_OPTIONS}
               onChange={handleStyleChange}
             />
           </div>
-
-          <div className="pd-spacing__group" style={{ position: "relative" }}>
-            <div className="pd-spacing__group-header">
-              <span className="pd-spacing__group-label">Width</span>
-              <button
-                ref={gearRef}
-                className={`pd-section__icon-btn${popoverOpen ? " pd-section__icon-btn--active" : ""}`}
-                type="button"
-                title="Width options"
-                onClick={() => setPopoverOpen((o) => !o)}
-              >
-                <GearIcon size={14} />
-              </button>
-            </div>
-
-            {mode === "single" && (
-              <div className="pd-section__row">
-                <NumberInput
-                  value={parsePx(sideWidths[0])}
-                  onChange={handleWidthChange}
-                  min={0}
-                  suffix="px"
-                  suggestions={pageStrokeWidths}
-                />
-              </div>
-            )}
-
-            {mode === "sides" && (
-              <>
-                <div className="pd-section__row pd-section__row--half">
-                  <NumberInput label="T" value={parsePx(sideWidths[0])} onChange={(v) => handleSideWidthChange(0, v)} min={0} suffix="px" suggestions={pageStrokeWidths} />
-                  <NumberInput label="R" value={parsePx(sideWidths[1])} onChange={(v) => handleSideWidthChange(1, v)} min={0} suffix="px" suggestions={pageStrokeWidths} />
-                </div>
-                <div className="pd-section__row pd-section__row--half">
-                  <NumberInput label="B" value={parsePx(sideWidths[2])} onChange={(v) => handleSideWidthChange(2, v)} min={0} suffix="px" suggestions={pageStrokeWidths} />
-                  <NumberInput label="L" value={parsePx(sideWidths[3])} onChange={(v) => handleSideWidthChange(3, v)} min={0} suffix="px" suggestions={pageStrokeWidths} />
-                </div>
-              </>
-            )}
-
-            {popoverOpen && (
-              <div className="pd-spacing__popover" ref={popoverRef}>
-                <div className="pd-spacing__popover-title">Stroke Width</div>
-                <label className="pd-spacing__popover-option" onClick={() => selectMode("single")}>
-                  <span className={`pd-spacing__radio${mode === "single" ? " pd-spacing__radio--active" : ""}`} />
-                  One value for all sides
-                </label>
-                <label className="pd-spacing__popover-option" onClick={() => selectMode("sides")}>
-                  <span className={`pd-spacing__radio${mode === "sides" ? " pd-spacing__radio--active" : ""}`} />
-                  Top/Right/Bottom/Left
-                </label>
-              </div>
-            )}
-          </div>
+          <div className="pd-spacing__popover-title">Stroke Width</div>
+          <label className="pd-spacing__popover-option" onClick={() => selectMode("single")}>
+            <span className={`pd-spacing__radio${mode === "single" ? " pd-spacing__radio--active" : ""}`} />
+            One value for all sides
+          </label>
+          <label className="pd-spacing__popover-option" onClick={() => selectMode("sides")}>
+            <span className={`pd-spacing__radio${mode === "sides" ? " pd-spacing__radio--active" : ""}`} />
+            Top / Right / Bottom / Left
+          </label>
         </div>
       )}
     </div>

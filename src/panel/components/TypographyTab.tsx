@@ -285,7 +285,7 @@ export function TypographyTab({ computedStyles, onStyleChange }: Props) {
 
           {/* Text Color */}
           <div className="pd-section__row">
-            <ColorPicker value={textColor} onChange={handleTextColor} label="Color" />
+            <ColorPicker value={textColor} onChange={handleTextColor} />
           </div>
         </div>
       )}

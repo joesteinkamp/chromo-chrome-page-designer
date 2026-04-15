@@ -247,6 +247,12 @@
   padding: 10px;
 }
 
+/* Stroke options popover — anchored below the section header */
+.pd-stroke__popover {
+  top: 32px;
+  right: var(--pd-space-5);
+}
+
 .pd-spacing__popover-title {
   font-size: var(--pd-text-md);
   font-weight: 600;

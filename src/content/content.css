@@ -147,6 +147,25 @@
   font-family: inherit !important;
 }
 
+/* ── Move toolbar — light mode overrides ── */
+@media (prefers-color-scheme: light) {
+  .__pd-move-toolbar {
+    background: #f5f5f5 !important;
+    border-color: #e5e5e5 !important;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12) !important;
+  }
+  .__pd-move-toolbar__btn {
+    color: #666 !important;
+  }
+  .__pd-move-toolbar__btn--active {
+    background: #0c8ce9 !important;
+    color: #fff !important;
+  }
+  .__pd-move-toolbar__hint {
+    color: #b3b3b3 !important;
+  }
+}
+
 /* Inline editing highlight */
 .__pd-editing {
   outline: 2px solid #4f9eff !important;

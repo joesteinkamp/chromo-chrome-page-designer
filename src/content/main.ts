@@ -479,6 +479,7 @@ function deactivate(): void {
   hideImageToolbar();
   hideMoveToolbar();
   hideMultiEditOverlays();
+  hideMultiSelectOverlays();
   clearAllForcedStates();
   multiEditEnabled = false;
   hideSpacing();

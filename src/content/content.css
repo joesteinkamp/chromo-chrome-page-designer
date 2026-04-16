@@ -363,6 +363,61 @@
   color: #ff453a !important;
 }
 
+/* ── Comment popover — light mode overrides ── */
+@media (prefers-color-scheme: light) {
+  .__pd-comment-popover {
+    background: #f5f5f5 !important;
+    border-color: #e5e5e5 !important;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12) !important;
+  }
+  .__pd-comment-popover__header {
+    color: #666 !important;
+  }
+  .__pd-comment-popover__chevron {
+    color: #b3b3b3 !important;
+  }
+  .__pd-comment-popover__textarea {
+    background: #ffffff !important;
+    color: #1a1a1a !important;
+    border-color: #e5e5e5 !important;
+  }
+  .__pd-comment-popover__textarea:focus {
+    box-shadow: 0 0 0 2px rgba(12, 140, 233, 0.08) !important;
+    border-color: #0c8ce9 !important;
+  }
+  .__pd-comment-popover__textarea::placeholder {
+    color: #b3b3b3 !important;
+  }
+  .__pd-comment-popover__btn {
+    color: #1a1a1a !important;
+  }
+  .__pd-comment-popover__btn:hover {
+    background: #ebebeb !important;
+  }
+  .__pd-comment-popover__btn--primary {
+    background: #0c8ce9 !important;
+    color: #fff !important;
+  }
+  .__pd-comment-popover__btn--primary:hover {
+    background: #0c8ce9 !important;
+  }
+  .__pd-comment-popover__btn--danger {
+    color: #e5342d !important;
+  }
+  .__pd-comment-popover__btn--danger:hover {
+    background: rgba(229, 52, 45, 0.1) !important;
+    color: #e5342d !important;
+  }
+  .__pd-comment-btn {
+    background: #0c8ce9 !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+  }
+  .__pd-comment-pin {
+    background: #0c8ce9 !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+  }
+}
+
 /* Spacing visualization overlays */
 .__pd-spacing-margin {
   position: fixed !important;

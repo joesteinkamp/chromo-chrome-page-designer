@@ -18,6 +18,8 @@ interface CommentPin {
 const commentPins = new Map<string, CommentPin>();
 let commentButtonClickHandler: (() => void) | null = null;
 let commentPinClickHandler: ((changeId: string) => void) | null = null;
+/** The currently selected element — used to hide the comment button when a pin appears. */
+let currentSelectedElement: Element | null = null;
 
 const HANDLE_POSITIONS = ["nw", "n", "ne", "e", "se", "s", "sw", "w"] as const;
 
@@ -85,6 +87,8 @@ export function destroyOverlay(): void {
   resizeHandles = [];
   commentPins.forEach((pin) => pin.el.remove());
   commentPins.clear();
+  hideMultiEditOverlays();
+  hideMultiSelectOverlays();
 }
 
 export function showHover(rect: DOMRect): void {
@@ -97,6 +101,7 @@ export function hideHover(): void {
 }
 
 export function showSelection(element: Element): void {
+  currentSelectedElement = element;
   const rect = element.getBoundingClientRect();
   positionOverlay(selectionOverlay, rect);
   selectionOverlay.classList.add("__pd-overlay--visible");
@@ -117,10 +122,16 @@ export function showSelection(element: Element): void {
   resizeHandles.forEach((h) => h.classList.add("__pd-handle--visible"));
 
   positionCommentButton(rect);
-  commentButton.classList.add("__pd-comment-btn--visible");
+  // Hide the comment button if the element already has a comment pin
+  if (elementHasCommentPin(element)) {
+    commentButton.classList.remove("__pd-comment-btn--visible");
+  } else {
+    commentButton.classList.add("__pd-comment-btn--visible");
+  }
 }
 
 export function hideSelection(): void {
+  currentSelectedElement = null;
   selectionOverlay.classList.remove("__pd-overlay--visible");
   badge.classList.remove("__pd-badge--visible");
   resizeHandles.forEach((h) => h.classList.remove("__pd-handle--visible"));
@@ -233,6 +244,19 @@ export function getHandleDirection(
   return null;
 }
 
+/** Check if the given element is the target of any existing comment pin. */
+function elementHasCommentPin(element: Element): boolean {
+  for (const pin of commentPins.values()) {
+    try {
+      const target = document.querySelector(pin.selector);
+      if (target === element) return true;
+    } catch {
+      // invalid selector — skip
+    }
+  }
+  return false;
+}
+
 // --- Comment button ---
 
 export function setCommentButtonHandler(handler: () => void): void {
@@ -242,9 +266,9 @@ export function setCommentButtonHandler(handler: () => void): void {
 function positionCommentButton(rect: DOMRect): void {
   const size = 24;
   const offset = 4;
-  // Anchor slightly outside the top-right corner of the element
+  // Anchor slightly outside the bottom-right corner of the element
   const left = rect.right - size / 2 + offset;
-  const top = rect.top - size / 2 - offset;
+  const top = rect.bottom - size / 2 + offset;
   commentButton.style.cssText = `
     left: ${left}px !important;
     top: ${top}px !important;
@@ -302,9 +326,18 @@ export function setCommentPins(
     }
   }
   updateCommentPins();
+
+  // Hide or show the comment button based on whether the selected element now has a pin
+  if (currentSelectedElement) {
+    if (elementHasCommentPin(currentSelectedElement)) {
+      commentButton?.classList.remove("__pd-comment-btn--visible");
+    } else {
+      commentButton?.classList.add("__pd-comment-btn--visible");
+    }
+  }
 }
 
-/** Reposition every pin to the top-right corner of its target element. */
+/** Reposition every pin to the bottom-right corner of its target element. */
 export function updateCommentPins(): void {
   if (commentPins.size === 0) return;
   const size = 20;
@@ -326,7 +359,7 @@ export function updateCommentPins(): void {
       continue;
     }
     const left = rect.right - size / 2;
-    const top = rect.top - size / 2;
+    const top = rect.bottom - size / 2;
     pin.el.style.setProperty("left", `${left}px`, "important");
     pin.el.style.setProperty("top", `${top}px`, "important");
     pin.el.style.setProperty("display", "flex", "important");

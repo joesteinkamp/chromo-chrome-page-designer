@@ -173,6 +173,65 @@ const LAYERS_CSS = `
   color: #ccc !important;
   background: #2a2a2a !important;
 }
+
+/* ── Light mode overrides ── */
+@media (prefers-color-scheme: light) {
+  .${LAYERS_PANE_PREFIX}root {
+    background: #ffffff !important;
+    color: #1a1a1a !important;
+    border-right-color: #e5e5e5 !important;
+    box-shadow: 2px 0 8px rgba(0,0,0,0.06) !important;
+  }
+  .${LAYERS_PANE_PREFIX}header {
+    border-bottom-color: #e5e5e5 !important;
+    color: #666 !important;
+  }
+  .${LAYERS_PANE_PREFIX}close {
+    color: #999 !important;
+  }
+  .${LAYERS_PANE_PREFIX}close:hover {
+    background: #ebebeb !important;
+    color: #1a1a1a !important;
+  }
+  .${LAYERS_PANE_PREFIX}tree::-webkit-scrollbar-thumb {
+    background: #ccc !important;
+  }
+  .${LAYERS_PANE_PREFIX}row {
+    color: #333 !important;
+  }
+  .${LAYERS_PANE_PREFIX}row:hover {
+    background: #f0f0f0 !important;
+  }
+  .${LAYERS_PANE_PREFIX}row.${LAYERS_PANE_PREFIX}row--selected {
+    background: #0c8ce9 !important;
+    color: #fff !important;
+  }
+  .${LAYERS_PANE_PREFIX}chevron {
+    color: #999 !important;
+  }
+  .${LAYERS_PANE_PREFIX}row:hover .${LAYERS_PANE_PREFIX}chevron {
+    color: #666 !important;
+  }
+  .${LAYERS_PANE_PREFIX}tag {
+    color: #2563b0 !important;
+  }
+  .${LAYERS_PANE_PREFIX}id {
+    color: #9a6e2e !important;
+  }
+  .${LAYERS_PANE_PREFIX}cls {
+    color: #1a7a5e !important;
+  }
+  .${LAYERS_PANE_PREFIX}count {
+    color: #aaa !important;
+  }
+  .${LAYERS_PANE_PREFIX}more {
+    color: #999 !important;
+  }
+  .${LAYERS_PANE_PREFIX}more:hover {
+    color: #666 !important;
+    background: #f0f0f0 !important;
+  }
+}
 `;
 
 // --- Lifecycle ---

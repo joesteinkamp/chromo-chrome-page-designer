@@ -5,10 +5,11 @@
  *   "reorder"  — DOM sibling reordering with ghost + insertion line
  */
 
-import { isOverlayElement } from "./overlay";
+import { isOverlayElement, updateSelection } from "./overlay";
 import { generateSelector } from "../shared/selector";
 import { getMode, type MoveMode } from "./move-mode";
 import { recordStyleChange, recordMoveChange, startBatch, endBatch } from "./change-tracker";
+import { updateSpacing } from "./spacing-overlay";
 
 let isDragging = false;
 let dragElement: HTMLElement | null = null;
@@ -93,6 +94,9 @@ function onMouseMove(e: MouseEvent): void {
     const newLeft = startLeft + dx;
     dragElement.style.setProperty("top", `${newTop}px`, "important");
     dragElement.style.setProperty("left", `${newLeft}px`, "important");
+    // Keep selection overlay, spacing/padding visualization, and badge in sync
+    updateSelection(dragElement);
+    updateSpacing();
   } else {
     // Reorder mode — position ghost, find drop target
     if (ghost) {

@@ -242,9 +242,9 @@ export function setCommentButtonHandler(handler: () => void): void {
 function positionCommentButton(rect: DOMRect): void {
   const size = 24;
   const offset = 4;
-  // Anchor slightly outside the top-right corner of the element
+  // Anchor slightly outside the bottom-right corner of the element
   const left = rect.right - size / 2 + offset;
-  const top = rect.top - size / 2 - offset;
+  const top = rect.bottom - size / 2 + offset;
   commentButton.style.cssText = `
     left: ${left}px !important;
     top: ${top}px !important;

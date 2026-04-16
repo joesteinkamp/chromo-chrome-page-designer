@@ -189,12 +189,12 @@ export function closeCommentPopover(): void {
 }
 
 function positionPopover(el: HTMLDivElement, anchor: DOMRect): void {
-  // The (+) button sits at the top-right of the selection (see overlay.ts
+  // The (+) button sits at the bottom-right of the selection (see overlay.ts
   // positionCommentButton). Anchor the popover to that point so it always
   // opens adjacent to the button — not at the far corner of a huge element.
   const btnSize = 24;
   const btnCenterX = anchor.right + 4;
-  const btnCenterY = anchor.top - 4;
+  const btnCenterY = anchor.bottom + 4;
   const btnRight = btnCenterX + btnSize / 2;
   const btnBottom = btnCenterY + btnSize / 2;
   const btnTop = btnCenterY - btnSize / 2;

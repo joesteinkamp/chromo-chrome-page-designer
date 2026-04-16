@@ -163,7 +163,7 @@
   animation: __pd-flash 0.4s ease-out !important;
 }
 
-/* Comment (+) button shown at the top-right of the selected element.
+/* Comment (+) button shown at the bottom-right of the selected element.
  * Matches the panel's primary-accent style (--pd-accent #4f9eff). */
 .__pd-comment-btn {
   position: fixed !important;

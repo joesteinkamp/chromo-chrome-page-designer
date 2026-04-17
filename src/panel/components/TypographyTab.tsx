@@ -183,15 +183,109 @@ export function TypographyTab({ computedStyles, onStyleChange }: Props) {
       <div className="pd-section__header" onClick={() => setCollapsed((c) => !c)}>
         <span className="pd-section__title">Typography</span>
         <div className="pd-typography__header-actions" onClick={(e) => e.stopPropagation()}>
-          <button
-            ref={detailsBtnRef}
-            className={`pd-section__icon-btn${popoverOpen ? " pd-section__icon-btn--active" : ""}`}
-            type="button"
-            title="Type details"
-            onClick={() => setPopoverOpen((o) => !o)}
-          >
-            <GearIcon size={14} />
-          </button>
+          <div className="pd-typography__details-wrap">
+            <button
+              ref={detailsBtnRef}
+              className={`pd-section__icon-btn${popoverOpen ? " pd-section__icon-btn--active" : ""}`}
+              type="button"
+              title="Type details"
+              onClick={() => setPopoverOpen((o) => !o)}
+            >
+              <GearIcon size={14} />
+            </button>
+            {popoverOpen && (
+              <div className="pd-typography__popover" ref={popoverRef}>
+                <div className="pd-typography__popover-header">
+                  <span className="pd-typography__popover-title">Type details</span>
+                  <button
+                    className="pd-typography__popover-close"
+                    type="button"
+                    onClick={() => setPopoverOpen(false)}
+                  >
+                    <CloseIcon size={12} />
+                  </button>
+                </div>
+
+                {/* Alignment (horizontal, incl. Justify) */}
+                <div className="pd-typography__popover-row">
+                  <span className="pd-typography__popover-label">Alignment</span>
+                  <div className="pd-typography__btn-group pd-typography__btn-group--sm">
+                    {ALIGNMENT_OPTIONS_ADVANCED.map((opt) => {
+                      const Icon = opt.icon;
+                      return (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          className={`pd-typography__btn pd-typography__btn--sm${textAlign === opt.value ? " pd-typography__btn--active" : ""}`}
+                          title={opt.title}
+                          onClick={() => handleTextAlign(opt.value)}
+                        >
+                          <Icon size={12} />
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Vertical alignment */}
+                <div className="pd-typography__popover-row">
+                  <span className="pd-typography__popover-label">Vertical</span>
+                  <div className="pd-typography__btn-group pd-typography__btn-group--sm">
+                    {VERTICAL_ALIGN_OPTIONS.map((opt) => {
+                      const Icon = opt.icon;
+                      return (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          className={`pd-typography__btn pd-typography__btn--sm${verticalAlign === opt.value ? " pd-typography__btn--active" : ""}`}
+                          title={opt.title}
+                          onClick={() => handleVerticalAlign(opt.value)}
+                        >
+                          <Icon size={12} />
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Decoration */}
+                <div className="pd-typography__popover-row">
+                  <span className="pd-typography__popover-label">Decoration</span>
+                  <div className="pd-typography__btn-group pd-typography__btn-group--sm">
+                    {DECORATION_OPTIONS.map((opt) => (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        className={`pd-typography__btn pd-typography__btn--sm${textDecoration === opt.value ? " pd-typography__btn--active" : ""}`}
+                        title={opt.value}
+                        onClick={() => handleTextDecoration(opt.value)}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Case / Transform */}
+                <div className="pd-typography__popover-row">
+                  <span className="pd-typography__popover-label">Case</span>
+                  <div className="pd-typography__btn-group pd-typography__btn-group--sm">
+                    {TRANSFORM_OPTIONS.map((opt) => (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        className={`pd-typography__btn pd-typography__btn--sm${textTransform === opt.value ? " pd-typography__btn--active" : ""}`}
+                        title={opt.value}
+                        onClick={() => handleTextTransform(opt.value)}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
           <span
             className={`pd-section__arrow${collapsed ? " pd-section__arrow--collapsed" : ""}`}
             onClick={() => setCollapsed((c) => !c)}
@@ -290,100 +384,6 @@ export function TypographyTab({ computedStyles, onStyleChange }: Props) {
         </div>
       )}
 
-      {/* Details popover */}
-      {popoverOpen && (
-        <div className="pd-typography__popover" ref={popoverRef}>
-          <div className="pd-typography__popover-header">
-            <span className="pd-typography__popover-title">Type details</span>
-            <button
-              className="pd-typography__popover-close"
-              type="button"
-              onClick={() => setPopoverOpen(false)}
-            >
-              <CloseIcon size={12} />
-            </button>
-          </div>
-
-          {/* Alignment (horizontal, incl. Justify) */}
-          <div className="pd-typography__popover-row">
-            <span className="pd-typography__popover-label">Alignment</span>
-            <div className="pd-typography__btn-group pd-typography__btn-group--sm">
-              {ALIGNMENT_OPTIONS_ADVANCED.map((opt) => {
-                const Icon = opt.icon;
-                return (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    className={`pd-typography__btn pd-typography__btn--sm${textAlign === opt.value ? " pd-typography__btn--active" : ""}`}
-                    title={opt.title}
-                    onClick={() => handleTextAlign(opt.value)}
-                  >
-                    <Icon size={12} />
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Vertical alignment */}
-          <div className="pd-typography__popover-row">
-            <span className="pd-typography__popover-label">Vertical</span>
-            <div className="pd-typography__btn-group pd-typography__btn-group--sm">
-              {VERTICAL_ALIGN_OPTIONS.map((opt) => {
-                const Icon = opt.icon;
-                return (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    className={`pd-typography__btn pd-typography__btn--sm${verticalAlign === opt.value ? " pd-typography__btn--active" : ""}`}
-                    title={opt.title}
-                    onClick={() => handleVerticalAlign(opt.value)}
-                  >
-                    <Icon size={12} />
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Decoration */}
-          <div className="pd-typography__popover-row">
-            <span className="pd-typography__popover-label">Decoration</span>
-            <div className="pd-typography__btn-group pd-typography__btn-group--sm">
-              {DECORATION_OPTIONS.map((opt) => (
-                <button
-                  key={opt.value}
-                  type="button"
-                  className={`pd-typography__btn pd-typography__btn--sm${textDecoration === opt.value ? " pd-typography__btn--active" : ""}`}
-                  title={opt.value}
-                  onClick={() => handleTextDecoration(opt.value)}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Case / Transform */}
-          <div className="pd-typography__popover-row">
-            <span className="pd-typography__popover-label">Case</span>
-            <div className="pd-typography__btn-group pd-typography__btn-group--sm">
-              {TRANSFORM_OPTIONS.map((opt) => (
-                <button
-                  key={opt.value}
-                  type="button"
-                  className={`pd-typography__btn pd-typography__btn--sm${textTransform === opt.value ? " pd-typography__btn--active" : ""}`}
-                  title={opt.value}
-                  onClick={() => handleTextTransform(opt.value)}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-        </div>
-      )}
     </div>
   );
 }

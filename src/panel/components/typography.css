@@ -62,11 +62,17 @@
   font-size: var(--pd-text-sm);
 }
 
+/* Wrapper around the gear button — positioning context for the popover */
+.pd-typography__details-wrap {
+  position: relative;
+  display: flex;
+}
+
 /* ── Details popover ── */
 .pd-typography__popover {
   position: absolute;
   top: 100%;
-  right: var(--pd-space-5);
+  right: 0;
   z-index: 1000;
   width: 240px;
   background: var(--pd-bg-raised);

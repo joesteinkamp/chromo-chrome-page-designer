@@ -201,7 +201,7 @@ function createGhost(): void {
   ghost.className = "__pd-drag-ghost";
   ghost.style.cssText = `
     position: fixed !important;
-    z-index: 2147483647 !important;
+    z-index: 2147483646 !important;
     width: ${Math.min(rect.width, 200)}px !important;
     height: ${Math.min(rect.height, 60)}px !important;
     background: rgba(79, 158, 255, 0.15) !important;

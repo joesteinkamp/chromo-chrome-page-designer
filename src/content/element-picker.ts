@@ -14,6 +14,7 @@ import {
   updateMultiSelectOverlays,
   getHandleDirection,
 } from "./overlay";
+import { isLayersPaneElement } from "./layers-panel";
 
 let isActive = false;
 let hoveredElement: Element | null = null;
@@ -116,6 +117,9 @@ function onMouseMove(e: MouseEvent): void {
   const target = document.elementFromPoint(e.clientX, e.clientY);
   if (!target || target === hoveredElement) return;
 
+  // Let layers pane handle its own events
+  if (isLayersPaneElement(target)) return;
+
   // Allow hover over resize handles (they're part of our overlay)
   if (isOverlayElement(target) && !getHandleDirection(target)) return;
 
@@ -150,6 +154,9 @@ function onClick(e: MouseEvent): void {
 
   const target = document.elementFromPoint(e.clientX, e.clientY);
   if (!target) return;
+
+  // Let layers pane handle its own click events
+  if (isLayersPaneElement(target)) return;
 
   // Allow resize handle clicks to pass through to mousedown handler
   if (getHandleDirection(target)) return;
@@ -206,6 +213,7 @@ function onDoubleClick(e: MouseEvent): void {
 
   const target = document.elementFromPoint(e.clientX, e.clientY);
   if (!target || isOverlayElement(target)) return;
+  if (isLayersPaneElement(target)) return;
 
   if (target === selectedElement || selectedElement?.contains(target)) {
     e.preventDefault();
@@ -220,6 +228,9 @@ function onMouseDown(e: MouseEvent): void {
 
   const target = e.target as Element;
   if (!target) return;
+
+  // Let layers pane handle its own events
+  if (isLayersPaneElement(target)) return;
 
   // Check for resize handle click
   if (getHandleDirection(target) && selectedElement) {

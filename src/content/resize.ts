@@ -5,6 +5,7 @@
 
 import { getHandleDirection, updateSelection } from "./overlay";
 import { recordResizeChange } from "./change-tracker";
+import { updateSpacing } from "./spacing-overlay";
 
 type HandleDir = "nw" | "n" | "ne" | "e" | "se" | "s" | "sw" | "w";
 
@@ -131,6 +132,7 @@ function onMouseMove(e: MouseEvent): void {
   }
 
   updateSelection(resizeElement);
+  updateSpacing();
 }
 
 function onMouseUp(e: MouseEvent): void {

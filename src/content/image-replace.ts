@@ -23,7 +23,7 @@ export function showImageToolbar(element: Element): void {
   toolbar.className = "__pd-image-toolbar";
   toolbar.style.cssText = `
     position: fixed !important;
-    z-index: 2147483647 !important;
+    z-index: 2147483646 !important;
     left: ${rect.left}px !important;
     top: ${Math.max(0, rect.top - 60)}px !important;
     display: flex !important;

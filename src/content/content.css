@@ -39,7 +39,7 @@
 
 .__pd-badge {
   position: fixed !important;
-  z-index: 2147483647 !important;
+  z-index: 2147483646 !important;
   pointer-events: none !important;
   background: #4f9eff !important;
   color: #fff !important;
@@ -61,7 +61,7 @@
 /* Resize handles */
 .__pd-handle {
   position: fixed !important;
-  z-index: 2147483647 !important;
+  z-index: 2147483646 !important;
   width: 8px !important;
   height: 8px !important;
   background: #fff !important;
@@ -88,7 +88,7 @@
 /* Drag insertion indicator */
 .__pd-insertion-line {
   position: fixed !important;
-  z-index: 2147483647 !important;
+  z-index: 2147483646 !important;
   pointer-events: none !important;
   height: 2px !important;
   background: #4f9eff !important;
@@ -102,7 +102,7 @@
 /* Move mode toolbar */
 .__pd-move-toolbar {
   position: fixed !important;
-  z-index: 2147483647 !important;
+  z-index: 2147483646 !important;
   bottom: 16px !important;
   left: 50% !important;
   transform: translateX(-50%) !important;
@@ -186,7 +186,7 @@
  * Matches the panel's primary-accent style (--pd-accent #4f9eff). */
 .__pd-comment-btn {
   position: fixed !important;
-  z-index: 2147483647 !important;
+  z-index: 2147483646 !important;
   width: 24px !important;
   height: 24px !important;
   padding: 0 !important;
@@ -226,7 +226,7 @@
  * No border; just the accent fill with a soft shadow for elevation. */
 .__pd-comment-pin {
   position: fixed !important;
-  z-index: 2147483647 !important;
+  z-index: 2147483646 !important;
   min-width: 20px !important;
   height: 20px !important;
   padding: 0 5px !important;
@@ -261,7 +261,7 @@
  * (--pd-bg-raised #2c2c2c, --pd-border #3e3e3e, --pd-text #e0e0e0) */
 .__pd-comment-popover {
   position: fixed !important;
-  z-index: 2147483647 !important;
+  z-index: 2147483646 !important;
   background: #2c2c2c !important;
   border: 1px solid #3e3e3e !important;
   border-radius: 8px !important;
@@ -465,7 +465,7 @@
 /* Spacing label */
 .__pd-spacing-label {
   position: fixed !important;
-  z-index: 2147483647 !important;
+  z-index: 2147483646 !important;
   pointer-events: none !important;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
   font-size: 9px !important;
@@ -495,7 +495,7 @@
 /* Distance line to sibling */
 .__pd-distance-line {
   position: fixed !important;
-  z-index: 2147483647 !important;
+  z-index: 2147483646 !important;
   pointer-events: none !important;
   background: #ff4f9e !important;
   display: none !important;
@@ -503,7 +503,7 @@
 
 .__pd-distance-label {
   position: fixed !important;
-  z-index: 2147483647 !important;
+  z-index: 2147483646 !important;
   pointer-events: none !important;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
   font-size: 9px !important;

@@ -7,7 +7,7 @@
  * Everything inside the pane uses the __pd-layers- class prefix so that the
  * element picker + overlay helpers can ignore it (see overlay.ts and
  * element-picker.ts). The pane is mounted on document.documentElement using
- * position: fixed and a high z-index (one below the overlay handles).
+ * position: fixed and the highest z-index (above the overlay handles).
  */
 
 import { selectElementDirectly } from "./element-picker";
@@ -42,7 +42,7 @@ const LAYERS_CSS = `
   left: 0 !important;
   width: 260px !important;
   height: 100vh !important;
-  z-index: 2147483646 !important;
+  z-index: 2147483647 !important;
   background: #1e1e1e !important;
   color: #e6e6e6 !important;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
@@ -437,6 +437,20 @@ function renderNode(el: Element, depth: number, parentEl: HTMLElement): void {
       selectElementDirectly(el);
     } catch {
       /* picker may not be active */
+    }
+    // Scroll the selected page element into view if it's off-screen
+    try {
+      const rect = el.getBoundingClientRect();
+      const inView =
+        rect.top >= 0 &&
+        rect.left >= 0 &&
+        rect.bottom <= window.innerHeight &&
+        rect.right <= window.innerWidth;
+      if (!inView) {
+        el.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
+      }
+    } catch {
+      /* element may not support scrollIntoView */
     }
     onSelectCallback?.(el);
   });

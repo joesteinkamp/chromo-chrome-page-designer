@@ -1,0 +1,83 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag (e.g. v0.2.0). Leave blank for an unreleased manual build.'
+        required: false
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm run build
+
+      - name: Resolve version
+        id: version
+        run: |
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            VERSION="${GITHUB_REF_NAME#v}"
+            TAG="${GITHUB_REF_NAME}"
+          elif [ -n "${{ inputs.tag }}" ]; then
+            VERSION="${{ inputs.tag }}"
+            VERSION="${VERSION#v}"
+            TAG="v${VERSION}"
+          else
+            VERSION="$(node -p "require('./public/manifest.json').version")-dev.${GITHUB_SHA::7}"
+            TAG=""
+          fi
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "zip=chromo-design-${VERSION}.zip" >> "$GITHUB_OUTPUT"
+
+      - name: Verify manifest version matches tag
+        if: steps.version.outputs.tag != ''
+        run: |
+          MANIFEST_VERSION="$(node -p "require('./public/manifest.json').version")"
+          if [ "${MANIFEST_VERSION}" != "${{ steps.version.outputs.version }}" ]; then
+            echo "::error::manifest.json version (${MANIFEST_VERSION}) does not match tag (${{ steps.version.outputs.version }})"
+            exit 1
+          fi
+
+      - name: Zip dist/
+        run: |
+          cd dist
+          zip -r "../${{ steps.version.outputs.zip }}" . -x "*.map"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.version.outputs.zip }}
+          path: ${{ steps.version.outputs.zip }}
+
+      - name: Create GitHub Release
+        if: steps.version.outputs.tag != ''
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: ${{ steps.version.outputs.tag }}
+          generate_release_notes: true
+          files: ${{ steps.version.outputs.zip }}
+          body: |
+            ## Install (unpacked)
+
+            1. Download `${{ steps.version.outputs.zip }}` below and unzip it.
+            2. Open `chrome://extensions` and enable **Developer mode** (top-right).
+            3. Click **Load unpacked** and select the unzipped folder.
+
+            To update: download the new zip, replace the folder, then click the refresh icon on the extension's card.

@@ -4,12 +4,20 @@ A Chrome extension that lets you visually edit any live webpage using a Figma-li
 
 ## Quick Start
 
-### Prerequisites
+### Install from a Release (no build required)
 
-- [Node.js](https://nodejs.org/) (v18+)
-- Google Chrome (v120+)
+For users whose IT blocks the Chrome Web Store:
 
-### Build
+1. Go to [Releases](https://github.com/joesteinkamp/chromo-chrome-page-designer/releases) and download `chromo-design-<version>.zip` from the latest release.
+2. Unzip it somewhere permanent (e.g. `~/chromo-design/`). Chrome loads the folder by reference — if you delete or move it, the extension breaks.
+3. Open `chrome://extensions` and enable **Developer mode** (top-right).
+4. Click **Load unpacked** and select the unzipped folder.
+
+To update: download the new zip, replace the folder contents, then click the refresh icon on the extension's card in `chrome://extensions`.
+
+### Build from source
+
+Prerequisites: [Node.js](https://nodejs.org/) v18+, Google Chrome v120+.
 
 ```bash
 git clone https://github.com/joesteinkamp/chromo-chrome-page-designer.git
@@ -18,12 +26,17 @@ npm install
 npm run build
 ```
 
-### Install in Chrome
+Then load `dist/` as an unpacked extension (steps 3–4 above).
 
-1. Open `chrome://extensions`
-2. Enable **Developer mode** (toggle in top-right)
-3. Click **Load unpacked**
-4. Select the `dist/` folder from this project
+### Publishing a new release (maintainers)
+
+```bash
+# bump public/manifest.json "version" to match
+git tag v0.2.1
+git push origin v0.2.1
+```
+
+The `Release` GitHub Action builds `dist/`, zips it, and attaches the zip to a new GitHub Release. You can also trigger it manually from the Actions tab for an unreleased build artifact.
 
 ### Development
 

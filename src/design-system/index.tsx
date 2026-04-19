@@ -158,7 +158,6 @@ function ControlsGallery() {
         <ColorPicker
           value={color}
           onChange={setColor}
-          label="Fill"
           designTokens={[
             { name: "--pd-accent", value: "#4f9eff" },
             { name: "--pd-green", value: "#34c759" },

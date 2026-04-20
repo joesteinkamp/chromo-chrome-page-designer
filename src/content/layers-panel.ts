@@ -28,8 +28,12 @@ let rerenderRaf: number | null = null;
 
 /** Elements whose children are expanded in the tree. */
 const expanded = new WeakSet<Element>();
+/** Elements whose child-render cap has been lifted (user clicked "Show more"). */
+const uncapped = new WeakSet<Element>();
 /** Map from live Element -> its rendered row, used for highlight + scrollIntoView. */
 const rowForElement = new WeakMap<Element, HTMLDivElement>();
+/** Reverse: row DIV -> live Element, used for event delegation. */
+const rowToElement = new WeakMap<HTMLDivElement, Element>();
 
 let currentSelected: Element | null = null;
 
@@ -103,6 +107,9 @@ const LAYERS_CSS = `
 }
 .${LAYERS_PANE_PREFIX}tree::-webkit-scrollbar-track {
   background: transparent !important;
+}
+.${LAYERS_PANE_PREFIX}tree::-webkit-scrollbar-corner {
+  background: #1e1e1e !important;
 }
 .${LAYERS_PANE_PREFIX}row {
   display: flex !important;
@@ -196,6 +203,9 @@ const LAYERS_CSS = `
   .${LAYERS_PANE_PREFIX}tree::-webkit-scrollbar-thumb {
     background: #ccc !important;
   }
+  .${LAYERS_PANE_PREFIX}tree::-webkit-scrollbar-corner {
+    background: #ffffff !important;
+  }
   .${LAYERS_PANE_PREFIX}row {
     color: #333 !important;
   }
@@ -266,17 +276,7 @@ export function mountLayersPanel(onSelect: (el: Element) => void): void {
   closeBtn.type = "button";
   closeBtn.textContent = "×";
   closeBtn.title = "Hide layers pane";
-  closeBtn.addEventListener("click", () => {
-    try {
-      chrome.runtime.sendMessage({
-        type: "TOGGLE_LAYERS_PANE",
-        enabled: false,
-      });
-    } catch {
-      /* extension context may be gone */
-    }
-    unmountLayersPanel();
-  });
+  closeBtn.setAttribute("data-pd-layers-close", "1");
   header.appendChild(closeBtn);
   root.appendChild(header);
 
@@ -285,6 +285,19 @@ export function mountLayersPanel(onSelect: (el: Element) => void): void {
   root.appendChild(treeContainer);
 
   document.documentElement.appendChild(root);
+
+  // All interaction inside the pane is dispatched from a single
+  // document-level capture listener. Doing the dispatch at document capture
+  // means (a) host-page listeners deeper in the DOM or in bubble phase can't
+  // preempt us, and (b) after we finish we stop propagation so host-page
+  // handlers never see pane events. This is the key difference from prior
+  // fixes — per-row bubble listeners were being swallowed by host-app
+  // capture handlers on complex SPAs.
+  document.addEventListener("click", onDocPaneCapture, true);
+  document.addEventListener("mousedown", onDocPaneCapture, true);
+  document.addEventListener("mouseup", onDocPaneCapture, true);
+  document.addEventListener("mouseover", onDocPaneCapture, true);
+  document.addEventListener("mouseout", onDocPaneCapture, true);
 
   // Start collapsed except ancestors of current selection (if any).
   // By default, expand <html> so <body> is visible.
@@ -322,6 +335,11 @@ export function unmountLayersPanel(): void {
     cancelAnimationFrame(rerenderRaf);
     rerenderRaf = null;
   }
+  document.removeEventListener("click", onDocPaneCapture, true);
+  document.removeEventListener("mousedown", onDocPaneCapture, true);
+  document.removeEventListener("mouseup", onDocPaneCapture, true);
+  document.removeEventListener("mouseover", onDocPaneCapture, true);
+  document.removeEventListener("mouseout", onDocPaneCapture, true);
   root?.remove();
   root = null;
   treeContainer = null;
@@ -370,6 +388,7 @@ function renderNode(el: Element, depth: number, parentEl: HTMLElement): void {
 
   const row = document.createElement("div");
   row.className = `${LAYERS_PANE_PREFIX}row`;
+  row.setAttribute("data-pd-layers-row", "1");
   if (el === currentSelected) {
     row.classList.add(`${LAYERS_PANE_PREFIX}row--selected`);
   }
@@ -381,19 +400,15 @@ function renderNode(el: Element, depth: number, parentEl: HTMLElement): void {
 
   const chevron = document.createElement("span");
   chevron.className = `${LAYERS_PANE_PREFIX}chevron`;
+  if (hasKids) {
+    chevron.setAttribute("data-pd-layers-chevron", "1");
+  }
   if (!hasKids) {
     chevron.classList.add(`${LAYERS_PANE_PREFIX}chevron--leaf`);
     chevron.textContent = "•";
   } else {
     chevron.textContent = isOpen ? "▾" : "▸";
   }
-  chevron.addEventListener("click", (e) => {
-    e.stopPropagation();
-    if (!hasKids) return;
-    if (isOpen) expanded.delete(el);
-    else expanded.add(el);
-    renderTree();
-  });
   row.appendChild(chevron);
 
   const tag = document.createElement("span");
@@ -427,76 +442,28 @@ function renderNode(el: Element, depth: number, parentEl: HTMLElement): void {
     row.appendChild(count);
   }
 
-  row.addEventListener("click", (e) => {
-    e.stopPropagation();
-    // Selecting re-expands the node so we can see what we just selected.
-    if (hasKids) expanded.add(el);
-    currentSelected = el;
-    renderTree();
-    try {
-      selectElementDirectly(el);
-    } catch {
-      /* picker may not be active */
-    }
-    // Scroll the selected page element into view if it's off-screen
-    try {
-      const rect = el.getBoundingClientRect();
-      const inView =
-        rect.top >= 0 &&
-        rect.left >= 0 &&
-        rect.bottom <= window.innerHeight &&
-        rect.right <= window.innerWidth;
-      if (!inView) {
-        el.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
-      }
-    } catch {
-      /* element may not support scrollIntoView */
-    }
-    onSelectCallback?.(el);
-  });
-  row.addEventListener("mouseenter", () => {
-    try {
-      showHover(el.getBoundingClientRect());
-    } catch {
-      /* ignore */
-    }
-  });
-  row.addEventListener("mouseleave", () => {
-    try {
-      if (el !== currentSelected) hideHover();
-      else hideHover();
-    } catch {
-      /* ignore */
-    }
-  });
-
   rowForElement.set(el, row);
+  rowToElement.set(row, el);
   parentEl.appendChild(row);
 
   if (hasKids && isOpen) {
-    const renderCount = Math.min(kids.length, CHILDREN_RENDER_CAP);
+    const cap = uncapped.has(el) ? kids.length : CHILDREN_RENDER_CAP;
+    const renderCount = Math.min(kids.length, cap);
     for (let i = 0; i < renderCount; i++) {
       renderNode(kids[i], depth + 1, parentEl);
     }
-    if (kids.length > CHILDREN_RENDER_CAP) {
+    if (kids.length > renderCount) {
       const more = document.createElement("div");
       more.className = `${LAYERS_PANE_PREFIX}more`;
+      more.setAttribute("data-pd-layers-more", "1");
+      rowToElement.set(more as unknown as HTMLDivElement, el);
       more.style.setProperty(
         "padding-left",
         `${(depth + 1) * INDENT_PX + 18}px`,
         "important"
       );
-      const remaining = kids.length - CHILDREN_RENDER_CAP;
+      const remaining = kids.length - renderCount;
       more.textContent = `Show ${remaining} more…`;
-      more.addEventListener("click", () => {
-        // Simple approach: bump the cap for this parent by re-rendering all
-        // children in a follow-up click. For the first pass, just render
-        // everything — user asked for it explicitly.
-        for (let i = CHILDREN_RENDER_CAP; i < kids.length; i++) {
-          renderNode(kids[i], depth + 1, parentEl);
-        }
-        more.remove();
-      });
       parentEl.appendChild(more);
     }
   }
@@ -546,4 +513,150 @@ function expandAncestors(el: Element): void {
 export function isLayersPaneElement(el: Element | null): boolean {
   if (!el || !root) return false;
   return root === el || root.contains(el);
+}
+
+// --- Delegated event handling ---------------------------------------------
+
+/**
+ * Single document-level capture dispatcher. Runs before any host-page bubble
+ * listener and (assuming normal content-script load order) before any
+ * host-page capture listener on document as well. If the event target is not
+ * inside the pane we do nothing and let other handlers run. Otherwise we
+ * dispatch the pane's own logic and then stop propagation so the host app
+ * cannot react to clicks on our UI.
+ */
+function onDocPaneCapture(e: Event): void {
+  if (!root) return;
+  const path = e.composedPath();
+  if (!path.includes(root)) return;
+
+  const evt = e as MouseEvent;
+  const tgt = evt.target as Element | null;
+
+  if (evt.type === "click" && tgt) handlePaneClick(tgt);
+  else if (evt.type === "mouseover" && tgt) handlePaneMouseOver(tgt);
+  else if (evt.type === "mouseout" && tgt) handlePaneMouseOut(tgt, evt);
+
+  // Shield the host app and any other listeners from pane-targeted pointer
+  // events, whether or not we acted on them. stopImmediatePropagation
+  // prevents subsequent document-level listeners (host app capture handlers
+  // registered after ours) from firing, and blocks capture descent to
+  // ancestors' children, so nothing else in the DOM sees the event.
+  e.stopImmediatePropagation();
+  if (evt.type === "click" || evt.type === "mousedown") {
+    evt.preventDefault();
+  }
+}
+
+function handlePaneClick(tgt: Element): void {
+  // Close button
+  if (tgt.closest("[data-pd-layers-close]")) {
+    try {
+      chrome.runtime.sendMessage({
+        type: "TOGGLE_LAYERS_PANE",
+        enabled: false,
+      });
+    } catch {
+      /* extension context may be gone */
+    }
+    unmountLayersPanel();
+    return;
+  }
+
+  // "Show more" sibling expander
+  const moreEl = tgt.closest<HTMLDivElement>("[data-pd-layers-more]");
+  if (moreEl) {
+    const parentNode = rowToElement.get(moreEl);
+    if (parentNode) {
+      uncapped.add(parentNode);
+      renderTree();
+    }
+    return;
+  }
+
+  const rowEl = tgt.closest<HTMLDivElement>("[data-pd-layers-row]");
+  if (!rowEl) return;
+  const el = rowToElement.get(rowEl);
+  if (!el) return;
+
+  // Chevron → toggle expand. Anywhere else on the row → select.
+  const chevron = tgt.closest("[data-pd-layers-chevron]");
+  if (chevron) {
+    if (expanded.has(el)) expanded.delete(el);
+    else expanded.add(el);
+    renderTree();
+    return;
+  }
+
+  selectFromTree(el);
+}
+
+function selectFromTree(el: Element): void {
+  // Ensure the selected node is expanded so its children are visible.
+  const hadChildren = visibleChildren(el).length > 0;
+  if (hadChildren) expanded.add(el);
+
+  // 1. Update row highlight in place first — this has no external deps.
+  setSelectedRow(el);
+
+  // 2. Drive the picker + page overlay. Wrapped so that if the extension
+  //    hasn't been activated (initOverlay never ran), a throw inside
+  //    showSelection doesn't abort the rest of the selection flow.
+  try {
+    selectElementDirectly(el);
+  } catch (err) {
+    console.warn("[layers-panel] selectElementDirectly failed", err);
+  }
+
+  // 3. Scroll the page element into view if off-screen.
+  try {
+    const rect = el.getBoundingClientRect();
+    const inView =
+      rect.top >= 0 &&
+      rect.left >= 0 &&
+      rect.bottom <= window.innerHeight &&
+      rect.right <= window.innerWidth;
+    if (!inView) {
+      el.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
+    }
+  } catch {
+    /* element may not support scrollIntoView options */
+  }
+
+  // 4. Notify main.ts so the side panel updates, even if the page overlay
+  //    couldn't render.
+  onSelectCallback?.(el);
+}
+
+function setSelectedRow(el: Element | null): void {
+  if (!treeContainer) return;
+  const prev = treeContainer.querySelector(
+    `.${LAYERS_PANE_PREFIX}row--selected`
+  );
+  prev?.classList.remove(`${LAYERS_PANE_PREFIX}row--selected`);
+  currentSelected = el;
+  if (!el) return;
+  const row = rowForElement.get(el);
+  row?.classList.add(`${LAYERS_PANE_PREFIX}row--selected`);
+}
+
+function handlePaneMouseOver(tgt: Element): void {
+  const rowEl = tgt.closest<HTMLDivElement>("[data-pd-layers-row]");
+  if (!rowEl) return;
+  const el = rowToElement.get(rowEl);
+  if (!el) return;
+  try {
+    showHover(el.getBoundingClientRect());
+  } catch {
+    /* ignore */
+  }
+}
+
+function handlePaneMouseOut(tgt: Element, evt: MouseEvent): void {
+  const rowEl = tgt.closest<HTMLDivElement>("[data-pd-layers-row]");
+  if (!rowEl) return;
+  const related = evt.relatedTarget as Element | null;
+  // If the mouse is still inside some row, don't hide the page hover.
+  if (related && related.closest?.("[data-pd-layers-row]")) return;
+  hideHover();
 }

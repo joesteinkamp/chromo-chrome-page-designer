@@ -141,6 +141,11 @@ chrome.runtime.onMessage.addListener(
       case "TOGGLE_LAYERS_PANE": {
         if (isInIframe) break; // Only mount in the top frame
         if (message.enabled) {
+          // The pane calls showSelection / showHover through the picker, which
+          // requires the overlay module to be initialized. Auto-activate so
+          // clicks from the tree always work even if the user toggled the
+          // pane before clicking the activate button.
+          if (!isActive) activate();
           if (!isLayersPaneMounted()) {
             mountLayersPanel((el) => {
               // Click in the tree → route through the standard selection flow

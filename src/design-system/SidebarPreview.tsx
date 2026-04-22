@@ -226,6 +226,7 @@ export function SidebarSelected() {
           {activeTab === "changes" && (
             <ChangesTab
               changes={changes}
+              archivedSends={[]}
               onUndo={handleUndo}
               onUndoAll={handleUndoAll}
               onRedo={noop}

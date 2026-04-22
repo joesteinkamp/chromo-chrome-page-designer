@@ -13,11 +13,18 @@ import type { Message, AISuggestion } from "../shared/messages";
 
 type Tab = "design" | "changes" | "ai";
 
+export interface ArchivedSend {
+  id: string;
+  timestamp: number;
+  changes: Change[];
+}
+
 export function App() {
   const { elementData, isConnected, setElementData, multiSelectCount } = useElementData();
   const sendStyleChange = useStyleChange();
   const [activeTab, setActiveTab] = useState<Tab>("design");
   const [changes, setChanges] = useState<Change[]>([]);
+  const [archivedSends, setArchivedSends] = useState<ArchivedSend[]>([]);
   const [canRedo, setCanRedo] = useState(false);
   const [pageUrl, setPageUrl] = useState("");
   const [editMode, setEditMode] = useState(true);
@@ -320,6 +327,13 @@ export function App() {
 
 Entries marked "Comment # (designer intent)" are freeform instructions from the designer about changes that couldn't be expressed as style edits (e.g. "use a dropdown instead of buttons", "swap this for the Button component"). Treat comments as higher-priority than style diffs when they conflict, and use judgment to implement the requested change — which may involve swapping components, changing behavior, or restructuring markup rather than just adjusting CSS.`;
         navigator.clipboard.writeText(`${prompt}\n\n${summary}`);
+        if (changes.length > 0) {
+          setArchivedSends((prev) => [
+            { id: `send-${Date.now()}`, timestamp: Date.now(), changes: [...changes] },
+            ...prev,
+          ]);
+          chrome.runtime.sendMessage({ type: "CLEAR_CHANGES" } satisfies Message);
+        }
         setSendMenuOpen(false);
       },
     },
@@ -444,6 +458,7 @@ Entries marked "Comment # (designer intent)" are freeform instructions from the 
               {activeTab === "changes" && (
                 <ChangesTab
                   changes={changes}
+                  archivedSends={archivedSends}
                   onUndo={handleUndo}
                   onUndoAll={handleUndoAll}
                   url={pageUrl}

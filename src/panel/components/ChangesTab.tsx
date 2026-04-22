@@ -2,11 +2,13 @@ import React, { useState, useCallback, useEffect, useRef, type ReactNode } from 
 import type { Change } from "../../shared/types";
 import { collapseBatches } from "../../shared/export";
 import type { Message } from "../../shared/messages";
+import type { ArchivedSend } from "../App";
 import { PaletteIcon, TextIcon, MoveIcon, ResizeIcon, ImageIcon, DeleteIcon, HideIcon, WrapIcon, DuplicateIcon, CommentIcon } from "../icons";
 import "./changes.css";
 
 interface Props {
   changes: Change[];
+  archivedSends: ArchivedSend[];
   onUndo: (changeId: string) => void;
   onUndoAll: () => void;
   url: string;
@@ -59,11 +61,13 @@ function groupChanges(changes: Change[]): ChangeGroup[] {
 
 export function ChangesTab({
   changes,
+  archivedSends,
   onUndo,
   onUndoAll,
   url,
 }: Props) {
   const [toast, setToast] = useState<string | null>(null);
+  const [showArchive, setShowArchive] = useState(false);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const showToast = useCallback((msg: string) => {
@@ -81,16 +85,34 @@ export function ChangesTab({
   const hasChanges = changes.length > 0;
   const groups = groupChanges(changes);
 
+  const hasArchive = archivedSends.length > 0;
+  const totalArchivedChanges = archivedSends.reduce((sum, s) => sum + s.changes.length, 0);
+
   return (
     <div className="pd-changes">
       {toast && <div className="pd-changes__toast">{toast}</div>}
+
+      {hasArchive && (
+        <div className="pd-changes__archive-banner">
+          <button
+            type="button"
+            className="pd-changes__archive-toggle"
+            onClick={() => setShowArchive((v) => !v)}
+            aria-pressed={showArchive}
+          >
+            {showArchive
+              ? "Hide previously sent changes"
+              : `View previously sent changes (${archivedSends.length} send${archivedSends.length === 1 ? "" : "s"}, ${totalArchivedChanges} change${totalArchivedChanges === 1 ? "" : "s"})`}
+          </button>
+        </div>
+      )}
 
       <div className="pd-changes__toolbar">
         <span className="pd-changes__badge">
           {changes.length} {changes.length === 1 ? "change" : "changes"}
         </span>
         <div className="pd-changes__toolbar-spacer" />
-        {hasChanges && (
+        {hasChanges && !showArchive && (
           <button
             type="button"
             className="pd-changes__btn pd-changes__btn--danger"
@@ -101,7 +123,41 @@ export function ChangesTab({
         )}
       </div>
 
-      {!hasChanges ? (
+      {showArchive ? (
+        <div className="pd-changes__list">
+          {archivedSends.map((send, i) => (
+            <div key={send.id} className="pd-changes__archive-send">
+              <div className="pd-changes__archive-send-header">
+                <span className="pd-changes__archive-send-label">
+                  Send #{archivedSends.length - i}
+                </span>
+                <span className="pd-changes__archive-send-time">
+                  {relativeTime(send.timestamp)} · {send.changes.length}{" "}
+                  {send.changes.length === 1 ? "change" : "changes"}
+                </span>
+              </div>
+              {send.changes.map((change) => (
+                <div
+                  key={change.id}
+                  className="pd-changes__item pd-changes__item--archived"
+                >
+                  <span className="pd-changes__item-icon">
+                    {TYPE_ICONS[change.type]}
+                  </span>
+                  <div className="pd-changes__item-body">
+                    <div className="pd-changes__item-desc">
+                      {change.description}
+                    </div>
+                    <div className="pd-changes__item-time">
+                      {change.selector}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+      ) : !hasChanges ? (
         <div className="pd-changes__empty">
           No changes yet — start editing to track changes
         </div>

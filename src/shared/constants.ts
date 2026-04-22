@@ -44,6 +44,8 @@ export const TRACKED_PROPERTIES = [
   "text-align",
   "text-decoration",
   "text-transform",
+  "text-overflow",
+  "white-space",
   "color",
   // Fill & Stroke
   "background-color",

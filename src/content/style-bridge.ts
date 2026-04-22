@@ -29,6 +29,50 @@ const SYSTEM_FONT_NAMES = new Set([
   "serif", "cursive", "fantasy", "inherit", "initial", "unset",
 ]);
 
+/** Properties whose values are colors and may need resolution for functions like color-mix() */
+const COLOR_VALUED_PROPS = new Set<string>([
+  "color",
+  "background-color",
+  "border-top-color",
+  "border-right-color",
+  "border-bottom-color",
+  "border-left-color",
+]);
+
+/**
+ * Resolve a computed CSS color value to a concrete rgb()/rgba() string.
+ *
+ * Chrome's getComputedStyle can return unresolved forms like
+ * `color-mix(in srgb, var(--x), #0f1930 28%)` or modern color functions
+ * (`oklch()`, `lab()`, `color()`) that the panel's simple parser can't read.
+ * Setting the value inline on a temp element forces the engine to resolve
+ * var() in the page's variable scope and serialize to rgb/rgba.
+ */
+function resolveColorValue(value: string, context: Element): string {
+  if (!value) return value;
+  const trimmed = value.trim();
+  if (!trimmed || trimmed === "transparent" || trimmed === "currentcolor") return value;
+  // Already in a format the panel understands.
+  if (/^#[0-9a-fA-F]+$/.test(trimmed)) return value;
+  if (/^rgba?\(/i.test(trimmed)) return value;
+  if (/^hsla?\(/i.test(trimmed)) return value;
+
+  const parent = context.parentElement || document.body;
+  if (!parent) return value;
+  try {
+    const temp = document.createElement("span");
+    temp.className = "__pd-color-resolver";
+    temp.style.cssText = "position:absolute;visibility:hidden;pointer-events:none;width:0;height:0;";
+    temp.style.setProperty("background-color", value);
+    parent.appendChild(temp);
+    const resolved = window.getComputedStyle(temp).backgroundColor;
+    temp.remove();
+    return resolved || value;
+  } catch {
+    return value;
+  }
+}
+
 /** Extract Figma-relevant computed styles from an element */
 export function extractElementData(element: Element): ElementData {
   const computed = window.getComputedStyle(element);
@@ -36,7 +80,8 @@ export function extractElementData(element: Element): ElementData {
 
   const computedStyles: Record<string, string> = {};
   for (const prop of TRACKED_PROPERTIES) {
-    computedStyles[prop] = computed.getPropertyValue(prop);
+    const raw = computed.getPropertyValue(prop);
+    computedStyles[prop] = COLOR_VALUED_PROPS.has(prop) ? resolveColorValue(raw, element) : raw;
   }
 
   // Extract authored styles preserving original units (%, rem, vw, etc.)

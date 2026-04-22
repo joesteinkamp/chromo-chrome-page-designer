@@ -229,8 +229,6 @@ export function SidebarSelected() {
               archivedSends={[]}
               onUndo={handleUndo}
               onUndoAll={handleUndoAll}
-              onRedo={noop}
-              onRestore={noop}
               url="https://example.com"
             />
           )}

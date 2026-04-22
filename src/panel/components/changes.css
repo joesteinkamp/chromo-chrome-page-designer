@@ -81,13 +81,6 @@
   opacity: 0.35;
 }
 
-.pd-changes__toolbar--secondary {
-  border-top: none;
-  padding-top: 0;
-  gap: var(--pd-space-3);
-  flex-wrap: wrap;
-}
-
 /* Toast notification */
 .pd-changes__toast {
   position: fixed;
@@ -229,19 +222,6 @@
   color: var(--pd-text-muted);
 }
 
-/* Button variants */
-.pd-changes__btn--small {
-  height: 20px;
-  padding: 0 var(--pd-space-3);
-  font-size: var(--pd-text-sm);
-}
-
-.pd-changes__btn--active {
-  background: var(--pd-accent-dim);
-  border-color: var(--pd-accent);
-  color: var(--pd-accent);
-}
-
 .pd-changes__btn:disabled {
   opacity: 0.4;
   pointer-events: none;
@@ -279,41 +259,3 @@
   border-radius: var(--pd-radius-lg);
 }
 
-/* Visual diff panel */
-.pd-changes__diff {
-  padding: var(--pd-space-4) var(--pd-space-5);
-  border-bottom: 1px solid var(--pd-border);
-  background: rgba(255, 79, 158, 0.05);
-}
-
-.pd-changes__diff-title {
-  font-size: var(--pd-text-sm);
-  font-weight: 600;
-  color: #d63384;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  margin-bottom: var(--pd-space-3);
-}
-
-.pd-changes__diff-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 2px 0;
-}
-
-.pd-changes__diff-selector {
-  font-size: var(--pd-text-sm);
-  font-family: var(--pd-mono);
-  color: var(--pd-text-dim);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  max-width: 70%;
-}
-
-.pd-changes__diff-count {
-  font-size: var(--pd-text-sm);
-  color: #d63384;
-  font-weight: 500;
-}

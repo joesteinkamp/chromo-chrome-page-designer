@@ -72,6 +72,11 @@ const TRANSFORM_OPTIONS = [
   { value: "capitalize", label: "Aa" },
 ] as const;
 
+const TRUNCATE_OPTIONS = [
+  { value: "off", label: "—", title: "No truncation" },
+  { value: "on", label: "A…", title: "Truncate with ellipsis" },
+] as const;
+
 const DECORATION_OPTIONS = [
   { value: "none", label: "\u2014" },
   { value: "underline", label: "U\u0332" },
@@ -162,6 +167,11 @@ export function TypographyTab({ computedStyles, onStyleChange }: Props) {
     if (raw.includes("line-through")) return "line-through";
     return "none";
   }, [computedStyles["text-decoration"], computedStyles["text-decoration-line"]]);
+  const truncate = useMemo(() => {
+    const whiteSpace = computedStyles["white-space"] || "";
+    const textOverflow = computedStyles["text-overflow"] || "";
+    return textOverflow === "ellipsis" && whiteSpace === "nowrap" ? "on" : "off";
+  }, [computedStyles["white-space"], computedStyles["text-overflow"]]);
 
   const handleFontFamily = useCallback((v: string) => onStyleChange("font-family", v), [onStyleChange]);
   const handleFontWeight = useCallback((v: string) => onStyleChange("font-weight", v), [onStyleChange]);
@@ -176,6 +186,19 @@ export function TypographyTab({ computedStyles, onStyleChange }: Props) {
   const handleTextTransform = useCallback((v: string) => onStyleChange("text-transform", v), [onStyleChange]);
   const handleTextColor = useCallback((v: string) => onStyleChange("color", v), [onStyleChange]);
   const handleTextDecoration = useCallback((v: string) => onStyleChange("text-decoration", v), [onStyleChange]);
+  const handleTruncate = useCallback(
+    (v: string) => {
+      if (v === "on") {
+        onStyleChange("white-space", "nowrap");
+        onStyleChange("overflow", "hidden");
+        onStyleChange("text-overflow", "ellipsis");
+      } else {
+        onStyleChange("white-space", "normal");
+        onStyleChange("text-overflow", "clip");
+      }
+    },
+    [onStyleChange]
+  );
 
   return (
     <div className="pd-section">
@@ -277,6 +300,24 @@ export function TypographyTab({ computedStyles, onStyleChange }: Props) {
                         className={`pd-typography__btn pd-typography__btn--sm${textTransform === opt.value ? " pd-typography__btn--active" : ""}`}
                         title={opt.value}
                         onClick={() => handleTextTransform(opt.value)}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Truncate text */}
+                <div className="pd-typography__popover-row">
+                  <span className="pd-typography__popover-label">Truncate text</span>
+                  <div className="pd-typography__btn-group pd-typography__btn-group--sm">
+                    {TRUNCATE_OPTIONS.map((opt) => (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        className={`pd-typography__btn pd-typography__btn--sm${truncate === opt.value ? " pd-typography__btn--active" : ""}`}
+                        title={opt.title}
+                        onClick={() => handleTruncate(opt.value)}
                       >
                         {opt.label}
                       </button>

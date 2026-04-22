@@ -272,20 +272,6 @@ export function App() {
     setSavedChangesDismissed(true);
   }, []);
 
-  const handleLoadEdits = useCallback(() => {
-    chrome.runtime.sendMessage(
-      { type: "LOAD_EDITS", url: pageUrl } satisfies Message,
-      (response: any) => {
-        if (response?.changes) {
-          chrome.runtime.sendMessage({
-            type: "REPLAY_CHANGES",
-            changes: response.changes,
-          } satisfies Message);
-        }
-      }
-    );
-  }, [pageUrl]);
-
   // --- Screenshot ---
 
   const handleScreenshot = useCallback(async () => {
@@ -460,8 +446,6 @@ Entries marked "Comment # (designer intent)" are freeform instructions from the 
                   changes={changes}
                   onUndo={handleUndo}
                   onUndoAll={handleUndoAll}
-                  onRedo={handleRedo}
-                  onRestore={handleLoadEdits}
                   url={pageUrl}
                 />
               )}

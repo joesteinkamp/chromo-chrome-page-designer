@@ -228,8 +228,6 @@ export function SidebarSelected() {
               changes={changes}
               onUndo={handleUndo}
               onUndoAll={handleUndoAll}
-              onRedo={noop}
-              onRestore={noop}
               url="https://example.com"
             />
           )}

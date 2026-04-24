@@ -37,6 +37,8 @@ const COLOR_VALUED_PROPS = new Set<string>([
   "border-right-color",
   "border-bottom-color",
   "border-left-color",
+  "fill",
+  "stroke",
 ]);
 
 /**
@@ -51,7 +53,9 @@ const COLOR_VALUED_PROPS = new Set<string>([
 function resolveColorValue(value: string, context: Element): string {
   if (!value) return value;
   const trimmed = value.trim();
-  if (!trimmed || trimmed === "transparent" || trimmed === "currentcolor") return value;
+  if (!trimmed || trimmed === "transparent" || trimmed === "currentcolor" || trimmed === "none") return value;
+  // SVG paint server references (e.g. url(#gradient)) aren't colors — keep as-is.
+  if (/^url\(/i.test(trimmed)) return value;
   // Already in a format the panel understands.
   if (/^#[0-9a-fA-F]+$/.test(trimmed)) return value;
   if (/^rgba?\(/i.test(trimmed)) return value;
@@ -143,6 +147,7 @@ export function extractElementData(element: Element): ElementData {
     authoredStyles,
     hasTextContent: hasDirectText(element),
     isImage: tag === "img" || tag === "svg" || tag === "picture",
+    isSvg: element instanceof SVGElement,
     isFlex: display === "flex" || display === "inline-flex",
     isGrid: display === "grid" || display === "inline-grid",
     outerHTML: element.outerHTML.slice(0, 2000),
@@ -159,7 +164,7 @@ export function extractElementData(element: Element): ElementData {
 
 /** Apply a CSS property change to an element */
 export function applyStyleToElement(
-  element: HTMLElement,
+  element: HTMLElement | SVGElement,
   property: string,
   value: string
 ): void {

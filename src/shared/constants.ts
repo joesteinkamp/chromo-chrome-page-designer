@@ -50,6 +50,10 @@ export const TRACKED_PROPERTIES = [
   // Fill & Stroke
   "background-color",
   "background-image",
+  // SVG paint properties
+  "fill",
+  "stroke",
+  "stroke-width",
   "border-top-width",
   "border-right-width",
   "border-bottom-width",

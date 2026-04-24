@@ -22,6 +22,8 @@ export interface ElementData {
   hasTextContent: boolean;
   /** Whether element is an image */
   isImage: boolean;
+  /** Whether element is an SVG element (uses fill/stroke instead of background/border) */
+  isSvg: boolean;
   /** Whether element uses display:flex */
   isFlex: boolean;
   /** Whether element uses display:grid */

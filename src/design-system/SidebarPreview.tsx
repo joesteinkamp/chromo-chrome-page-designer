@@ -65,6 +65,7 @@ const MOCK_ELEMENT: ElementData = {
   },
   hasTextContent: true,
   isImage: false,
+  isSvg: false,
   isFlex: true,
   isGrid: false,
   outerHTML: '<div class="hero-card card card--primary" id="hero-card">...</div>',

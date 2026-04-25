@@ -59,6 +59,7 @@ export const DesignTab = React.memo(function DesignTab({
         authoredStyles={data.authoredStyles}
         onStyleChange={onStyleChange}
         disabled={isReplaced}
+        isSvg={data.isSvg}
         designTokens={data.designTokens}
         pageColors={data.pageColors}
       />

@@ -174,7 +174,7 @@ chrome.runtime.onMessage.addListener(
 
       case "APPLY_STYLE": {
         const el = getSelectedElement();
-        if (el && el instanceof HTMLElement) {
+        if (el && (el instanceof HTMLElement || el instanceof SVGElement)) {
           const computed = window.getComputedStyle(el);
           const oldValue = computed.getPropertyValue(message.property);
 
@@ -194,7 +194,7 @@ chrome.runtime.onMessage.addListener(
 
           // Apply to all matching elements if multi-edit is on
           for (const match of matches) {
-            if (match instanceof HTMLElement) {
+            if (match instanceof HTMLElement || match instanceof SVGElement) {
               const mc = window.getComputedStyle(match);
               const mv = mc.getPropertyValue(message.property);
               applyStyleToElement(match, message.property, message.value);
@@ -207,7 +207,7 @@ chrome.runtime.onMessage.addListener(
 
           // Apply to multi-selected elements too
           for (const multiEl of multiEls) {
-            if (multiEl !== el && multiEl instanceof HTMLElement) {
+            if (multiEl !== el && (multiEl instanceof HTMLElement || multiEl instanceof SVGElement)) {
               const mc = window.getComputedStyle(multiEl);
               const mv = mc.getPropertyValue(message.property);
               applyStyleToElement(multiEl, message.property, message.value);
@@ -221,9 +221,9 @@ chrome.runtime.onMessage.addListener(
 
           refreshSelection();
 
-          // Visual flash feedback
+          // Visual flash feedback (force reflow between class toggles)
           el.classList.remove("__pd-flash");
-          void el.offsetWidth;
+          void el.getBoundingClientRect();
           el.classList.add("__pd-flash");
           setTimeout(() => el.classList.remove("__pd-flash"), 400);
 
@@ -248,7 +248,7 @@ chrome.runtime.onMessage.addListener(
       case "APPLY_STYLE_TO_MATCHING": {
         const elements = document.querySelectorAll(`.${CSS.escape(message.className)}`);
         elements.forEach((el) => {
-          if (el instanceof HTMLElement) {
+          if (el instanceof HTMLElement || el instanceof SVGElement) {
             const computed = window.getComputedStyle(el);
             const oldValue = computed.getPropertyValue(message.property);
             applyStyleToElement(el, message.property, message.value);

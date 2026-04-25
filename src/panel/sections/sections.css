@@ -339,3 +339,49 @@
   opacity: 0.35;
   pointer-events: none;
 }
+
+/* ── Position section: alignment button groups ── */
+.pd-position__align-group {
+  display: inline-flex;
+  flex: 1;
+  min-width: 0;
+  border: 1px solid var(--pd-border);
+  border-radius: var(--pd-radius);
+  background: var(--pd-bg-raised);
+  overflow: hidden;
+}
+
+.pd-position__align-btn {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 24px;
+  padding: 0;
+  border: none;
+  border-right: 1px solid var(--pd-border);
+  background: none;
+  color: var(--pd-text-dim);
+  cursor: pointer;
+  transition: all var(--pd-duration-fast);
+}
+
+.pd-position__align-btn:last-child {
+  border-right: none;
+}
+
+.pd-position__align-btn:hover {
+  background: var(--pd-bg-hover);
+  color: var(--pd-text);
+}
+
+.pd-position__align-btn:focus-visible {
+  box-shadow: var(--pd-focus-ring);
+  outline: none;
+  z-index: 1;
+}
+
+.pd-position__align-btn--active {
+  background: var(--pd-accent-dim);
+  color: var(--pd-accent);
+}

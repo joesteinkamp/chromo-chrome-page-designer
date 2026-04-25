@@ -1,4 +1,5 @@
 export { DimensionsSection } from "./DimensionsSection";
+export { PositionSection } from "./PositionSection";
 export { AutoLayoutSection } from "./AutoLayoutSection";
 export { FillSection } from "./FillSection";
 export { StrokeSection } from "./StrokeSection";

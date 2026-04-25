@@ -265,6 +265,64 @@ export function LayersIcon({ size = defaults.size, className = defaults.classNam
   );
 }
 
+/* ── Position alignment (horizontal axis) ── */
+
+export function PositionLeftIcon({ size = defaults.size, className = defaults.className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" className={`pd-icon ${className}`}>
+      <path d="M3 3v10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      <rect x="5" y="5" width="6" height="6" rx="0.5" stroke="currentColor" strokeWidth="1.5" />
+    </svg>
+  );
+}
+
+export function PositionCenterHIcon({ size = defaults.size, className = defaults.className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" className={`pd-icon ${className}`}>
+      <path d="M8 2v3M8 11v3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      <rect x="5" y="5" width="6" height="6" rx="0.5" stroke="currentColor" strokeWidth="1.5" />
+    </svg>
+  );
+}
+
+export function PositionRightIcon({ size = defaults.size, className = defaults.className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" className={`pd-icon ${className}`}>
+      <path d="M13 3v10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      <rect x="5" y="5" width="6" height="6" rx="0.5" stroke="currentColor" strokeWidth="1.5" />
+    </svg>
+  );
+}
+
+/* ── Position alignment (vertical axis) ── */
+
+export function PositionTopIcon({ size = defaults.size, className = defaults.className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" className={`pd-icon ${className}`}>
+      <path d="M3 3h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      <rect x="5" y="5" width="6" height="6" rx="0.5" stroke="currentColor" strokeWidth="1.5" />
+    </svg>
+  );
+}
+
+export function PositionCenterVIcon({ size = defaults.size, className = defaults.className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" className={`pd-icon ${className}`}>
+      <path d="M2 8h3M11 8h3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      <rect x="5" y="5" width="6" height="6" rx="0.5" stroke="currentColor" strokeWidth="1.5" />
+    </svg>
+  );
+}
+
+export function PositionBottomIcon({ size = defaults.size, className = defaults.className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" className={`pd-icon ${className}`}>
+      <path d="M3 13h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      <rect x="5" y="5" width="6" height="6" rx="0.5" stroke="currentColor" strokeWidth="1.5" />
+    </svg>
+  );
+}
+
 /* ── Brand / Misc ── */
 
 export function DiamondIcon({ size = defaults.size, className = defaults.className }: IconProps) {

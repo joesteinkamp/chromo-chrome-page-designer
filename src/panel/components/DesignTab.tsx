@@ -1,6 +1,7 @@
 import React from "react";
 import {
   DimensionsSection,
+  PositionSection,
   AutoLayoutSection,
   FillSection,
   StrokeSection,
@@ -29,6 +30,16 @@ export const DesignTab = React.memo(function DesignTab({
   const tag = data.tag;
   const isReplaced = tag === "img" || tag === "video" || tag === "iframe" || tag === "canvas";
 
+  // Show position controls only when the element is NOT inside an auto-layout
+  // (flex/grid) parent — auto-layout parents handle child placement themselves.
+  const parentDisplay = data.parentLayout?.display || "";
+  const parentIsAutoLayout =
+    parentDisplay === "flex" ||
+    parentDisplay === "inline-flex" ||
+    parentDisplay === "grid" ||
+    parentDisplay === "inline-grid";
+  const showPosition = Boolean(data.parentLayout) && !parentIsAutoLayout;
+
   return (
     <div className="pd-design-tab">
       <DimensionsSection
@@ -36,6 +47,15 @@ export const DesignTab = React.memo(function DesignTab({
         authoredStyles={data.authoredStyles}
         onStyleChange={onStyleChange}
       />
+      {showPosition && data.parentLayout && (
+        <PositionSection
+          computedStyles={computedStyles}
+          authoredStyles={data.authoredStyles}
+          onStyleChange={onStyleChange}
+          rect={data.rect}
+          parentRect={data.parentLayout.rect}
+        />
+      )}
       <SpacingSection
         computedStyles={computedStyles}
         authoredStyles={data.authoredStyles}

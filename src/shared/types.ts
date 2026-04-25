@@ -12,6 +12,12 @@ export interface ElementData {
   classes: string[];
   /** Bounding rect relative to viewport */
   rect: { x: number; y: number; width: number; height: number };
+  /** Parent layout context — used by the panel to decide whether the element
+   *  is laid out by an auto-layout (flex/grid) parent or free-positioned. */
+  parentLayout?: {
+    display: string;
+    rect: { x: number; y: number; width: number; height: number };
+  };
   /** Breadcrumb path e.g. "body > main > .hero > h1" */
   breadcrumb: string;
   /** Key computed styles (Figma-relevant subset) — always in resolved px */

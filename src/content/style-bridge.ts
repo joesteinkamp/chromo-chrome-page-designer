@@ -127,6 +127,23 @@ export function extractElementData(element: Element): ElementData {
   let componentInfo: ElementData["componentInfo"];
   try { componentInfo = extractComponentInfo(element); } catch { /* */ }
 
+  // Capture parent layout context so the panel can show position controls
+  // only when the element is free-positioned (parent is not auto-layout).
+  let parentLayout: ElementData["parentLayout"];
+  const parent = element.parentElement;
+  if (parent && parent !== document.documentElement) {
+    const parentRect = parent.getBoundingClientRect();
+    parentLayout = {
+      display: window.getComputedStyle(parent).display,
+      rect: {
+        x: parentRect.x,
+        y: parentRect.y,
+        width: parentRect.width,
+        height: parentRect.height,
+      },
+    };
+  }
+
   return {
     selector: generateSelector(element),
     tag,
@@ -138,6 +155,7 @@ export function extractElementData(element: Element): ElementData {
       width: rect.width,
       height: rect.height,
     },
+    parentLayout,
     breadcrumb: generateBreadcrumb(element),
     computedStyles,
     authoredStyles,

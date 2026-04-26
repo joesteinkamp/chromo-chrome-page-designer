@@ -50,7 +50,6 @@ export const DesignTab = React.memo(function DesignTab({
       {showPosition && data.parentLayout && (
         <PositionSection
           computedStyles={computedStyles}
-          authoredStyles={data.authoredStyles}
           onStyleChange={onStyleChange}
           rect={data.rect}
           parentRect={data.parentLayout.rect}

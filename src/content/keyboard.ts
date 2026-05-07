@@ -42,6 +42,7 @@ interface KeyboardCallbacks {
   getSelectedElement: () => Element | null;
   clearSelection: () => void;
   selectElement: (element: Element) => void;
+  selectMulti: (elements: Element[], primary: Element) => void;
   startInlineEdit: (element: Element) => void;
   refreshSelection: () => void;
   sendElementData: (element: Element) => void;
@@ -113,10 +114,12 @@ function onKeyDown(e: KeyboardEvent): void {
       withSuppressedRecording(() => {
         const restored = undoSelection();
         if (restored === undefined) return;
-        if (restored === null) {
+        if (restored.kind === "none") {
           callbacks!.clearSelection();
+        } else if (restored.kind === "single") {
+          callbacks!.selectElement(restored.element);
         } else {
-          callbacks!.selectElement(restored);
+          callbacks!.selectMulti(restored.elements, restored.primary);
         }
       });
     } else if (changeTs > 0) {
@@ -141,10 +144,12 @@ function onKeyDown(e: KeyboardEvent): void {
       withSuppressedRecording(() => {
         const restored = redoSelection();
         if (restored === undefined) return;
-        if (restored === null) {
+        if (restored.kind === "none") {
           callbacks!.clearSelection();
+        } else if (restored.kind === "single") {
+          callbacks!.selectElement(restored.element);
         } else {
-          callbacks!.selectElement(restored);
+          callbacks!.selectMulti(restored.elements, restored.primary);
         }
       });
     } else if (changeRedoTs > 0) {

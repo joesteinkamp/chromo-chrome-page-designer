@@ -423,9 +423,11 @@ export function App() {
       </header>
 
       <div className="pd-panel__body">
-        {elementData ? (
+        {elementData || changes.length > 0 ? (
           <>
-            <ElementInfo data={elementData} multiEdit={multiEdit} onToggleMultiEdit={handleToggleMultiEdit} multiSelectCount={multiSelectCount} />
+            {elementData && (
+              <ElementInfo data={elementData} multiEdit={multiEdit} onToggleMultiEdit={handleToggleMultiEdit} multiSelectCount={multiSelectCount} />
+            )}
             <div className="pd-panel__tabs">
               <button
                 className={`pd-panel__tab ${activeTab === "design" ? "pd-panel__tab--active" : ""}`}
@@ -451,10 +453,16 @@ export function App() {
             </div>
             <div className="pd-panel__content">
               {activeTab === "design" && (
-                <DesignTab
-                  data={elementData}
-                  onStyleChange={sendStyleChange}
-                />
+                elementData ? (
+                  <DesignTab
+                    data={elementData}
+                    onStyleChange={sendStyleChange}
+                  />
+                ) : (
+                  <div className="pd-panel__tab-empty">
+                    Select an element to edit its properties
+                  </div>
+                )
               )}
               {activeTab === "changes" && (
                 <ChangesTab
@@ -466,15 +474,21 @@ export function App() {
                 />
               )}
               {activeTab === "ai" && (
-                <AITab
-                  elementData={elementData}
-                  critiqueResponse={critiqueResponse}
-                  nlEditResponse={nlEditResponse}
-                  aiError={aiError}
-                  onClearCritique={() => setCritiqueResponse(null)}
-                  onClearNLEdit={() => setNlEditResponse(null)}
-                  onClearError={() => setAiError(null)}
-                />
+                elementData ? (
+                  <AITab
+                    elementData={elementData}
+                    critiqueResponse={critiqueResponse}
+                    nlEditResponse={nlEditResponse}
+                    aiError={aiError}
+                    onClearCritique={() => setCritiqueResponse(null)}
+                    onClearNLEdit={() => setNlEditResponse(null)}
+                    onClearError={() => setAiError(null)}
+                  />
+                ) : (
+                  <div className="pd-panel__tab-empty">
+                    Select an element to use AI features
+                  </div>
+                )
               )}
             </div>
           </>

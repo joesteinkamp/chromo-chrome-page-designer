@@ -499,6 +499,13 @@ body {
   border-bottom-color: var(--pd-accent);
 }
 
+.pd-panel__tab-empty {
+  padding: 40px 24px;
+  text-align: center;
+  color: var(--pd-text-muted);
+  font-size: var(--pd-text-md);
+}
+
 .pd-panel__tab:disabled {
   opacity: 0.4;
   cursor: default;

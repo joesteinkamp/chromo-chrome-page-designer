@@ -34,6 +34,7 @@ import {
   resumePicker,
   refreshSelection,
   selectElementDirectly,
+  selectMultipleDirectly,
 } from "./element-picker";
 import { extractElementData, applyStyleToElement, findMatchingElements } from "./style-bridge";
 import { applyComponentProp } from "./framework-detect";
@@ -44,7 +45,11 @@ import { showImageToolbar, hideImageToolbar } from "./image-replace";
 import { showMoveToolbar, hideMoveToolbar } from "./move-mode";
 import { initKeyboard, destroyKeyboard } from "./keyboard";
 import { showSpacing, hideSpacing, updateSpacing } from "./spacing-overlay";
-import { recordSelectionChange, clearSelectionHistory } from "./selection-history";
+import {
+  recordSelectionChange,
+  recordMultiSelectionChange,
+  clearSelectionHistory,
+} from "./selection-history";
 import {
   mountLayersPanel,
   unmountLayersPanel,
@@ -441,6 +446,10 @@ function activate(): void {
       selectElementDirectly(el);
       onElementSelected(el);
     },
+    selectMulti: (elements, primary) => {
+      selectMultipleDirectly(elements, primary);
+      onMultiSelect(elements, primary);
+    },
     startInlineEdit: (el) => onElementDoubleClick(el, new MouseEvent("dblclick")),
     refreshSelection,
     sendElementData,
@@ -552,7 +561,14 @@ function onElementSelected(element: Element | null): void {
 // --- Multi-select callback ---
 
 function onMultiSelect(elements: Element[], primary: Element): void {
+  // Record the multi-selection transition so Cmd+Z can restore it.
+  // No-op when suppressed (i.e. we're restoring from history).
+  recordMultiSelectionChange(elements, primary);
+
   hideImageToolbar();
+  hideMoveToolbar();
+  hideMultiEditOverlays();
+  hideSpacing();
   const nonPrimary = elements.filter((el) => el !== primary);
   showMultiSelectOverlays(nonPrimary);
   sendElementData(primary);

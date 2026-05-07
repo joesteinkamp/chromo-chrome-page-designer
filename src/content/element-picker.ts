@@ -109,6 +109,23 @@ export function selectElementDirectly(element: Element): void {
   callbacks?.onSelect(element);
 }
 
+/**
+ * Programmatically restore a multi-selection (used by undo/redo). Sets the
+ * primary as the active selection and the full set as the multi-selection
+ * list, but does NOT fire onSelect — the caller is expected to drive any
+ * downstream side effects (multi-overlays, panel sync).
+ */
+export function selectMultipleDirectly(
+  elements: Element[],
+  primary: Element
+): void {
+  selectedElement = primary;
+  multiSelectedElements = [...elements];
+  hoveredElement = null;
+  hideHover();
+  showSelection(primary);
+}
+
 // --- Event handlers ---
 
 function onMouseMove(e: MouseEvent): void {

@@ -1,27 +1,44 @@
 /**
  * Selection history — Figma-style undo/redo for element selection state.
  *
- * Each transition from one selected element to another (including to/from
- * nothing) is pushed onto an undo stack. Cmd+Z steps backward through the
- * history, Cmd+Shift+Z steps forward. The surrounding code compares the
- * timestamps from here with change-tracker timestamps to decide whether a
- * given undo invocation should revert an edit or a selection change.
+ * Each transition between selection states is pushed onto an undo stack.
+ * A "selection state" can represent no selection, a single selected element,
+ * or multiple selected elements with a designated primary. Cmd+Z steps
+ * backward through the history, Cmd+Shift+Z steps forward. The surrounding
+ * code compares the timestamps from here with change-tracker timestamps to
+ * decide whether a given undo invocation should revert an edit or a
+ * selection change.
  */
 
 import { generateSelector } from "../shared/selector";
 
+type ElementRef = {
+  selector: string | null;
+  ref: WeakRef<Element> | null;
+};
+
+type SelectionState = {
+  primary: ElementRef | null;
+  /** Non-primary multi-selected elements. Empty for single/no selection. */
+  extras: ElementRef[];
+};
+
+export type RestoredSelection =
+  | { kind: "none" }
+  | { kind: "single"; element: Element }
+  | { kind: "multi"; primary: Element; elements: Element[] };
+
 type SelectionEntry = {
-  from: string | null;
-  fromRef: WeakRef<Element> | null;
-  to: string | null;
-  toRef: WeakRef<Element> | null;
+  from: SelectionState;
+  to: SelectionState;
   timestamp: number;
 };
 
+const EMPTY_STATE: SelectionState = { primary: null, extras: [] };
+
 let undoStack: SelectionEntry[] = [];
 let redoStack: SelectionEntry[] = [];
-let currentSelector: string | null = null;
-let currentRef: WeakRef<Element> | null = null;
+let currentState: SelectionState = EMPTY_STATE;
 let suppressRecording = false;
 
 function safeGenerate(el: Element): string | null {
@@ -32,17 +49,40 @@ function safeGenerate(el: Element): string | null {
   }
 }
 
-function resolveEntry(
-  selector: string | null,
-  ref: WeakRef<Element> | null
-): Element | null {
-  if (ref) {
-    const el = ref.deref();
+function makeRef(el: Element): ElementRef {
+  return { selector: safeGenerate(el), ref: new WeakRef(el) };
+}
+
+function makeState(
+  primary: Element | null,
+  extras: Element[] = []
+): SelectionState {
+  return {
+    primary: primary ? makeRef(primary) : null,
+    extras: extras.map(makeRef),
+  };
+}
+
+function statesEqual(a: SelectionState, b: SelectionState): boolean {
+  const aSel = a.primary?.selector ?? null;
+  const bSel = b.primary?.selector ?? null;
+  if (aSel !== bSel) return false;
+  if (a.extras.length !== b.extras.length) return false;
+  for (let i = 0; i < a.extras.length; i++) {
+    if (a.extras[i].selector !== b.extras[i].selector) return false;
+  }
+  return true;
+}
+
+function resolveRef(r: ElementRef | null): Element | null {
+  if (!r) return null;
+  if (r.ref) {
+    const el = r.ref.deref();
     if (el && el.isConnected) return el;
   }
-  if (selector) {
+  if (r.selector) {
     try {
-      return document.querySelector(selector);
+      return document.querySelector(r.selector);
     } catch {
       return null;
     }
@@ -50,51 +90,70 @@ function resolveEntry(
   return null;
 }
 
-/**
- * Record that the selection transitioned to `element` (null = deselected).
- * No-op when the new selection matches the current one or when recording
- * is temporarily suppressed (e.g. while programmatically restoring from
- * the history stack).
- */
-export function recordSelectionChange(element: Element | null): void {
-  if (suppressRecording) return;
-  const newSelector = element ? safeGenerate(element) : null;
-  if (newSelector === currentSelector) return;
+function resolveState(s: SelectionState): RestoredSelection {
+  const primary = resolveRef(s.primary);
+  if (!primary) return { kind: "none" };
+  if (s.extras.length === 0) return { kind: "single", element: primary };
+  const extras = s.extras
+    .map(resolveRef)
+    .filter((el): el is Element => !!el);
+  if (extras.length === 0) return { kind: "single", element: primary };
+  return { kind: "multi", primary, elements: [primary, ...extras] };
+}
 
+function pushTransition(next: SelectionState): void {
+  if (suppressRecording) return;
+  if (statesEqual(currentState, next)) return;
   undoStack.push({
-    from: currentSelector,
-    fromRef: currentRef,
-    to: newSelector,
-    toRef: element ? new WeakRef(element) : null,
+    from: currentState,
+    to: next,
     timestamp: Date.now(),
   });
   redoStack = [];
-  currentSelector = newSelector;
-  currentRef = element ? new WeakRef(element) : null;
+  currentState = next;
 }
 
 /**
- * Pop the last selection transition and return the element we should
- * restore selection to (null means "deselect"). Returns `undefined` when
- * the undo stack is empty so callers can distinguish "nothing to do"
- * from "restore to no-selection".
+ * Record that the selection transitioned to a single element (or to nothing
+ * when `element` is null). No-op when the new state matches the current one
+ * or when recording is temporarily suppressed.
  */
-export function undoSelection(): Element | null | undefined {
+export function recordSelectionChange(element: Element | null): void {
+  pushTransition(makeState(element));
+}
+
+/**
+ * Record a multi-selection transition. `elements` is the full multi-select
+ * set (which includes `primary`); `primary` is the element whose properties
+ * are shown in the panel.
+ */
+export function recordMultiSelectionChange(
+  elements: Element[],
+  primary: Element
+): void {
+  const extras = elements.filter((el) => el !== primary);
+  pushTransition(makeState(primary, extras));
+}
+
+/**
+ * Pop the last selection transition and return the state to restore. Returns
+ * `undefined` when the undo stack is empty so callers can distinguish
+ * "nothing to do" from "restore to no-selection".
+ */
+export function undoSelection(): RestoredSelection | undefined {
   const entry = undoStack.pop();
   if (!entry) return undefined;
   redoStack.push(entry);
-  currentSelector = entry.from;
-  currentRef = entry.fromRef;
-  return resolveEntry(entry.from, entry.fromRef);
+  currentState = entry.from;
+  return resolveState(entry.from);
 }
 
-export function redoSelection(): Element | null | undefined {
+export function redoSelection(): RestoredSelection | undefined {
   const entry = redoStack.pop();
   if (!entry) return undefined;
   undoStack.push(entry);
-  currentSelector = entry.to;
-  currentRef = entry.toRef;
-  return resolveEntry(entry.to, entry.toRef);
+  currentState = entry.to;
+  return resolveState(entry.to);
 }
 
 /** Timestamp of the most recent entry on the undo stack, or 0. */
@@ -125,6 +184,5 @@ export function withSuppressedRecording<T>(fn: () => T): T {
 export function clearSelectionHistory(): void {
   undoStack = [];
   redoStack = [];
-  currentSelector = null;
-  currentRef = null;
+  currentState = EMPTY_STATE;
 }

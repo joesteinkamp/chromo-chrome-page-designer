@@ -539,7 +539,7 @@ function onElementSelected(element: Element | null): void {
     if (element.tagName.toLowerCase() === "img") {
       showImageToolbar(element);
     }
-    if (element instanceof HTMLElement) {
+    if (element instanceof HTMLElement || element instanceof SVGElement) {
       showMoveToolbar(element, () => {
         refreshSelection();
       });
@@ -607,7 +607,7 @@ function onElementMouseDown(
   e: MouseEvent
 ): void {
   if (isEditing() || isDragActive() || isResizeActive()) return;
-  if (!(element instanceof HTMLElement)) return;
+  if (!(element instanceof HTMLElement) && !(element instanceof SVGElement)) return;
 
   const handleDir = getHandleDirection(target);
   if (handleDir) {

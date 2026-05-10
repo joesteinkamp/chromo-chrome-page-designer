@@ -10,7 +10,7 @@ import { updateSpacing } from "./spacing-overlay";
 type HandleDir = "nw" | "n" | "ne" | "e" | "se" | "s" | "sw" | "w";
 
 let isResizing = false;
-let resizeElement: HTMLElement | null = null;
+let resizeElement: HTMLElement | SVGElement | null = null;
 let handleDir: HandleDir | null = null;
 let startX = 0;
 let startY = 0;
@@ -26,7 +26,7 @@ let onResizeEnd: (() => void) | null = null;
 
 export function tryStartResize(
   target: Element,
-  element: HTMLElement,
+  element: HTMLElement | SVGElement,
   e: MouseEvent,
   callback: () => void
 ): boolean {

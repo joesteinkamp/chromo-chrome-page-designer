@@ -12,7 +12,7 @@ import { recordStyleChange, recordMoveChange, startBatch, endBatch } from "./cha
 import { updateSpacing } from "./spacing-overlay";
 
 let isDragging = false;
-let dragElement: HTMLElement | null = null;
+let dragElement: HTMLElement | SVGElement | null = null;
 let onDragEnd: (() => void) | null = null;
 
 let startX = 0;
@@ -35,7 +35,7 @@ let dropTarget: Element | null = null;
 let insertBefore = true;
 
 export function initDragDrop(
-  element: HTMLElement,
+  element: HTMLElement | SVGElement,
   e: MouseEvent,
   callback: () => void
 ): void {

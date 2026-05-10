@@ -21,7 +21,7 @@ let toolbar: HTMLDivElement | null = null;
 let posBtn: HTMLButtonElement | null = null;
 let reorderBtn: HTMLButtonElement | null = null;
 let hintSpan: HTMLSpanElement | null = null;
-let currentElement: HTMLElement | null = null;
+let currentElement: HTMLElement | SVGElement | null = null;
 let canReorder = false;
 let onModeChangeCb: ((mode: MoveMode) => void) | null = null;
 
@@ -61,7 +61,7 @@ export function canReorderElement(element: Element): boolean {
 }
 
 export function showMoveToolbar(
-  element: HTMLElement,
+  element: HTMLElement | SVGElement,
   onModeChange: (mode: MoveMode) => void
 ): void {
   hideMoveToolbar();

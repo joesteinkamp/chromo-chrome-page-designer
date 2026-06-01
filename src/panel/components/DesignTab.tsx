@@ -17,11 +17,13 @@ import type { ElementData } from "../../shared/types";
 interface Props {
   data: ElementData;
   onStyleChange: (property: string, value: string) => void;
+  onRemoveLayout: () => void;
 }
 
 export const DesignTab = React.memo(function DesignTab({
   data,
   onStyleChange,
+  onRemoveLayout,
 }: Props) {
   const { computedStyles, hasTextContent } = data;
   const display = computedStyles["display"] || "";
@@ -65,6 +67,7 @@ export const DesignTab = React.memo(function DesignTab({
         computedStyles={computedStyles}
         authoredStyles={data.authoredStyles}
         onStyleChange={onStyleChange}
+        onRemoveLayout={onRemoveLayout}
         pageValues={data.pageValues.spacing}
       />
       {hasTextContent && (

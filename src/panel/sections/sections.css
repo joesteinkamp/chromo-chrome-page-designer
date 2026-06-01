@@ -189,6 +189,33 @@
   background: var(--pd-accent-dim);
 }
 
+/* Remove button (e.g., "Remove auto layout") */
+.pd-section__remove-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 28px;
+  border: 1px dashed var(--pd-border);
+  border-radius: var(--pd-radius);
+  background: none;
+  color: var(--pd-text-dim);
+  font-family: var(--pd-font);
+  font-size: var(--pd-text-base);
+  cursor: pointer;
+  transition: all var(--pd-duration-fast);
+}
+
+.pd-section__remove-btn:active {
+  transform: scale(0.97);
+}
+
+.pd-section__remove-btn:hover {
+  border-color: var(--pd-danger, #e5484d);
+  color: var(--pd-danger, #e5484d);
+  background: var(--pd-danger-dim, rgba(229, 72, 77, 0.1));
+}
+
 /* Plus button for collapsed empty sections (Figma-style) */
 .pd-section__plus-btn {
   display: inline-flex;

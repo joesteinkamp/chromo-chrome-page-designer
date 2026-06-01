@@ -27,6 +27,8 @@ export type Message =
   // Style changes (panel → content script)
   | { type: "APPLY_STYLE"; property: string; value: string }
   | { type: "APPLY_STYLE_TO_MATCHING"; className: string; property: string; value: string }
+  // Remove flex/grid auto layout from the selected element(s)
+  | { type: "REMOVE_AUTO_LAYOUT" }
   // Component prop changes (panel → content script)
   | {
       type: "APPLY_PROP";

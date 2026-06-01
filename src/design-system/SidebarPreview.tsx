@@ -222,7 +222,7 @@ export function SidebarSelected() {
         </div>
         <div className="pd-panel__content">
           {activeTab === "design" && (
-            <DesignTab data={MOCK_ELEMENT} onStyleChange={noop} />
+            <DesignTab data={MOCK_ELEMENT} onStyleChange={noop} onRemoveLayout={noop} />
           )}
           {activeTab === "changes" && (
             <ChangesTab

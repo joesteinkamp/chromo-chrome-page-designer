@@ -22,6 +22,9 @@ export interface ArchivedSend {
 export function App() {
   const { elementData, isConnected, setElementData, multiSelectCount } = useElementData();
   const sendStyleChange = useStyleChange();
+  const sendRemoveAutoLayout = useCallback(() => {
+    chrome.runtime.sendMessage({ type: "REMOVE_AUTO_LAYOUT" } satisfies Message);
+  }, []);
   const [activeTab, setActiveTab] = useState<Tab>("design");
   const [changes, setChanges] = useState<Change[]>([]);
   const [archivedSends, setArchivedSends] = useState<ArchivedSend[]>([]);
@@ -457,6 +460,7 @@ export function App() {
                   <DesignTab
                     data={elementData}
                     onStyleChange={sendStyleChange}
+                    onRemoveLayout={sendRemoveAutoLayout}
                   />
                 ) : (
                   <div className="pd-panel__tab-empty">

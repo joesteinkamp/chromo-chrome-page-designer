@@ -22,7 +22,6 @@ import { generateSelector } from "../shared/selector";
 import { getMode, setMode, canReorderElement } from "./move-mode";
 import {
   recordStyleChange,
-  recordDeleteChange,
   recordHideChange,
   recordMoveChange,
   undoLast,
@@ -48,6 +47,7 @@ interface KeyboardCallbacks {
   sendElementData: (element: Element) => void;
   wrapInGroup: (element: HTMLElement) => void;
   duplicateElement: (element: HTMLElement) => void;
+  deleteElement: (element: HTMLElement) => void;
 }
 
 let callbacks: KeyboardCallbacks | null = null;
@@ -225,17 +225,12 @@ function onKeyDown(e: KeyboardEvent): void {
     return;
   }
 
-  // Delete / Backspace — delete element
+  // Delete / Backspace — delete element. Routed through main.ts so multi-edit
+  // ("Edit all matching") and multi-selection both delete every target element.
   if (e.key === "Delete" || e.key === "Backspace") {
     e.preventDefault();
     e.stopPropagation();
-    const parent = selected.parentElement;
-    if (!parent) return;
-    const parentSelector = generateSelector(parent);
-    const index = Array.from(parent.children).indexOf(selected);
-    recordDeleteChange(selected, parentSelector, index);
-    selected.remove();
-    callbacks.clearSelection();
+    callbacks.deleteElement(selected);
     return;
   }
 

@@ -69,6 +69,7 @@ import {
   replayChanges,
   recordWrapChange,
   recordDuplicateChange,
+  recordDeleteChange,
   startBatch,
   endBatch,
   recordCommentChange,
@@ -77,6 +78,7 @@ import {
   getComments,
   subscribeComments,
 } from "./change-tracker";
+import { generateSelector } from "../shared/selector";
 import type { Message } from "../shared/messages";
 
 let isActive = false;
@@ -512,6 +514,10 @@ function activate(): void {
         onElementSelected(clone);
       }
     },
+    deleteElement: (el) => {
+      deleteSelectedElements(el);
+      clearSelection();
+    },
   });
 
   // Check for saved edits
@@ -759,6 +765,45 @@ function collectSelectedElements(primary: HTMLElement): HTMLElement[] {
     if (el instanceof HTMLElement) all.add(el);
   }
   return Array.from(all);
+}
+
+/**
+ * Delete the selected element. When multi-edit ("Edit all matching") is on, all
+ * matching instances are deleted too; when several elements are multi-selected,
+ * all of them are deleted. Multiple deletions are grouped into a single batch so
+ * one undo restores everything.
+ */
+function deleteSelectedElements(primary: HTMLElement): void {
+  // Collect every element to delete, de-duplicated, starting with the primary.
+  const targets = new Set<HTMLElement>();
+  targets.add(primary);
+
+  for (const el of getMultiSelectedElements()) {
+    if (el instanceof HTMLElement) targets.add(el);
+  }
+
+  if (multiEditEnabled) {
+    for (const match of findMatchingElements(primary)) {
+      if (match instanceof HTMLElement) targets.add(match);
+    }
+  }
+
+  const list = Array.from(targets);
+  const batched = list.length > 1;
+  if (batched) startBatch();
+
+  for (const el of list) {
+    const parent = el.parentElement;
+    if (!parent) continue;
+    // Compute the parent selector and index against the live DOM right before
+    // removal so undo can re-insert each element at the correct position.
+    const parentSelector = generateSelector(parent);
+    const index = Array.from(parent.children).indexOf(el);
+    recordDeleteChange(el, parentSelector, index);
+    el.remove();
+  }
+
+  if (batched) endBatch();
 }
 
 /** Wrap one or more elements in a new div container and record the change */

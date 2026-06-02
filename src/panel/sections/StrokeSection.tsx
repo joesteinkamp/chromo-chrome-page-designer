@@ -1,7 +1,8 @@
 import React, { useState, useCallback, useEffect, useRef } from "react";
-import { ColorPicker, NumberInput, SelectDropdown } from "../controls";
+import { ColorPicker, GradientEditor, NumberInput, SelectDropdown } from "../controls";
 import { VarLabel } from "./VarLabel";
 import { ChevronDown, PlusIcon, GearIcon } from "../icons";
+import { isGradient, parseGradient, buildGradient, defaultGradient } from "../../shared/gradient";
 import "./sections.css";
 
 interface StrokeSectionProps {
@@ -9,6 +10,7 @@ interface StrokeSectionProps {
   authoredStyles?: Record<string, string>;
   pageColors?: string[];
   pageStrokeWidths?: number[];
+  designTokens?: Array<{ name: string; value: string }>;
   onStyleChange: (property: string, value: string) => void;
 }
 
@@ -50,6 +52,7 @@ export const StrokeSection: React.FC<StrokeSectionProps> = ({
   authoredStyles,
   pageColors,
   pageStrokeWidths,
+  designTokens,
   onStyleChange,
 }) => {
   const sideColors = [
@@ -75,7 +78,12 @@ export const StrokeSection: React.FC<StrokeSectionProps> = ({
   const borderColor = activeSide >= 0 ? sideColors[activeSide] : sideColors[0];
   const borderStyle = activeSide >= 0 ? sideStyles[activeSide] : sideStyles[0];
 
-  const hasValue = sideStyles.some((s, i) => s !== "none" && parsePx(sideWidths[i]) > 0);
+  // Gradient stroke via border-image (square corners — a border-image limitation).
+  const borderImage = computedStyles["border-image-source"] || "none";
+  const hasGradient = isGradient(borderImage);
+
+  const hasValue =
+    hasGradient || sideStyles.some((s, i) => s !== "none" && parsePx(sideWidths[i]) > 0);
   const [collapsed, setCollapsed] = useState(!hasValue);
   useEffect(() => { setCollapsed(!hasValue); }, [hasValue]);
 
@@ -146,6 +154,27 @@ export const StrokeSection: React.FC<StrokeSectionProps> = ({
     [onStyleChange]
   );
 
+  const handleGradientChange = useCallback(
+    (css: string) => { onStyleChange("border-image-source", css); },
+    [onStyleChange]
+  );
+
+  const switchToGradient = useCallback(() => {
+    // border-image only paints when there's a visible solid border to fill.
+    if (borderStyle === "none") onStyleChange("border-style", "solid");
+    if (sideWidths.every((w) => parsePx(w) === 0)) onStyleChange("border-width", "2px");
+    onStyleChange("border-image-slice", "1");
+    onStyleChange("border-image-source", buildGradient(defaultGradient(borderColor)));
+  }, [borderStyle, sideWidths, borderColor, onStyleChange]);
+
+  const switchToSolid = useCallback(() => {
+    // Promote the gradient's first stop to a flat border color, then drop it.
+    const parsed = parseGradient(borderImage);
+    const firstColor = parsed?.stops[0]?.color;
+    onStyleChange("border-image-source", "none");
+    if (firstColor) onStyleChange("border-color", firstColor);
+  }, [borderImage, onStyleChange]);
+
   return (
     <div className="pd-section" style={{ position: "relative" }}>
       {/* Header with gear in the title area like Typography */}
@@ -182,27 +211,49 @@ export const StrokeSection: React.FC<StrokeSectionProps> = ({
 
       {!collapsed && (
         <div className="pd-section__content">
-          {/* Color + Width side-by-side 50/50 (single mode) */}
-          {mode === "single" && (
-            <div className="pd-section__row pd-section__row--half">
-              <ColorPicker
-                value={borderColor}
-                onChange={handleColorChange}
-                pageColors={pageColors}
-              />
-              <NumberInput
-                value={parsePx(sideWidths[0])}
-                onChange={handleWidthChange}
-                min={0}
-                suffix="px"
-                suggestions={pageStrokeWidths}
-              />
-            </div>
-          )}
+          {/* Solid / Gradient toggle */}
+          <div className="pd-fill__type-toggle">
+            <button
+              type="button"
+              className={`pd-fill__type-btn${!hasGradient ? " pd-fill__type-btn--active" : ""}`}
+              onClick={() => { if (hasGradient) switchToSolid(); }}
+            >
+              Solid
+            </button>
+            <button
+              type="button"
+              className={`pd-fill__type-btn${hasGradient ? " pd-fill__type-btn--active" : ""}`}
+              onClick={() => { if (!hasGradient) switchToGradient(); }}
+            >
+              Gradient
+            </button>
+          </div>
 
-          {/* Sides mode: color full width, then T/R + B/L pairs */}
-          {mode === "sides" && (
-            <>
+          {/* Color (solid) or gradient editor */}
+          {hasGradient ? (
+            <GradientEditor
+              value={borderImage}
+              onChange={handleGradientChange}
+              designTokens={designTokens}
+              pageColors={pageColors}
+            />
+          ) : (
+            mode === "single" ? (
+              <div className="pd-section__row pd-section__row--half">
+                <ColorPicker
+                  value={borderColor}
+                  onChange={handleColorChange}
+                  pageColors={pageColors}
+                />
+                <NumberInput
+                  value={parsePx(sideWidths[0])}
+                  onChange={handleWidthChange}
+                  min={0}
+                  suffix="px"
+                  suggestions={pageStrokeWidths}
+                />
+              </div>
+            ) : (
               <div className="pd-section__row">
                 <ColorPicker
                   value={borderColor}
@@ -210,6 +261,12 @@ export const StrokeSection: React.FC<StrokeSectionProps> = ({
                   pageColors={pageColors}
                 />
               </div>
+            )
+          )}
+
+          {/* Width controls in sides mode (shown for both solid and gradient) */}
+          {mode === "sides" && (
+            <>
               <div className="pd-section__row pd-section__row--half">
                 <NumberInput label="T" value={parsePx(sideWidths[0])} onChange={(v) => handleSideWidthChange(0, v)} min={0} suffix="px" suggestions={pageStrokeWidths} />
                 <NumberInput label="R" value={parsePx(sideWidths[1])} onChange={(v) => handleSideWidthChange(1, v)} min={0} suffix="px" suggestions={pageStrokeWidths} />
@@ -219,6 +276,21 @@ export const StrokeSection: React.FC<StrokeSectionProps> = ({
                 <NumberInput label="L" value={parsePx(sideWidths[3])} onChange={(v) => handleSideWidthChange(3, v)} min={0} suffix="px" suggestions={pageStrokeWidths} />
               </div>
             </>
+          )}
+
+          {/* Width control in single mode when a gradient is active (no color picker pairing) */}
+          {mode === "single" && hasGradient && (
+            <div className="pd-section__row pd-section__row--half">
+              <NumberInput
+                label="W"
+                value={parsePx(sideWidths[0])}
+                onChange={handleWidthChange}
+                min={0}
+                suffix="px"
+                suggestions={pageStrokeWidths}
+              />
+              <span />
+            </div>
           )}
 
           <VarLabel authoredStyles={authoredStyles} property={["border-color", "border-top-color"]} />

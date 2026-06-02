@@ -66,6 +66,8 @@ export const TRACKED_PROPERTIES = [
   "border-right-color",
   "border-bottom-color",
   "border-left-color",
+  // Gradient border (border-image)
+  "border-image-source",
   "border-top-left-radius",
   "border-top-right-radius",
   "border-bottom-right-radius",

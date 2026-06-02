@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import {
   DirectionToggle,
   AlignmentGrid,
@@ -22,6 +22,7 @@ function parseGap(val: string): number {
 
 export const AutoLayoutSection: React.FC<AutoLayoutSectionProps> = ({
   computedStyles,
+  authoredStyles,
   onStyleChange,
   onRemoveLayout,
   pageValues,
@@ -32,6 +33,34 @@ export const AutoLayoutSection: React.FC<AutoLayoutSectionProps> = ({
   const isFlex = display === "flex" || display === "inline-flex";
   const isGrid = display === "grid" || display === "inline-grid";
   const hasLayout = isFlex || isGrid;
+
+  // Prefer the authored value (e.g. "1fr 1fr 1fr") over the browser's resolved
+  // computed value (e.g. "100px 200px 300px") so the field stays human-editable.
+  const columnsValue =
+    authoredStyles?.["grid-template-columns"] ||
+    computedStyles["grid-template-columns"] ||
+    "none";
+  const rowsValue =
+    authoredStyles?.["grid-template-rows"] ||
+    computedStyles["grid-template-rows"] ||
+    "none";
+
+  // Grid track inputs are free-text and must not commit on every keystroke:
+  // each APPLY_STYLE re-extracts computed styles and would clobber the field
+  // mid-typing. Keep a local draft and commit on blur / Enter instead.
+  const [columnsDraft, setColumnsDraft] = useState(columnsValue);
+  const [rowsDraft, setRowsDraft] = useState(rowsValue);
+  const columnsRef = useRef<HTMLInputElement>(null);
+  const rowsRef = useRef<HTMLInputElement>(null);
+
+  // Re-sync from props when the selection changes, but never while the user is
+  // actively editing that field.
+  useEffect(() => {
+    if (document.activeElement !== columnsRef.current) setColumnsDraft(columnsValue);
+  }, [columnsValue]);
+  useEffect(() => {
+    if (document.activeElement !== rowsRef.current) setRowsDraft(rowsValue);
+  }, [rowsValue]);
 
   const handleDirectionChange = useCallback(
     (v: string) => onStyleChange("flex-direction", v),
@@ -64,18 +93,30 @@ export const AutoLayoutSection: React.FC<AutoLayoutSectionProps> = ({
     onRemoveLayout?.();
   }, [onRemoveLayout]);
 
-  const handleColumnsChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      onStyleChange("grid-template-columns", e.target.value);
-    },
-    [onStyleChange]
-  );
+  const commitColumns = useCallback(() => {
+    const next = columnsDraft.trim() || "none";
+    if (next !== columnsValue) onStyleChange("grid-template-columns", next);
+  }, [columnsDraft, columnsValue, onStyleChange]);
 
-  const handleRowsChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      onStyleChange("grid-template-rows", e.target.value);
+  const commitRows = useCallback(() => {
+    const next = rowsDraft.trim() || "none";
+    if (next !== rowsValue) onStyleChange("grid-template-rows", next);
+  }, [rowsDraft, rowsValue, onStyleChange]);
+
+  const handleTrackKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        e.currentTarget.blur();
+      } else if (e.key === "Escape") {
+        e.preventDefault();
+        // Discard the draft and restore the committed value.
+        if (e.currentTarget === columnsRef.current) setColumnsDraft(columnsValue);
+        else if (e.currentTarget === rowsRef.current) setRowsDraft(rowsValue);
+        e.currentTarget.blur();
+      }
     },
-    [onStyleChange]
+    [columnsValue, rowsValue]
   );
 
   const handleAutoFlowToggle = useCallback(() => {
@@ -148,20 +189,30 @@ export const AutoLayoutSection: React.FC<AutoLayoutSectionProps> = ({
               <div className="pd-section__row pd-section__row--label">
                 <label className="pd-section__input-label">Columns</label>
                 <input
+                  ref={columnsRef}
                   className="pd-section__text-input"
                   type="text"
-                  value={computedStyles["grid-template-columns"] || "none"}
-                  onChange={handleColumnsChange}
+                  value={columnsDraft}
+                  onChange={(e) => setColumnsDraft(e.target.value)}
+                  onBlur={commitColumns}
+                  onKeyDown={handleTrackKeyDown}
+                  spellCheck={false}
+                  placeholder="e.g. 1fr 1fr 1fr"
                   title="grid-template-columns"
                 />
               </div>
               <div className="pd-section__row pd-section__row--label">
                 <label className="pd-section__input-label">Rows</label>
                 <input
+                  ref={rowsRef}
                   className="pd-section__text-input"
                   type="text"
-                  value={computedStyles["grid-template-rows"] || "none"}
-                  onChange={handleRowsChange}
+                  value={rowsDraft}
+                  onChange={(e) => setRowsDraft(e.target.value)}
+                  onBlur={commitRows}
+                  onKeyDown={handleTrackKeyDown}
+                  spellCheck={false}
+                  placeholder="e.g. auto 1fr"
                   title="grid-template-rows"
                 />
               </div>

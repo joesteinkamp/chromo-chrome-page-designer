@@ -90,6 +90,7 @@ export const DesignTab = React.memo(function DesignTab({
         authoredStyles={data.authoredStyles}
         pageColors={data.pageColors}
         pageStrokeWidths={data.pageValues.strokeWidth}
+        designTokens={data.designTokens}
         onStyleChange={onStyleChange}
       />
       <CornerRadiusSection

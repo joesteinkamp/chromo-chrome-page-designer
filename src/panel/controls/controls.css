@@ -1013,3 +1013,146 @@
   from { background-color: var(--pd-accent-dim); }
   to   { background-color: transparent; }
 }
+
+/* ── Gradient editor ── */
+.pd-gradient {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pd-space-3);
+}
+
+.pd-gradient__types {
+  display: flex;
+  gap: 0;
+  background: var(--pd-bg-raised);
+  border: 1px solid var(--pd-border);
+  border-radius: var(--pd-radius);
+  padding: 2px;
+}
+
+.pd-gradient__type-btn {
+  flex: 1;
+  height: 22px;
+  border: none;
+  background: transparent;
+  color: var(--pd-text-dim);
+  font-size: var(--pd-text-base);
+  font-family: inherit;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: background var(--pd-duration-fast) var(--pd-ease), color var(--pd-duration-fast) var(--pd-ease);
+}
+
+.pd-gradient__type-btn:hover {
+  color: var(--pd-text);
+}
+
+.pd-gradient__type-btn--active {
+  background: var(--pd-accent);
+  color: #fff;
+}
+
+.pd-gradient__track {
+  position: relative;
+  height: 20px;
+  border-radius: var(--pd-radius);
+  border: 1px solid var(--pd-border);
+  cursor: copy;
+  /* Checkerboard so translucent stops read clearly */
+  background-color: #fff;
+  background-image:
+    linear-gradient(45deg, #ccc 25%, transparent 25%),
+    linear-gradient(-45deg, #ccc 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #ccc 75%),
+    linear-gradient(-45deg, transparent 75%, #ccc 75%);
+  background-size: 8px 8px;
+  background-position: 0 0, 0 4px, 4px -4px, -4px 0;
+}
+
+.pd-gradient__thumb {
+  position: absolute;
+  top: 50%;
+  width: 12px;
+  height: 12px;
+  padding: 0;
+  transform: translate(-50%, -50%);
+  border: 2px solid #fff;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.4);
+  cursor: grab;
+  outline: none;
+}
+
+.pd-gradient__thumb:active {
+  cursor: grabbing;
+}
+
+.pd-gradient__thumb--active {
+  box-shadow: 0 0 0 2px var(--pd-accent);
+  z-index: 1;
+}
+
+.pd-gradient__stop-row {
+  display: flex;
+  align-items: center;
+  gap: var(--pd-space-3);
+}
+
+.pd-gradient__stop-row > .pd-color-picker {
+  flex: 1;
+  min-width: 0;
+}
+
+.pd-gradient__pos-input {
+  width: 64px;
+  flex: 0 0 auto;
+}
+
+.pd-gradient__angle-row {
+  display: flex;
+  align-items: center;
+  gap: var(--pd-space-3);
+}
+
+.pd-gradient__angle-label {
+  font-size: var(--pd-text-base);
+  color: var(--pd-text-dim);
+  flex: 1;
+}
+
+.pd-gradient__angle-input {
+  width: 72px;
+  flex: 0 0 auto;
+}
+
+.pd-gradient__stop-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  height: 28px;
+  min-width: 28px;
+  padding: 0 8px;
+  border: 1px solid var(--pd-border);
+  border-radius: var(--pd-radius);
+  background: var(--pd-bg-raised);
+  color: var(--pd-text-dim);
+  cursor: pointer;
+  font-size: var(--pd-text-base);
+  font-family: inherit;
+  transition: background var(--pd-duration-fast) var(--pd-ease), color var(--pd-duration-fast) var(--pd-ease);
+}
+
+.pd-gradient__stop-btn:hover:not(:disabled) {
+  background: var(--pd-bg-hover);
+  color: var(--pd-text);
+}
+
+.pd-gradient__stop-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.pd-gradient__stop-btn--wide {
+  flex: 1;
+}

@@ -412,3 +412,35 @@
   background: var(--pd-accent-dim);
   color: var(--pd-accent);
 }
+
+/* ── Fill / Stroke type toggle (Solid / Gradient) ── */
+.pd-fill__type-toggle {
+  display: flex;
+  background: var(--pd-bg-raised);
+  border: 1px solid var(--pd-border);
+  border-radius: var(--pd-radius);
+  padding: 2px;
+  margin-bottom: var(--pd-space-3);
+}
+
+.pd-fill__type-btn {
+  flex: 1;
+  height: 22px;
+  border: none;
+  background: transparent;
+  color: var(--pd-text-dim);
+  font-size: var(--pd-text-base);
+  font-family: inherit;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: background var(--pd-duration-fast) var(--pd-ease), color var(--pd-duration-fast) var(--pd-ease);
+}
+
+.pd-fill__type-btn:hover {
+  color: var(--pd-text);
+}
+
+.pd-fill__type-btn--active {
+  background: var(--pd-accent);
+  color: #fff;
+}

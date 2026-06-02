@@ -36,7 +36,7 @@ import {
   selectElementDirectly,
   selectMultipleDirectly,
 } from "./element-picker";
-import { extractElementData, applyStyleToElement, findMatchingElements } from "./style-bridge";
+import { extractElementData, applyStyleToElement, findMatchingElements, removeAutoLayout } from "./style-bridge";
 import { applyComponentProp } from "./framework-detect";
 import { startInlineEdit, stopInlineEdit, isEditing } from "./inline-edit";
 import { initDragDrop, isDragActive, cancelDrag } from "./drag-drop";
@@ -223,6 +223,50 @@ chrome.runtime.onMessage.addListener(
           }
 
           if (hasMultiple) endBatch();
+
+          refreshSelection();
+
+          // Visual flash feedback (force reflow between class toggles)
+          el.classList.remove("__pd-flash");
+          void el.getBoundingClientRect();
+          el.classList.add("__pd-flash");
+          setTimeout(() => el.classList.remove("__pd-flash"), 400);
+
+          sendElementData(el);
+        }
+        break;
+      }
+
+      case "REMOVE_AUTO_LAYOUT": {
+        const el = getSelectedElement();
+        if (el && (el instanceof HTMLElement || el instanceof SVGElement)) {
+          const multiEls = getMultiSelectedElements();
+          const matches = multiEditEnabled ? findMatchingElements(el) : [];
+
+          // Removing auto layout touches several properties at once — batch them
+          // so a single undo restores the whole layout.
+          startBatch();
+
+          const stripLayout = (target: HTMLElement | SVGElement) => {
+            for (const c of removeAutoLayout(target)) {
+              recordStyleChange(target, c.property, c.from, c.to);
+            }
+          };
+
+          stripLayout(el);
+          for (const match of matches) {
+            if (match instanceof HTMLElement || match instanceof SVGElement) {
+              stripLayout(match);
+            }
+          }
+          for (const multiEl of multiEls) {
+            if (multiEl !== el && (multiEl instanceof HTMLElement || multiEl instanceof SVGElement)) {
+              stripLayout(multiEl);
+            }
+          }
+          if (matches.length > 0) updateMultiEditOverlays(matches);
+
+          endBatch();
 
           refreshSelection();
 

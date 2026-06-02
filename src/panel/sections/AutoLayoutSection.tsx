@@ -11,6 +11,7 @@ interface AutoLayoutSectionProps {
   computedStyles: Record<string, string>;
   authoredStyles?: Record<string, string>;
   onStyleChange: (property: string, value: string) => void;
+  onRemoveLayout?: () => void;
   pageValues?: number[];
 }
 
@@ -22,6 +23,7 @@ function parseGap(val: string): number {
 export const AutoLayoutSection: React.FC<AutoLayoutSectionProps> = ({
   computedStyles,
   onStyleChange,
+  onRemoveLayout,
   pageValues,
 }) => {
   const [collapsed, setCollapsed] = useState(false);
@@ -57,6 +59,10 @@ export const AutoLayoutSection: React.FC<AutoLayoutSectionProps> = ({
   const handleAddAutoLayout = useCallback(() => {
     onStyleChange("display", "flex");
   }, [onStyleChange]);
+
+  const handleRemoveAutoLayout = useCallback(() => {
+    onRemoveLayout?.();
+  }, [onRemoveLayout]);
 
   const handleColumnsChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -100,7 +106,9 @@ export const AutoLayoutSection: React.FC<AutoLayoutSectionProps> = ({
             >
               + Add auto layout
             </button>
-          ) : isFlex ? (
+          ) : (
+            <>
+            {isFlex ? (
             <>
               <div className="pd-section__row">
                 <DirectionToggle
@@ -182,6 +190,18 @@ export const AutoLayoutSection: React.FC<AutoLayoutSectionProps> = ({
                   Column flow
                 </button>
               </div>
+            </>
+            )}
+            <div className="pd-section__row">
+              <button
+                className="pd-section__remove-btn"
+                onClick={handleRemoveAutoLayout}
+                type="button"
+                title="Remove auto layout (flex / grid)"
+              >
+                Remove auto layout
+              </button>
+            </div>
             </>
           )}
         </div>

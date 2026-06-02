@@ -193,6 +193,66 @@ export function applyStyleToElement(
   element.style.setProperty(property, value, "important");
 }
 
+/**
+ * Flex/grid configuration properties that only have meaning while a container
+ * uses auto layout. Removing them keeps the exported changeset clean once the
+ * layout is gone.
+ */
+const AUTO_LAYOUT_AUX_PROPERTIES = [
+  "flex-direction",
+  "flex-wrap",
+  "flex-flow",
+  "justify-content",
+  "align-items",
+  "align-content",
+  "place-items",
+  "place-content",
+  "gap",
+  "row-gap",
+  "column-gap",
+  "grid-template-columns",
+  "grid-template-rows",
+  "grid-template-areas",
+  "grid-auto-flow",
+  "grid-auto-columns",
+  "grid-auto-rows",
+];
+
+/**
+ * Remove flex/grid auto layout from an element, reverting it to normal flow.
+ *
+ * If `display` was set inline (e.g. via "Add auto layout"), the inline value is
+ * dropped so the element falls back to its natural display. Otherwise the
+ * layout comes from the page's own stylesheet, so `display: block` is forced to
+ * override it. Auxiliary flex/grid properties set inline are also stripped.
+ *
+ * Returns the list of property changes made so callers can record them for undo.
+ */
+export function removeAutoLayout(
+  element: HTMLElement | SVGElement
+): Array<{ property: string; from: string; to: string }> {
+  const changes: Array<{ property: string; from: string; to: string }> = [];
+  const computed = window.getComputedStyle(element);
+
+  const fromDisplay = computed.getPropertyValue("display");
+  if (element.style.getPropertyValue("display")) {
+    element.style.removeProperty("display");
+    changes.push({ property: "display", from: fromDisplay, to: "" });
+  } else {
+    element.style.setProperty("display", "block", "important");
+    changes.push({ property: "display", from: fromDisplay, to: "block" });
+  }
+
+  for (const prop of AUTO_LAYOUT_AUX_PROPERTIES) {
+    const inlineVal = element.style.getPropertyValue(prop);
+    if (!inlineVal) continue;
+    element.style.removeProperty(prop);
+    changes.push({ property: prop, from: inlineVal, to: "" });
+  }
+
+  return changes;
+}
+
 /** Inject a Google Fonts stylesheet if the font hasn't been loaded yet */
 function loadGoogleFontIfNeeded(family: string): void {
   const clean = family.replace(/^['"]|['"]$/g, "");

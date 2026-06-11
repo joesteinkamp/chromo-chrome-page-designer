@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect, useRef } from "react";
 import { ColorPicker, GradientEditor, NumberInput, SelectDropdown } from "../controls";
 import { VarLabel } from "./VarLabel";
-import { ChevronDown, PlusIcon, GearIcon } from "../icons";
+import { ChevronDown, PlusIcon, MinusIcon, GearIcon } from "../icons";
 import { isGradient, parseGradient, buildGradient, defaultGradient } from "../../shared/gradient";
 import "./sections.css";
 
@@ -167,6 +167,13 @@ export const StrokeSection: React.FC<StrokeSectionProps> = ({
     onStyleChange("border-image-source", buildGradient(defaultGradient(borderColor)));
   }, [borderStyle, sideWidths, borderColor, onStyleChange]);
 
+  const handleRemove = useCallback(() => {
+    // Clear the border entirely — width, style, and any gradient stroke.
+    onStyleChange("border-image-source", "none");
+    onStyleChange("border-style", "none");
+    onStyleChange("border-width", "0px");
+  }, [onStyleChange]);
+
   const switchToSolid = useCallback(() => {
     // Promote the gradient's first stop to a flat border color, then drop it.
     const parsed = parseGradient(borderImage);
@@ -202,9 +209,21 @@ export const StrokeSection: React.FC<StrokeSectionProps> = ({
               <PlusIcon size={12} />
             </button>
           ) : (
-            <span className={`pd-section__arrow${collapsed ? " pd-section__arrow--collapsed" : ""}`}>
-              <ChevronDown size={12} />
-            </span>
+            <>
+              {hasValue && (
+                <button
+                  className="pd-section__minus-btn"
+                  onClick={(e) => { e.stopPropagation(); handleRemove(); }}
+                  type="button"
+                  title="Remove stroke"
+                >
+                  <MinusIcon size={12} />
+                </button>
+              )}
+              <span className={`pd-section__arrow${collapsed ? " pd-section__arrow--collapsed" : ""}`}>
+                <ChevronDown size={12} />
+              </span>
+            </>
           )}
         </div>
       </div>

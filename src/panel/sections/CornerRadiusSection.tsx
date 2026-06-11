@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect } from "react";
 import { CornerRadiusInput } from "../controls";
-import { ChevronDown, PlusIcon } from "../icons";
+import { ChevronDown, PlusIcon, MinusIcon } from "../icons";
 import "./sections.css";
 
 interface CornerRadiusSectionProps {
@@ -52,6 +52,11 @@ export const CornerRadiusSection: React.FC<CornerRadiusSectionProps> = ({
     [onStyleChange]
   );
 
+  const handleRemove = useCallback(
+    () => onStyleChange("border-radius", "0px"),
+    [onStyleChange]
+  );
+
   return (
     <div className="pd-section">
       <div
@@ -62,7 +67,12 @@ export const CornerRadiusSection: React.FC<CornerRadiusSectionProps> = ({
         {collapsed && !hasValue ? (
           <button className="pd-section__plus-btn" onClick={(e) => { e.stopPropagation(); setCollapsed(false); }} type="button"><PlusIcon size={12} /></button>
         ) : (
-          <span className={`pd-section__arrow${collapsed ? " pd-section__arrow--collapsed" : ""}`}><ChevronDown size={12} /></span>
+          <div className="pd-section__header-actions">
+            {hasValue && (
+              <button className="pd-section__minus-btn" onClick={(e) => { e.stopPropagation(); handleRemove(); }} type="button" title="Remove corner radius"><MinusIcon size={12} /></button>
+            )}
+            <span className={`pd-section__arrow${collapsed ? " pd-section__arrow--collapsed" : ""}`}><ChevronDown size={12} /></span>
+          </div>
         )}
       </div>
       {!collapsed && (

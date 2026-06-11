@@ -90,6 +90,14 @@ export function PlusIcon({ size = defaults.size, className = defaults.className 
   );
 }
 
+export function MinusIcon({ size = defaults.size, className = defaults.className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" className={`pd-icon ${className}`}>
+      <path d="M3 8h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 export function CloseIcon({ size = defaults.size, className = defaults.className }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 16 16" fill="none" className={`pd-icon ${className}`}>

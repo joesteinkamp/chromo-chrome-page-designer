@@ -849,3 +849,54 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: var(--pd-scrollbar-hover);
 }
+
+/* --- Viewport preset bar (responsive editing) --- */
+.pd-panel__viewport-bar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--pd-border, #2a2a2a);
+  flex: 0 0 auto;
+}
+
+.pd-panel__viewport-btn {
+  background: transparent;
+  border: 1px solid var(--pd-border, #2a2a2a);
+  border-radius: 4px;
+  color: var(--pd-text-secondary, #aaa);
+  font-size: 11px;
+  padding: 3px 8px;
+  cursor: pointer;
+}
+
+.pd-panel__viewport-btn:hover {
+  color: var(--pd-text, #e6e6e6);
+  border-color: var(--pd-border-hover, #444);
+}
+
+.pd-panel__viewport-btn--active {
+  background: var(--pd-accent, #0c8ce9);
+  border-color: var(--pd-accent, #0c8ce9);
+  color: #fff;
+}
+
+.pd-panel__viewport-readout {
+  margin-left: auto;
+  font-size: 10px;
+  color: var(--pd-text-tertiary, #888);
+  font-variant-numeric: tabular-nums;
+}
+
+.pd-panel__tokens-link {
+  background: transparent;
+  border: none;
+  color: var(--pd-accent, #0c8ce9);
+  cursor: pointer;
+  font-size: 11px;
+  margin-bottom: 12px;
+}
+
+.pd-panel__tokens-link:hover {
+  text-decoration: underline;
+}

@@ -4,6 +4,9 @@
  */
 
 import { generateSelector, IFRAME_SELECTOR_SEP } from "../shared/selector";
+import { detectTailwind, suggestTailwindClass, findReplacedTailwindClass } from "./tailwind-detect";
+import { findMatchingToken, setTokenOverride } from "./style-bridge";
+import { applyComponentProp } from "./framework-detect";
 import type {
   Change,
   StyleChange,
@@ -16,6 +19,8 @@ import type {
   WrapChange,
   DuplicateChange,
   CommentChange,
+  PropChange,
+  TokenChange,
 } from "../shared/types";
 
 let changes: Change[] = [];
@@ -56,7 +61,54 @@ function makeId(): string {
   return `ch_${nextId++}_${Date.now()}`;
 }
 
+/** Fields shared by every recorded change. The viewport stamp lets the export
+ *  scope narrow-viewport edits to responsive breakpoints. */
+function makeBase(): { id: string; timestamp: number; viewport: number } {
+  return { id: makeId(), timestamp: Date.now(), viewport: window.innerWidth };
+}
+
+/**
+ * Bucket a viewport width into mobile / tablet / desktop for coalescing.
+ * Exact-width comparison would split coalescing on any 1px window or panel
+ * resize; what matters is whether two edits target different breakpoints.
+ */
+function viewportBucket(width: number | undefined): number {
+  if (width === undefined) return 2;
+  if (width < 640) return 0;
+  if (width < 1024) return 1;
+  return 2;
+}
+
 // --- Record changes ---
+
+/**
+ * Compute source-aware hints for a style change: the Tailwind utility the new
+ * value maps to (and which existing class it replaces), and any page design
+ * token whose value matches. These travel with the change into the export so
+ * the AI agent can edit the codebase in its own vocabulary.
+ */
+function computeStyleHints(
+  element: Element,
+  property: string,
+  to: string
+): Pick<StyleChange, "tailwindAdd" | "tailwindRemove" | "matchedToken"> {
+  const hints: Pick<StyleChange, "tailwindAdd" | "tailwindRemove" | "matchedToken"> = {};
+  try {
+    if (detectTailwind()) {
+      const add = suggestTailwindClass(property, to);
+      if (add) {
+        hints.tailwindAdd = add;
+        const remove = findReplacedTailwindClass(element, property);
+        if (remove && remove !== add) hints.tailwindRemove = remove;
+      }
+    }
+  } catch { /* hint computation must never break recording */ }
+  try {
+    const token = findMatchingToken(element, to);
+    if (token) hints.matchedToken = token;
+  } catch { /* ditto */ }
+  return hints;
+}
 
 export function recordStyleChange(
   element: Element,
@@ -71,24 +123,31 @@ export function recordStyleChange(
   if (existing && existing.type === "style") {
     existing.to = to;
     existing.timestamp = Date.now();
-    existing.description = `Changed ${property} from "${truncate(existing.from)}" to "${truncate(to)}"`;
-    // If we've gone back to the original value, remove the change entirely
+    // If we've gone back to the original value, remove the change entirely —
+    // before paying for hint recomputation the discarded record won't use.
     if (existing.from === to) {
       changes.splice(changes.indexOf(existing), 1);
+      broadcastChanges();
+      return existing;
     }
+    existing.description = `Changed ${property} from "${truncate(existing.from)}" to "${truncate(to)}"`;
+    const hints = computeStyleHints(element, property, to);
+    existing.tailwindAdd = hints.tailwindAdd;
+    existing.tailwindRemove = hints.tailwindRemove;
+    existing.matchedToken = hints.matchedToken;
     broadcastChanges();
     return existing;
   }
 
   const change: StyleChange = {
-    id: makeId(),
-    timestamp: Date.now(),
+    ...makeBase(),
     selector,
     description: `Changed ${property} from "${truncate(from)}" to "${truncate(to)}"`,
     type: "style",
     property,
     from,
     to,
+    ...computeStyleHints(element, property, to),
     ...(currentBatchId ? { batchId: currentBatchId } : {}),
   };
   changes.push(change);
@@ -118,8 +177,7 @@ export function recordTextChange(
   }
 
   const change: TextChange = {
-    id: makeId(),
-    timestamp: Date.now(),
+    ...makeBase(),
     selector,
     description: `Changed text from "${truncate(from, 30)}" to "${truncate(to, 30)}"`,
     type: "text",
@@ -143,8 +201,7 @@ export function recordMoveChange(
   selectorCache.delete(element);
   const selector = getSelector(element);
   const change: MoveChange = {
-    id: makeId(),
-    timestamp: Date.now(),
+    ...makeBase(),
     selector,
     description: `Moved element from position ${fromIndex} to ${toIndex}`,
     type: "move",
@@ -182,8 +239,7 @@ export function recordResizeChange(
   }
 
   const change: ResizeChange = {
-    id: makeId(),
-    timestamp: Date.now(),
+    ...makeBase(),
     selector,
     description: `Resized from ${from.width}×${from.height} to ${to.width}×${to.height}`,
     type: "resize",
@@ -203,8 +259,7 @@ export function recordImageChange(
 ): Change {
   const selector = getSelector(element);
   const change: ImageChange = {
-    id: makeId(),
-    timestamp: Date.now(),
+    ...makeBase(),
     selector,
     description: `Replaced image source`,
     type: "image",
@@ -224,8 +279,7 @@ export function recordDeleteChange(
 ): Change {
   const selector = getSelector(element);
   const change: DeleteChange = {
-    id: makeId(),
-    timestamp: Date.now(),
+    ...makeBase(),
     selector,
     description: `Deleted ${element.tagName.toLowerCase()} element`,
     type: "delete",
@@ -245,8 +299,7 @@ export function recordHideChange(
 ): Change {
   const selector = getSelector(element);
   const change: HideChange = {
-    id: makeId(),
-    timestamp: Date.now(),
+    ...makeBase(),
     selector,
     description: `Hidden ${element.tagName.toLowerCase()} element`,
     type: "hide",
@@ -265,8 +318,7 @@ export function recordWrapChange(
   const selector = getSelector(element);
   const wrapperSelector = getSelector(wrapper);
   const change: WrapChange = {
-    id: makeId(),
-    timestamp: Date.now(),
+    ...makeBase(),
     selector,
     description: `Wrapped ${element.tagName.toLowerCase()} in a group`,
     type: "wrap",
@@ -285,8 +337,7 @@ export function recordCommentChange(
   const selector = getSelector(element);
   const number = nextCommentNumber++;
   const change: CommentChange = {
-    id: makeId(),
-    timestamp: Date.now(),
+    ...makeBase(),
     selector,
     description: `Comment #${number}: "${truncate(text, 60)}"`,
     type: "comment",
@@ -340,6 +391,89 @@ function notifyCommentsChanged(): void {
   }
 }
 
+export function recordPropChange(
+  element: Element,
+  framework: "react" | "vue" | "svelte",
+  componentName: string,
+  propName: string,
+  from: string | number | boolean | null,
+  fromType: "string" | "number" | "boolean" | "null",
+  to: string | number | boolean | null,
+  toType: "string" | "number" | "boolean" | "null"
+): Change {
+  const selector = getSelector(element);
+
+  // Coalesce repeated edits of the same prop on the same component. Searched
+  // by propName (not just last prop change) so interleaved edits of different
+  // props still coalesce per-prop.
+  for (let i = changes.length - 1; i >= 0; i--) {
+    const c = changes[i];
+    if (c.type !== "prop" || c.selector !== selector || c.propName !== propName) continue;
+    c.to = to;
+    c.toType = toType;
+    c.timestamp = Date.now();
+    c.description = `Changed <${componentName}> prop ${propName} to ${JSON.stringify(to)}`;
+    if (c.from === to) {
+      changes.splice(i, 1);
+    }
+    broadcastChanges();
+    return c;
+  }
+
+  const change: PropChange = {
+    ...makeBase(),
+    selector,
+    description: `Changed <${componentName}> prop ${propName} to ${JSON.stringify(to)}`,
+    type: "prop",
+    framework,
+    componentName,
+    propName,
+    from,
+    fromType,
+    to,
+    toType,
+  };
+  changes.push(change);
+  redoStack = [];
+  broadcastChanges();
+  return change;
+}
+
+export function recordTokenChange(
+  name: string,
+  from: string,
+  to: string
+): Change {
+  // Coalesce repeated edits of the same token
+  for (let i = changes.length - 1; i >= 0; i--) {
+    const c = changes[i];
+    if (c.type === "token" && c.name === name) {
+      c.to = to;
+      c.timestamp = Date.now();
+      c.description = `Changed design token ${name} from "${truncate(c.from)}" to "${truncate(to)}"`;
+      if (c.from === to) {
+        changes.splice(i, 1);
+      }
+      broadcastChanges();
+      return c;
+    }
+  }
+
+  const change: TokenChange = {
+    ...makeBase(),
+    selector: ":root",
+    description: `Changed design token ${name} from "${truncate(from)}" to "${truncate(to)}"`,
+    type: "token",
+    name,
+    from,
+    to,
+  };
+  changes.push(change);
+  redoStack = [];
+  broadcastChanges();
+  return change;
+}
+
 export function recordDuplicateChange(
   original: Element,
   clone: Element
@@ -347,8 +481,7 @@ export function recordDuplicateChange(
   const selector = getSelector(original);
   const cloneSelector = getSelector(clone);
   const change: DuplicateChange = {
-    id: makeId(),
-    timestamp: Date.now(),
+    ...makeBase(),
     selector,
     description: `Duplicated ${original.tagName.toLowerCase()} element`,
     type: "duplicate",
@@ -522,6 +655,23 @@ function applyUndo(change: Change): boolean {
       // change is removed from the list and commentsListeners are notified.
       return true;
     }
+
+    case "prop": {
+      if (!element) return false;
+      return applyComponentProp(
+        element, change.framework, change.componentName,
+        change.propName, change.from, change.fromType
+      );
+    }
+
+    case "token": {
+      // Restore the recorded `from` value rather than clearing the override:
+      // after CLEAR_CHANGES (send-to-agent), overrides outlive the change
+      // list, so `from` may itself be an earlier override — clearing would
+      // snap past it to the pre-session value.
+      setTokenOverride(change.name, change.from || null);
+      return true;
+    }
   }
 }
 
@@ -611,6 +761,19 @@ function applyRedo(change: Change): boolean {
 
     case "comment": {
       // Same as undo — the pin will re-appear via commentsListeners.
+      return true;
+    }
+
+    case "prop": {
+      if (!element) return false;
+      return applyComponentProp(
+        element, change.framework, change.componentName,
+        change.propName, change.to, change.toType
+      );
+    }
+
+    case "token": {
+      setTokenOverride(change.name, change.to);
       return true;
     }
   }
@@ -706,6 +869,18 @@ export function replayChanges(
         case "hide":
           element.style.setProperty("display", "none", "important");
           break;
+        case "token":
+          setTokenOverride(change.name, change.to);
+          break;
+        case "prop":
+          if (!applyComponentProp(
+            element, change.framework, change.componentName,
+            change.propName, change.to, change.toType
+          )) {
+            failed++;
+            continue;
+          }
+          break;
       }
       // Re-record in local state
       changes.push({ ...change, id: makeId(), timestamp: Date.now() });
@@ -735,6 +910,10 @@ function findExisting(
   for (let i = changes.length - 1; i >= 0; i--) {
     const c = changes[i];
     if (c.selector === selector && c.type === type) {
+      // Don't coalesce edits made at a different viewport breakpoint — a
+      // mobile tweak and a desktop tweak of the same property are distinct
+      // changes that export to different breakpoints.
+      if (viewportBucket(c.viewport) !== viewportBucket(window.innerWidth)) continue;
       if (type === "style" && property) {
         if (c.type === "style" && c.property === property) return c;
       } else {

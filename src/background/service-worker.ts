@@ -131,6 +131,31 @@ chrome.runtime.onMessage.addListener(
         forwardToContentScript(message);
         break;
 
+      // Design tokens are page-level: always target the TOP frame explicitly.
+      // Routing via activeFrameId would edit an iframe's :root, and omitting
+      // frameId broadcasts to every frame (duplicate change records).
+      case "APPLY_TOKEN":
+        getActiveTabId().then((tabId) => {
+          if (!tabId) return;
+          chrome.tabs.sendMessage(tabId, message, { frameId: 0 }, () => {
+            void chrome.runtime.lastError;
+          });
+        });
+        break;
+
+      case "GET_PAGE_TOKENS":
+        getActiveTabId().then((tabId) => {
+          if (!tabId) {
+            sendResponse(undefined);
+            return;
+          }
+          chrome.tabs.sendMessage(tabId, message, { frameId: 0 }, (resp) => {
+            void chrome.runtime.lastError;
+            sendResponse(resp);
+          });
+        });
+        return true;
+
       case "GET_STATE":
         // Try to forward — if content script isn't there, respond with inactive
         getActiveTabId().then(async (tabId) => {
@@ -154,6 +179,7 @@ chrome.runtime.onMessage.addListener(
         return true;
 
       case "GET_CHANGES":
+      case "GET_SELECTED_RECT":
         forwardToContentScript(message, sendResponse);
         return true;
 
@@ -323,7 +349,7 @@ chrome.runtime.onMessage.addListener(
         break;
 
       case "AI_NL_EDIT_REQUEST":
-        runNLEdit(message.apiKey, message.instruction, message.selector, message.computedStyles, message.provider)
+        runNLEdit(message.apiKey, message.instruction, message.selector, message.computedStyles, message.provider, message.screenshotDataUrl)
           .then((changes) => {
             chrome.runtime.sendMessage({
               type: "AI_NL_EDIT_RESPONSE",
@@ -338,6 +364,13 @@ chrome.runtime.onMessage.addListener(
           });
         break;
 
+      // --- Viewport presets ---
+      case "VIEWPORT_RESIZE":
+        resizeViewport(message.width).then((viewportWidth) => {
+          sendResponse({ viewportWidth });
+        }).catch(() => sendResponse({ viewportWidth: null }));
+        return true;
+
       // --- Screenshot ---
       case "CAPTURE_SCREENSHOT":
         captureScreenshot()
@@ -351,6 +384,76 @@ chrome.runtime.onMessage.addListener(
     }
   }
 );
+
+// --- Viewport presets ---
+
+/** Window state before the first viewport preset, persisted in session
+ *  storage so "Full" restore survives service worker termination. */
+interface OriginalWindow {
+  state: chrome.windows.Window["state"];
+  width: number | null;
+}
+
+const ORIGINAL_WINDOW_KEY = "pdOriginalWindow";
+
+function delay(ms: number): Promise<void> {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
+/**
+ * Resize the browser window so the page viewport hits the target CSS width.
+ * The delta between the tab's viewport width (tab.width) and the window's
+ * outer width accounts for browser chrome and the open side panel — both
+ * must be measured in the same (normal) window state, after any
+ * un-maximize has settled, or the delta is garbage.
+ * Returns the resulting viewport width (best effort), or null.
+ */
+async function resizeViewport(targetWidth: number | null): Promise<number | null> {
+  const tabId = await getActiveTabId();
+  if (!tabId) return null;
+  let tab = await chrome.tabs.get(tabId);
+  if (tab.windowId === undefined) return null;
+  let win = await chrome.windows.get(tab.windowId);
+
+  if (targetWidth === null) {
+    const stored = await chrome.storage.session.get(ORIGINAL_WINDOW_KEY);
+    const original: OriginalWindow | undefined = stored[ORIGINAL_WINDOW_KEY];
+    if (original) {
+      if (original.state === "maximized" || original.state === "fullscreen") {
+        await chrome.windows.update(tab.windowId, { state: original.state });
+      } else if (original.width) {
+        await chrome.windows.update(tab.windowId, { width: original.width });
+      }
+      await chrome.storage.session.remove(ORIGINAL_WINDOW_KEY);
+    }
+    await delay(150);
+    const restored = await chrome.tabs.get(tabId);
+    return restored.width ?? null;
+  }
+
+  const stored = await chrome.storage.session.get(ORIGINAL_WINDOW_KEY);
+  if (!stored[ORIGINAL_WINDOW_KEY]) {
+    const original: OriginalWindow = { state: win.state, width: win.width ?? null };
+    await chrome.storage.session.set({ [ORIGINAL_WINDOW_KEY]: original });
+  }
+
+  // A maximized/fullscreen window ignores width — switch to normal first,
+  // then re-measure: pre-switch measurements describe the maximized bounds.
+  if (win.state !== "normal") {
+    await chrome.windows.update(tab.windowId, { state: "normal" });
+    await delay(150);
+  }
+  tab = await chrome.tabs.get(tabId);
+  win = await chrome.windows.get(tab.windowId);
+  const viewportWidth = tab.width ?? win.width ?? 0;
+  const chromeWidth = Math.max(0, (win.width ?? 0) - viewportWidth);
+  await chrome.windows.update(tab.windowId, {
+    width: Math.max(320, targetWidth + chromeWidth),
+  });
+  await delay(150);
+  const after = await chrome.tabs.get(tabId);
+  return after.width ?? null;
+}
 
 // --- Content script injection ---
 
@@ -430,7 +533,12 @@ function sendToTab(tabId: number, message: Message): void {
 
 function forwardToContentScript(message: Message, sendResponse?: (resp: any) => void): void {
   getActiveTabId().then((tabId) => {
-    if (!tabId) return;
+    if (!tabId) {
+      // Close the response channel — callers awaiting a reply (e.g. the
+      // Tokens tab) would otherwise hang on a channel that never resolves.
+      sendResponse?.(undefined);
+      return;
+    }
     // Route to the specific frame that has the active selection
     const options = activeFrameId ? { frameId: activeFrameId } : undefined;
     if (sendResponse) {

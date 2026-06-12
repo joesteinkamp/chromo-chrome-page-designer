@@ -54,6 +54,17 @@ export interface ElementData {
   tailwindDetected?: boolean;
   /** CSS variable references for properties (property -> "var(--name)") */
   cssVariables?: Record<string, string>;
+  /** Which CSS rule wins the cascade for each property — shows where a value
+   *  comes from so the developer/agent edits the right rule */
+  styleSources?: Record<string, {
+    /** The matching complex selector of the winning rule (empty for inline) */
+    selector: string;
+    /** Stylesheet filename, or null for <style> blocks / inline */
+    sheet: string | null;
+    important: boolean;
+    /** True when the winning declaration is the element's inline style */
+    inline?: boolean;
+  }>;
   /** Component info from framework detection (React/Vue/Svelte) */
   componentInfo?: {
     framework: "react" | "vue" | "svelte" | null;
@@ -88,7 +99,9 @@ export type Change =
   | HideChange
   | WrapChange
   | DuplicateChange
-  | CommentChange;
+  | CommentChange
+  | PropChange
+  | TokenChange;
 
 export interface BaseChange {
   id: string;
@@ -98,6 +111,9 @@ export interface BaseChange {
   description: string;
   /** Groups related changes (e.g. multi-edit) for batch undo */
   batchId?: string;
+  /** Page viewport width (CSS px) when the change was made — used to scope
+   *  changes made at mobile/tablet sizes to responsive breakpoints on export */
+  viewport?: number;
 }
 
 export interface StyleChange extends BaseChange {
@@ -105,6 +121,12 @@ export interface StyleChange extends BaseChange {
   property: string;
   from: string;
   to: string;
+  /** Suggested Tailwind utility class for the new value (when Tailwind is detected) */
+  tailwindAdd?: string;
+  /** Existing Tailwind class on the element that the suggestion replaces */
+  tailwindRemove?: string;
+  /** Design token (CSS variable) whose value matches the new value */
+  matchedToken?: string;
 }
 
 export interface TextChange extends BaseChange {
@@ -169,6 +191,42 @@ export interface CommentChange extends BaseChange {
   text: string;
   /** Session-wide enumeration (1, 2, 3…) shown in the badge */
   number: number;
+}
+
+/**
+ * A framework component prop edit (React/Vue/Svelte) — maps 1:1 to a source
+ * code change (e.g. `variant="secondary"` → `variant="primary"`), unlike a
+ * CSS override.
+ */
+export interface PropChange extends BaseChange {
+  type: "prop";
+  framework: "react" | "vue" | "svelte";
+  componentName: string;
+  propName: string;
+  from: string | number | boolean | null;
+  fromType: "string" | "number" | "boolean" | "null";
+  to: string | number | boolean | null;
+  toType: "string" | "number" | "boolean" | "null";
+}
+
+/**
+ * A page-wide design token (CSS custom property) edit, applied by overriding
+ * the variable on :root. One token edit can restyle the whole page — exports
+ * as "change the token definition" rather than per-element CSS.
+ */
+export interface TokenChange extends BaseChange {
+  type: "token";
+  /** Custom property name, e.g. "--color-primary" */
+  name: string;
+  from: string;
+  to: string;
+}
+
+/** A CSS custom property defined on :root, surfaced in the Tokens tab */
+export interface PageToken {
+  name: string;
+  value: string;
+  isColor: boolean;
 }
 
 /** Exported changeset format for Claude Code / Codex */

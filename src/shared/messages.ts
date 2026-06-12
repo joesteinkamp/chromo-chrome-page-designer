@@ -1,4 +1,4 @@
-import type { Change, ElementData } from "./types";
+import type { Change, ElementData, PageToken } from "./types";
 
 export interface AISuggestion {
   selector: string;
@@ -80,6 +80,17 @@ export type Message =
   | { type: "SAVED_EDITS_AVAILABLE"; url: string }
   | { type: "REPLAY_CHANGES"; changes: Change[] }
   | { type: "REPLAY_RESULT"; applied: number; failed: number }
+  // Design tokens (panel ↔ content script)
+  | { type: "GET_PAGE_TOKENS" }
+  | { type: "PAGE_TOKENS_RESPONSE"; tokens: PageToken[] }
+  | { type: "APPLY_TOKEN"; name: string; value: string }
+  // Viewport presets (panel → background). null width = restore original size.
+  | { type: "VIEWPORT_RESIZE"; width: number | null }
+  // Current bounding rect of the selected element (panel → content script).
+  // Used to crop AI screenshots at capture time — selection-time rects go
+  // stale after scrolling.
+  | { type: "GET_SELECTED_RECT" }
+  | { type: "SELECTED_RECT_RESPONSE"; rect: { x: number; y: number; width: number; height: number } | null }
   // Screenshot
   | { type: "CAPTURE_SCREENSHOT" }
   | { type: "SCREENSHOT_CAPTURED"; dataUrl: string }
@@ -97,7 +108,7 @@ export type Message =
   | { type: "GET_AGENT_SYNC_STATUS" }
   | { type: "AGENT_SYNC_STATUS"; enabled: boolean; status: "connected" | "disconnected" | "connecting"; endpoint: string; userId: string }
   // AI features
-  | { type: "AI_NL_EDIT_REQUEST"; instruction: string; selector: string; computedStyles: Record<string, string>; apiKey: string; provider: "anthropic" | "openai" | "gemini" }
+  | { type: "AI_NL_EDIT_REQUEST"; instruction: string; selector: string; computedStyles: Record<string, string>; apiKey: string; provider: "anthropic" | "openai" | "gemini"; screenshotDataUrl?: string }
   | { type: "AI_NL_EDIT_RESPONSE"; changes: Array<{ property: string; value: string }> }
   | { type: "AI_CRITIQUE_REQUEST"; screenshotDataUrl: string; pageUrl: string; apiKey: string; provider: "anthropic" | "openai" | "gemini" }
   | { type: "AI_CRITIQUE_RESPONSE"; suggestions: AISuggestion[] }

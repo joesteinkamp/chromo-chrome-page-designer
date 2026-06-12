@@ -7,8 +7,8 @@
 import { TRACKED_PROPERTIES } from "../shared/constants";
 import { generateBreadcrumb, generateSelector } from "../shared/selector";
 import { extractComponentInfo } from "./framework-detect";
-import { detectTailwind, extractTailwindClasses } from "./tailwind-detect";
-import type { ElementData } from "../shared/types";
+import { detectTailwind, extractTailwindClasses, normalizeToHex } from "./tailwind-detect";
+import type { ElementData, PageToken } from "../shared/types";
 
 /** Track which Google Fonts have been injected to avoid duplicates */
 const loadedGoogleFonts = new Set<string>();
@@ -131,6 +131,20 @@ export function extractElementData(element: Element): ElementData {
   let componentInfo: ElementData["componentInfo"];
   try { componentInfo = extractComponentInfo(element); } catch { /* */ }
 
+  // Resolve which rule supplies each property (cascade visibility). The full
+  // stylesheet walk is too costly per slider tick, so results are cached
+  // briefly per element — selection changes recompute, drags hit the cache.
+  let styleSources: ElementData["styleSources"];
+  const cachedSources = styleSourcesCache.get(element);
+  if (cachedSources && Date.now() - cachedSources.time < STYLE_SOURCES_TTL_MS) {
+    styleSources = cachedSources.sources;
+  } else {
+    try {
+      styleSources = extractStyleSources(element, TRACKED_PROPERTIES);
+      styleSourcesCache.set(element, { time: Date.now(), sources: styleSources });
+    } catch { /* */ }
+  }
+
   // Capture parent layout context so the panel can show position controls
   // only when the element is free-positioned (parent is not auto-layout).
   let parentLayout: ElementData["parentLayout"];
@@ -176,8 +190,230 @@ export function extractElementData(element: Element): ElementData {
     tailwindClasses: tailwindClasses.length > 0 ? tailwindClasses : undefined,
     tailwindDetected: tailwindDetected || undefined,
     cssVariables: Object.keys(cssVariables).length > 0 ? cssVariables : undefined,
+    styleSources,
     componentInfo,
   };
+}
+
+/**
+ * Find a design token (CSS variable) on the page whose value matches the
+ * given color value. Lets the export say "use var(--brand-primary)" instead
+ * of a hex literal when the designer picked a color that already exists as a
+ * token.
+ */
+export function findMatchingToken(element: Element, value: string): string | null {
+  const target = normalizeColor(value, element);
+  if (!target) return null;
+  let tokens: Array<{ name: string; value: string }>;
+  try { tokens = extractDesignTokens(element); } catch { return null; }
+  for (const token of tokens) {
+    if (normalizeColor(token.value, element) === target) return token.name;
+  }
+  return null;
+}
+
+/** Normalize any CSS color to comparable lowercase hex (shared canonical form) */
+function normalizeColor(value: string, context: Element): string | null {
+  return normalizeToHex(resolveColorValue(value, context));
+}
+
+// --- Style cascade sources ---------------------------------------------------
+
+/** Short-lived per-element cache for extractStyleSources results */
+const styleSourcesCache = new WeakMap<Element, { time: number; sources: ElementData["styleSources"] }>();
+const STYLE_SOURCES_TTL_MS = 1000;
+
+/**
+ * Resolve which CSS rule wins the cascade for each tracked property, so the
+ * inspector can show "Fill comes from `.btn-primary` in theme.css" and the
+ * export can target the right rule instead of overriding it blindly.
+ *
+ * Approximation of the real cascade: !important > inline > specificity >
+ * source order. Cross-origin sheets are skipped (their declarations can't be
+ * read), so a property may show a lower-priority source on such pages.
+ */
+function extractStyleSources(
+  element: Element,
+  properties: readonly string[]
+): Record<string, NonNullable<ElementData["styleSources"]>[string]> {
+  const best: Record<string, { source: NonNullable<ElementData["styleSources"]>[string]; score: number }> = {};
+  let order = 0;
+
+  const visitRules = (rules: CSSRuleList, sheetLabel: string | null) => {
+    for (let j = 0; j < rules.length; j++) {
+      const rule = rules[j];
+      // Descend into matching @media / @supports groups
+      if (rule instanceof CSSMediaRule) {
+        try {
+          if (window.matchMedia(rule.conditionText).matches) visitRules(rule.cssRules, sheetLabel);
+        } catch { /* unparsable condition */ }
+        continue;
+      }
+      if (!(rule instanceof CSSStyleRule)) {
+        if ("cssRules" in rule) {
+          try { visitRules((rule as CSSGroupingRule).cssRules, sheetLabel); } catch { /* */ }
+        }
+        continue;
+      }
+      order++;
+      let matched: string | null = null;
+      try {
+        if (!element.matches(rule.selectorText)) continue;
+        // Find the specific complex selector that matched, for specificity
+        for (const part of rule.selectorText.split(",")) {
+          try {
+            if (element.matches(part.trim())) { matched = part.trim(); break; }
+          } catch { /* invalid fragment */ }
+        }
+      } catch { continue; }
+      const spec = selectorSpecificity(matched ?? rule.selectorText);
+      for (const prop of properties) {
+        const val = rule.style.getPropertyValue(prop);
+        if (!val) continue;
+        const important = rule.style.getPropertyPriority(prop) === "important";
+        const score = (important ? 1e12 : 0) + spec * 1e6 + order;
+        if (!best[prop] || score > best[prop].score) {
+          best[prop] = {
+            score,
+            source: { selector: matched ?? rule.selectorText, sheet: sheetLabel, important },
+          };
+        }
+      }
+    }
+  };
+
+  try {
+    const sheets = document.styleSheets;
+    for (let i = 0; i < sheets.length; i++) {
+      let rules: CSSRuleList;
+      try { rules = sheets[i].cssRules; } catch { continue; } // cross-origin
+      let label: string | null = null;
+      const href = sheets[i].href;
+      if (href) {
+        try { label = new URL(href).pathname.split("/").pop() || href; } catch { label = href; }
+      }
+      visitRules(rules, label);
+    }
+  } catch { /* security restriction */ }
+
+  // Inline styles: non-important inline beats all non-important rules;
+  // !important inline (our own edits) beats everything.
+  const inlineStyle = (element as HTMLElement).style;
+  if (inlineStyle) {
+    for (const prop of properties) {
+      const val = inlineStyle.getPropertyValue(prop);
+      if (!val) continue;
+      const important = inlineStyle.getPropertyPriority(prop) === "important";
+      const score = important ? 2e12 : 0.9e12;
+      if (!best[prop] || score > best[prop].score) {
+        best[prop] = {
+          score,
+          source: { selector: "", sheet: null, important, inline: true },
+        };
+      }
+    }
+  }
+
+  const result: Record<string, NonNullable<ElementData["styleSources"]>[string]> = {};
+  for (const [prop, entry] of Object.entries(best)) {
+    result[prop] = entry.source;
+  }
+  return result;
+}
+
+/** Approximate CSS specificity as a single comparable number */
+function selectorSpecificity(selector: string): number {
+  const ids = (selector.match(/#[\w-]+/g) || []).length;
+  const classes = (selector.match(/\.[\w-]+|\[[^\]]*\]|:(?!:)[\w-]+(\([^)]*\))?/g) || []).length;
+  const types =
+    (selector.match(/(^|[\s>+~])[a-zA-Z][\w-]*/g) || []).length +
+    (selector.match(/::[\w-]+/g) || []).length;
+  return Math.min(ids, 99) * 10000 + Math.min(classes, 99) * 100 + Math.min(types, 99);
+}
+
+// --- Design token (CSS variable) editing -----------------------------------
+
+/** Live token overrides applied via the injected :root stylesheet */
+const tokenOverrides = new Map<string, string>();
+
+const TOKEN_OVERRIDE_STYLE_ID = "__pd-token-overrides";
+
+/**
+ * Override (or clear, with null) a CSS custom property on :root. Overrides
+ * live in a single injected <style> appended to the document so they win the
+ * cascade; editing one token live-restyles everything that consumes it.
+ */
+export function setTokenOverride(name: string, value: string | null): void {
+  if (value === null) {
+    tokenOverrides.delete(name);
+  } else {
+    tokenOverrides.set(name, value);
+  }
+  // Token values changed — cached extractions are stale
+  cachedDesignTokens = null;
+  let styleEl = document.getElementById(TOKEN_OVERRIDE_STYLE_ID) as HTMLStyleElement | null;
+  if (tokenOverrides.size === 0) {
+    styleEl?.remove();
+    return;
+  }
+  if (!styleEl) {
+    styleEl = document.createElement("style");
+    styleEl.id = TOKEN_OVERRIDE_STYLE_ID;
+    document.documentElement.appendChild(styleEl);
+  }
+  const decls = Array.from(tokenOverrides.entries())
+    .map(([n, v]) => `  ${n}: ${v} !important;`)
+    .join("\n");
+  styleEl.textContent = `:root {\n${decls}\n}`;
+}
+
+/** Current effective value of a token: live override, else computed on :root */
+export function getTokenValue(name: string): string {
+  const override = tokenOverrides.get(name);
+  if (override !== undefined) return override;
+  return window.getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+}
+
+function looksLikeColor(value: string): boolean {
+  return /^(#|rgb|hsl|oklch|oklab|lab|lch|color\()/i.test(value) || value === "transparent";
+}
+
+/**
+ * Collect CSS custom properties declared on :root/html across same-origin
+ * stylesheets, with their current computed values.
+ */
+export function collectPageTokens(): PageToken[] {
+  const names = new Set<string>();
+  try {
+    const sheets = document.styleSheets;
+    for (let i = 0; i < sheets.length && names.size < 150; i++) {
+      try {
+        const rules = sheets[i].cssRules;
+        for (let j = 0; j < rules.length && names.size < 150; j++) {
+          const rule = rules[j];
+          if (!(rule instanceof CSSStyleRule)) continue;
+          if (!/(^|,)\s*(:root|html)\s*($|,)/.test(rule.selectorText)) continue;
+          for (let k = 0; k < rule.style.length; k++) {
+            const prop = rule.style[k];
+            if (prop.startsWith("--")) names.add(prop);
+          }
+        }
+      } catch { /* cross-origin stylesheet */ }
+    }
+  } catch { /* security restriction */ }
+
+  const rootStyles = window.getComputedStyle(document.documentElement);
+  const tokens: PageToken[] = [];
+  for (const name of names) {
+    const value = (tokenOverrides.get(name) ?? rootStyles.getPropertyValue(name)).trim();
+    if (!value) continue;
+    tokens.push({ name, value, isColor: looksLikeColor(value) });
+  }
+  // Colors first, then alphabetical — matches what designers reach for
+  tokens.sort((a, b) =>
+    a.isColor === b.isColor ? a.name.localeCompare(b.name) : a.isColor ? -1 : 1
+  );
+  return tokens.slice(0, 100);
 }
 
 /** Apply a CSS property change to an element */
@@ -290,8 +526,12 @@ function countMatchingElements(element: Element): number {
   return findMatchingElements(element).length;
 }
 
+/** Cached color tokens — the :root walk is too costly to repeat per slider tick */
+let cachedDesignTokens: Array<{ name: string; value: string }> | null = null;
+
 /** Extract CSS custom properties (design tokens) that resolve to colors */
 function extractDesignTokens(element: Element): Array<{ name: string; value: string }> {
+  if (cachedDesignTokens) return cachedDesignTokens;
   const tokens: Array<{ name: string; value: string }> = [];
   const seen = new Set<string>();
 
@@ -333,6 +573,7 @@ function extractDesignTokens(element: Element): Array<{ name: string; value: str
     // Security restrictions
   }
 
+  cachedDesignTokens = tokens;
   return tokens;
 }
 

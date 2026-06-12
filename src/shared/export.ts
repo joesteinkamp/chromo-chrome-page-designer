@@ -165,6 +165,27 @@ export function exportAsSummary(
   // Group by selector
   const groups = groupBySelector(collapsed, componentMap);
 
+  // Viewport annotations are relative: only when the session mixes viewport
+  // sizes do narrower-than-widest changes get breakpoint notes. An absolute
+  // threshold would misfire — the open side panel alone narrows the page
+  // viewport below typical breakpoints on laptops.
+  const viewports = collapsed
+    .map((c) => c.viewport)
+    .filter((v): v is number => v !== undefined);
+  const maxViewport = viewports.length > 0 ? Math.max(...viewports) : 0;
+  const annotateViewports = new Set(viewports).size > 1;
+  // Only these change types can be scoped with media queries / responsive
+  // utility variants. Tokens (:root-wide) and props can't.
+  const viewportScopable = new Set(["style", "resize", "hide"]);
+  const viewportNote = (c: Change): string => {
+    if (!annotateViewports || c.viewport === undefined) return "";
+    if (!viewportScopable.has(c.type)) return "";
+    if (c.viewport >= maxViewport) return "";
+    if (c.viewport < 640) return ` _(at ${c.viewport}px viewport — scope to a mobile breakpoint)_`;
+    if (c.viewport < 1024) return ` _(at ${c.viewport}px viewport — scope to a tablet breakpoint)_`;
+    return ` _(at ${c.viewport}px viewport)_`;
+  };
+
   for (const group of groups) {
     let header = `### \`${group.selector}\``;
     if (group.component?.componentName) {
@@ -177,12 +198,20 @@ export function exportAsSummary(
     lines.push(header);
 
     for (const change of group.changes) {
+      const linesBefore = lines.length;
       switch (change.type) {
         case "style": {
           const label = CSS_TO_FIGMA[change.property] || change.property;
-          lines.push(
-            `- Changed **${label}**: \`${change.from}\` → \`${change.to}\``
-          );
+          let line = `- Changed **${label}**: \`${change.from}\` → \`${change.to}\``;
+          if (change.tailwindAdd) {
+            line += change.tailwindRemove
+              ? ` — Tailwind: replace \`${change.tailwindRemove}\` with \`${change.tailwindAdd}\``
+              : ` — Tailwind: add \`${change.tailwindAdd}\``;
+          }
+          if (change.matchedToken) {
+            line += ` — matches design token \`${change.matchedToken}\`; prefer \`var(${change.matchedToken})\``;
+          }
+          lines.push(line);
           break;
         }
         case "text":
@@ -220,6 +249,21 @@ export function exportAsSummary(
             `- **Comment #${change.number} (designer intent):** ${change.text}`
           );
           break;
+        case "prop":
+          lines.push(
+            `- Changed **prop \`${change.propName}\`** on \`<${change.componentName}>\` (${change.framework}): \`${JSON.stringify(change.from)}\` → \`${JSON.stringify(change.to)}\` — edit the component usage in source, not CSS`
+          );
+          break;
+        case "token":
+          lines.push(
+            `- Changed **design token \`${change.name}\`**: \`${change.from}\` → \`${change.to}\` — update the token where it's defined (e.g. :root, theme config), not per-element`
+          );
+          break;
+      }
+
+      const note = viewportNote(change);
+      if (note && lines.length > linesBefore) {
+        lines[lines.length - 1] += note;
       }
     }
 
@@ -261,6 +305,10 @@ function summarizeChanges(changes: Change[]): string {
     parts.push(`${counts.duplicate} duplication${counts.duplicate > 1 ? "s" : ""}`);
   if (counts.comment)
     parts.push(`${counts.comment} comment${counts.comment > 1 ? "s" : ""}`);
+  if (counts.prop)
+    parts.push(`${counts.prop} component prop edit${counts.prop > 1 ? "s" : ""}`);
+  if (counts.token)
+    parts.push(`${counts.token} design token edit${counts.token > 1 ? "s" : ""}`);
 
   return parts.join(", ") || "No changes";
 }

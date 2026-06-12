@@ -36,8 +36,8 @@ import {
   selectElementDirectly,
   selectMultipleDirectly,
 } from "./element-picker";
-import { extractElementData, applyStyleToElement, findMatchingElements, removeAutoLayout } from "./style-bridge";
-import { applyComponentProp } from "./framework-detect";
+import { extractElementData, applyStyleToElement, findMatchingElements, removeAutoLayout, collectPageTokens, setTokenOverride, getTokenValue } from "./style-bridge";
+import { applyComponentProp, extractComponentInfo } from "./framework-detect";
 import { startInlineEdit, stopInlineEdit, isEditing } from "./inline-edit";
 import { initDragDrop, isDragActive, cancelDrag } from "./drag-drop";
 import { tryStartResize, isResizeActive } from "./resize";
@@ -70,6 +70,8 @@ import {
   recordWrapChange,
   recordDuplicateChange,
   recordDeleteChange,
+  recordPropChange,
+  recordTokenChange,
   startBatch,
   endBatch,
   recordCommentChange,
@@ -286,7 +288,29 @@ chrome.runtime.onMessage.addListener(
       case "APPLY_PROP": {
         const el = getSelectedElement();
         if (el) {
-          applyComponentProp(el, message.framework, message.componentName, message.propName, message.propValue, message.propType);
+          // Read the current prop value before applying so the change records from → to
+          let from: string | number | boolean | null = null;
+          let fromType: "string" | "number" | "boolean" | "null" = "null";
+          let fromKnown = false;
+          try {
+            const info = extractComponentInfo(el);
+            const prop = info?.props?.find((p) => p.name === message.propName);
+            if (prop) {
+              from = prop.value;
+              fromType = prop.type;
+              fromKnown = true;
+            }
+          } catch { /* component info is best-effort */ }
+
+          const applied = applyComponentProp(el, message.framework, message.componentName, message.propName, message.propValue, message.propType);
+          // Only record when the original value was readable — otherwise undo
+          // would write a fabricated null into the component.
+          if (applied && fromKnown && from !== message.propValue) {
+            recordPropChange(
+              el, message.framework, message.componentName, message.propName,
+              from, fromType, message.propValue, message.propType
+            );
+          }
           // Wait a frame for the framework to re-render, then refresh
           requestAnimationFrame(() => {
             refreshSelection();
@@ -385,6 +409,40 @@ chrome.runtime.onMessage.addListener(
           requestAnimationFrame(() => {
             sendElementData(pseudoEl);
             refreshSelection();
+          });
+        }
+        break;
+      }
+
+      case "GET_SELECTED_RECT": {
+        const rectEl = getSelectedElement();
+        const r = rectEl?.getBoundingClientRect();
+        sendResponse({
+          type: "SELECTED_RECT_RESPONSE",
+          rect: r ? { x: r.x, y: r.y, width: r.width, height: r.height } : null,
+        } satisfies Message);
+        return true;
+      }
+
+      case "GET_PAGE_TOKENS":
+        sendResponse({
+          type: "PAGE_TOKENS_RESPONSE",
+          tokens: collectPageTokens(),
+        } satisfies Message);
+        return true;
+
+      case "APPLY_TOKEN": {
+        const from = getTokenValue(message.name);
+        setTokenOverride(message.name, message.value);
+        if (from !== message.value) {
+          recordTokenChange(message.name, from, message.value);
+        }
+        // Token edits can restyle the selected element — refresh the inspector
+        const tokenSel = getSelectedElement();
+        if (tokenSel) {
+          requestAnimationFrame(() => {
+            refreshSelection();
+            sendElementData(tokenSel);
           });
         }
         break;

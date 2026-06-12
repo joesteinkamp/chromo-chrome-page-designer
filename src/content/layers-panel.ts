@@ -10,8 +10,10 @@
  * position: fixed and the highest z-index (above the overlay handles).
  */
 
-import { selectElementDirectly } from "./element-picker";
+import { selectElementDirectly, suspendPicker, resumePicker } from "./element-picker";
 import { showHover, hideHover } from "./overlay";
+import { recordMoveChange } from "./change-tracker";
+import { generateSelector } from "../shared/selector";
 
 /** Prefix for every element we inject; used by overlay helpers to skip us. */
 export const LAYERS_PANE_PREFIX = "__pd-layers-";
@@ -180,6 +182,21 @@ const LAYERS_CSS = `
   color: #ccc !important;
   background: #2a2a2a !important;
 }
+.${LAYERS_PANE_PREFIX}row--drop-before {
+  box-shadow: inset 0 2px 0 #0c8ce9 !important;
+}
+.${LAYERS_PANE_PREFIX}row--drop-after {
+  box-shadow: inset 0 -2px 0 #0c8ce9 !important;
+}
+.${LAYERS_PANE_PREFIX}row--drop-into {
+  outline: 1px solid #0c8ce9 !important;
+  outline-offset: -1px !important;
+  background: rgba(12, 140, 233, 0.15) !important;
+}
+.${LAYERS_PANE_PREFIX}root--dragging,
+.${LAYERS_PANE_PREFIX}root--dragging .${LAYERS_PANE_PREFIX}row {
+  cursor: grabbing !important;
+}
 
 /* ── Light mode overrides ── */
 @media (prefers-color-scheme: light) {
@@ -340,6 +357,12 @@ export function unmountLayersPanel(): void {
   document.removeEventListener("mouseup", onDocPaneCapture, true);
   document.removeEventListener("mouseover", onDocPaneCapture, true);
   document.removeEventListener("mouseout", onDocPaneCapture, true);
+  window.removeEventListener("mousemove", onRowDragMove, true);
+  window.removeEventListener("mouseup", onRowDragUp, true);
+  dragSource = null;
+  isRowDragging = false;
+  didDrag = false;
+  dropRow = null;
   root?.remove();
   root = null;
   treeContainer = null;
@@ -533,7 +556,16 @@ function onDocPaneCapture(e: Event): void {
   const evt = e as MouseEvent;
   const tgt = evt.target as Element | null;
 
-  if (evt.type === "click" && tgt) handlePaneClick(tgt);
+  if (evt.type === "click" && tgt) {
+    // Swallow the click that follows a completed row drag — it would
+    // otherwise re-select the dragged element's old row position.
+    if (didDrag) {
+      didDrag = false;
+    } else {
+      handlePaneClick(tgt);
+    }
+  }
+  else if (evt.type === "mousedown" && tgt) handlePaneMouseDown(tgt, evt);
   else if (evt.type === "mouseover" && tgt) handlePaneMouseOver(tgt);
   else if (evt.type === "mouseout" && tgt) handlePaneMouseOut(tgt, evt);
 
@@ -546,6 +578,155 @@ function onDocPaneCapture(e: Event): void {
   if (evt.type === "click" || evt.type === "mousedown") {
     evt.preventDefault();
   }
+}
+
+// --- Row drag-reorder ---------------------------------------------------
+//
+// Dragging a row moves the element in the live DOM: drop on the top/bottom
+// quarter of a row inserts before/after that element (same- or cross-parent),
+// drop on the middle appends it as the row element's last child. The move is
+// recorded through the change tracker like a canvas reorder.
+
+type DropZone = "before" | "after" | "into";
+
+const DRAG_START_THRESHOLD = 4;
+
+let dragSource: Element | null = null;
+let dragStartX = 0;
+let dragStartY = 0;
+let isRowDragging = false;
+let didDrag = false;
+let dropRow: HTMLDivElement | null = null;
+let dropZone: DropZone = "before";
+
+function handlePaneMouseDown(tgt: Element, evt: MouseEvent): void {
+  if (evt.button !== 0) return;
+  if (tgt.closest("[data-pd-layers-chevron]") || tgt.closest("[data-pd-layers-close]")) return;
+  const rowEl = tgt.closest<HTMLDivElement>("[data-pd-layers-row]");
+  if (!rowEl) return;
+  const el = rowToElement.get(rowEl);
+  if (!el) return;
+  // html/body can't be reparented
+  if (el === document.documentElement || el === document.body) return;
+
+  dragSource = el;
+  dragStartX = evt.clientX;
+  dragStartY = evt.clientY;
+  isRowDragging = false;
+  // Window-level capture fires before the pane's own document-level capture
+  // dispatcher (which stops propagation of pane-targeted events), and before
+  // the element picker's document listeners.
+  window.addEventListener("mousemove", onRowDragMove, true);
+  window.addEventListener("mouseup", onRowDragUp, true);
+}
+
+function onRowDragMove(e: MouseEvent): void {
+  if (!dragSource || !root) return;
+  if (!isRowDragging) {
+    if (
+      Math.abs(e.clientX - dragStartX) < DRAG_START_THRESHOLD &&
+      Math.abs(e.clientY - dragStartY) < DRAG_START_THRESHOLD
+    ) {
+      return;
+    }
+    isRowDragging = true;
+    root.classList.add(`${LAYERS_PANE_PREFIX}root--dragging`);
+    // Keep the element picker from reacting to the drag's mouse events —
+    // releasing over the host page would otherwise select/deselect whatever
+    // is under the cursor.
+    try { suspendPicker(); } catch { /* picker may not be active */ }
+  }
+  e.preventDefault();
+  e.stopImmediatePropagation();
+
+  clearDropIndicator();
+  const under = document.elementFromPoint(e.clientX, e.clientY);
+  const rowEl = under?.closest<HTMLDivElement>("[data-pd-layers-row]") ?? null;
+  if (!rowEl) return;
+  const targetEl = rowToElement.get(rowEl);
+  if (!targetEl || targetEl === dragSource || dragSource.contains(targetEl)) return;
+
+  // Nothing can be dropped relative to <html>, and "into" it would place the
+  // element as a sibling of <head>/<body>.
+  if (targetEl === document.documentElement) return;
+
+  const rect = rowEl.getBoundingClientRect();
+  const ratio = (e.clientY - rect.top) / rect.height;
+  if (ratio < 0.25) dropZone = "before";
+  else if (ratio > 0.75) dropZone = "after";
+  else dropZone = "into";
+  // Inserting before/after requires a parent; parentless rows only accept "into"
+  if (dropZone !== "into" && !targetEl.parentElement) dropZone = "into";
+
+  dropRow = rowEl;
+  rowEl.classList.add(`${LAYERS_PANE_PREFIX}row--drop-${dropZone}`);
+}
+
+function onRowDragUp(e: MouseEvent): void {
+  window.removeEventListener("mousemove", onRowDragMove, true);
+  window.removeEventListener("mouseup", onRowDragUp, true);
+  root?.classList.remove(`${LAYERS_PANE_PREFIX}root--dragging`);
+
+  const source = dragSource;
+  const targetRow = dropRow;
+  const zone = dropZone;
+  clearDropIndicator();
+  dragSource = null;
+
+  if (!isRowDragging) return;
+  isRowDragging = false;
+  didDrag = true;
+  // The browser fires a click right after mouseup; the click branch consumes
+  // didDrag, and this covers releases outside the pane where no click reaches it.
+  setTimeout(() => { didDrag = false; }, 0);
+  // Resume the picker after the trailing click has been dispatched, so it
+  // never sees the drag-release click.
+  setTimeout(() => { try { resumePicker(); } catch { /* */ } }, 0);
+  e.preventDefault();
+  e.stopImmediatePropagation();
+
+  if (!source || !targetRow) return;
+  const target = rowToElement.get(targetRow);
+  if (!target || target === source || source.contains(target)) return;
+
+  const fromParent = source.parentElement;
+  if (!fromParent) return;
+  const fromParentSelector = generateSelector(fromParent);
+  const fromIndex = Array.from(fromParent.children).indexOf(source);
+
+  try {
+    if (zone === "into") {
+      target.appendChild(source);
+      expanded.add(target);
+    } else if (zone === "before") {
+      target.parentElement!.insertBefore(source, target);
+    } else {
+      target.parentElement!.insertBefore(source, target.nextElementSibling);
+    }
+  } catch {
+    return; // host page may forbid the move (e.g. table semantics)
+  }
+
+  const toParent = source.parentElement;
+  if (!toParent) return;
+  const toIndex = Array.from(toParent.children).indexOf(source);
+  // Dropping "after" the previous sibling (or "before" the next) is a DOM
+  // no-op — don't record a move that changes nothing.
+  if (toParent === fromParent && toIndex === fromIndex) return;
+  recordMoveChange(source, fromParentSelector, fromIndex, generateSelector(toParent), toIndex);
+
+  // Re-select the moved element so the overlay and side panel follow it
+  selectFromTree(source);
+}
+
+function clearDropIndicator(): void {
+  if (!dropRow) return;
+  dropRow.classList.remove(
+    `${LAYERS_PANE_PREFIX}row--drop-before`,
+    `${LAYERS_PANE_PREFIX}row--drop-after`,
+    `${LAYERS_PANE_PREFIX}row--drop-into`
+  );
+  dropRow = null;
 }
 
 function handlePaneClick(tgt: Element): void {

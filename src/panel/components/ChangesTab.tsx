@@ -3,7 +3,7 @@ import type { Change } from "../../shared/types";
 import { collapseBatches } from "../../shared/export";
 import type { Message } from "../../shared/messages";
 import type { ArchivedSend } from "../App";
-import { PaletteIcon, TextIcon, MoveIcon, ResizeIcon, ImageIcon, DeleteIcon, HideIcon, WrapIcon, DuplicateIcon, CommentIcon } from "../icons";
+import { PaletteIcon, TextIcon, MoveIcon, ResizeIcon, ImageIcon, DeleteIcon, HideIcon, WrapIcon, DuplicateIcon, CommentIcon, DiamondIcon } from "../icons";
 import "./changes.css";
 
 interface Props {
@@ -25,6 +25,8 @@ const TYPE_ICONS: Record<Change["type"], ReactNode> = {
   wrap: <WrapIcon size={14} />,
   duplicate: <DuplicateIcon size={14} />,
   comment: <CommentIcon size={14} />,
+  prop: <DiamondIcon size={14} />,
+  token: <PaletteIcon size={14} />,
 };
 
 function relativeTime(timestamp: number): string {

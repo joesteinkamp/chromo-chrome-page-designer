@@ -314,6 +314,67 @@ export function suggestTailwindClass(property: string, value: string): string | 
   return null;
 }
 
+/**
+ * Per-property patterns matching the existing utility class that a new
+ * suggestion would replace. The color "text-" prefix collides with font-size
+ * and alignment utilities, so those exclude each other's value sets.
+ */
+const FONT_SIZE_VALUES = "xs|sm|base|lg|xl|[2-9]xl";
+const TEXT_ALIGN_VALUES = "left|center|right|justify";
+/** Tailwind palette names — color conflict matching must be value-anchored so
+ *  e.g. `border-color` never suggests removing `border-2` (a width utility). */
+const TW_COLOR_NAMES =
+  "inherit|current|transparent|white|black|slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose";
+
+function colorConflictPattern(prefix: string): RegExp {
+  return new RegExp(`^${prefix}-(?:${TW_COLOR_NAMES})(?:-\\d{2,3})?(?:\\/\\d{1,3})?$`);
+}
+
+function conflictPattern(property: string): RegExp | null {
+  const spacingPrefix = SPACING_PROP_MAP[property];
+  if (spacingPrefix) {
+    return new RegExp(`^-?${spacingPrefix}-`);
+  }
+  if (property === "color") {
+    return colorConflictPattern("text");
+  }
+  const colorPrefix = COLOR_PROP_MAP[property];
+  if (colorPrefix) {
+    return colorConflictPattern(colorPrefix);
+  }
+  switch (property) {
+    case "font-size":
+      return new RegExp(`^text-(?:${FONT_SIZE_VALUES})$`);
+    case "font-weight":
+      return /^font-(thin|extralight|light|normal|medium|semibold|bold|extrabold|black)$/;
+    case "border-radius":
+      return /^rounded(-(none|sm|md|lg|xl|2xl|3xl|full))?$/;
+    case "opacity":
+      return /^opacity-\d+$/;
+    case "text-align":
+      return new RegExp(`^text-(?:${TEXT_ALIGN_VALUES})$`);
+    case "display":
+      return /^(flex|inline-flex|grid|inline-grid|block|inline-block|inline|hidden|contents|table|flow-root)$/;
+    default:
+      return null;
+  }
+}
+
+/**
+ * Find the Tailwind class already on the element that a new suggestion for
+ * this property would replace (e.g. property "padding-top" → existing "pt-4").
+ * Only considers unprefixed utilities — responsive/state variants are left alone.
+ */
+export function findReplacedTailwindClass(element: Element, property: string): string | null {
+  const pattern = conflictPattern(property);
+  if (!pattern) return null;
+  for (const cls of extractTailwindClasses(element)) {
+    if (cls.includes(":")) continue;
+    if (pattern.test(cls)) return cls;
+  }
+  return null;
+}
+
 /** Parse a pixel value string to a number, or return null */
 function parsePx(value: string): number | null {
   const m = value.match(/^(-?\d+(?:\.\d+)?)px$/);
@@ -321,7 +382,7 @@ function parsePx(value: string): number | null {
 }
 
 /** Normalize a CSS color to lowercase hex, or return null */
-function normalizeToHex(value: string): string | null {
+export function normalizeToHex(value: string): string | null {
   const trimmed = value.trim().toLowerCase();
 
   // Already hex

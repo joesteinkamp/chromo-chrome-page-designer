@@ -6,12 +6,20 @@ import { ElementInfo } from "./components/ElementInfo";
 import { DesignTab } from "./components/DesignTab";
 import { ChangesTab } from "./components/ChangesTab";
 import { AITab } from "./components/AITab";
+import { TokensTab } from "./components/TokensTab";
 import { AgentSyncSection, type AgentSyncStatus } from "./components/AgentSyncSection";
 import { exportAsSummary, type ComponentContext } from "../shared/export";
 import type { Change } from "../shared/types";
 import type { Message, AISuggestion } from "../shared/messages";
 
-type Tab = "design" | "changes" | "ai";
+type Tab = "design" | "changes" | "tokens" | "ai";
+
+/** Viewport presets for responsive editing (CSS px) */
+const VIEWPORT_PRESETS = [
+  { label: "Mobile", width: 375 },
+  { label: "Tablet", width: 768 },
+  { label: "Laptop", width: 1280 },
+] as const;
 
 export interface ArchivedSend {
   id: string;
@@ -49,6 +57,8 @@ export function App() {
   const [nlEditResponse, setNlEditResponse] = useState<Array<{ property: string; value: string }> | null>(null);
   const [aiError, setAiError] = useState<string | null>(null);
   const [layersPaneEnabled, setLayersPaneEnabled] = useState(false);
+  const [activeViewport, setActiveViewport] = useState<number | null>(null);
+  const [actualViewport, setActualViewport] = useState<number | null>(null);
 
   // Accumulate component context as elements are selected
   useEffect(() => {
@@ -282,6 +292,21 @@ export function App() {
     setSavedChangesDismissed(true);
   }, []);
 
+  // --- Viewport presets ---
+
+  const handleViewportPreset = useCallback(async (width: number | null) => {
+    setActiveViewport(width);
+    try {
+      const resp: any = await chrome.runtime.sendMessage({
+        type: "VIEWPORT_RESIZE",
+        width,
+      } satisfies Message);
+      setActualViewport(width === null ? null : resp?.viewportWidth ?? null);
+    } catch {
+      setActualViewport(null);
+    }
+  }, []);
+
   // --- Screenshot ---
 
   const handleScreenshot = useCallback(async () => {
@@ -327,7 +352,7 @@ export function App() {
       action: () => {
         const summary = exportAsSummary(pageUrl, changes, undefined, componentMapRef.current);
         const hasComments = changes.some((c) => c.type === "comment");
-        const basePrompt = `Apply these visual design changes to the codebase. Each change includes a CSS selector and, when available, the React/Vue/Svelte component name and source file. Use the component context to find the right file, then apply the property changes.`;
+        const basePrompt = `Apply these visual design changes to the codebase. Each change includes a CSS selector and, when available, the React/Vue/Svelte component name and source file. Use the component context to find the right file, then apply the property changes. When a change includes a Tailwind hint (e.g. replace \`p-4\` with \`p-6\`), edit the utility classes instead of writing raw CSS. When a change notes that a value matches a design token, use the var() reference instead of a hardcoded value. Entries marked "prop" are component prop edits — change the prop at the usage site in source code. Changes annotated with a viewport width were made at that responsive size — scope them with the matching media query or responsive utility variant (e.g. Tailwind \`max-md:\`) instead of applying them at all sizes.`;
         const commentPrompt = `\n\nEntries marked "Comment # (designer intent)" are freeform instructions from the designer about changes that couldn't be expressed as style edits (e.g. "use a dropdown instead of buttons", "swap this for the Button component"). Treat comments as higher-priority than style diffs when they conflict, and use judgment to implement the requested change — which may involve swapping components, changing behavior, or restructuring markup rather than just adjusting CSS.`;
         const prompt = hasComments ? `${basePrompt}${commentPrompt}` : basePrompt;
         navigator.clipboard.writeText(`${prompt}\n\n${summary}`);
@@ -425,8 +450,33 @@ export function App() {
         </div>
       </header>
 
+      <div className="pd-panel__viewport-bar">
+        {VIEWPORT_PRESETS.map((preset) => (
+          <button
+            key={preset.label}
+            className={`pd-panel__viewport-btn ${activeViewport === preset.width ? "pd-panel__viewport-btn--active" : ""}`}
+            onClick={() => handleViewportPreset(preset.width)}
+            title={`Resize page viewport to ${preset.width}px — changes made here export with a breakpoint note`}
+            type="button"
+          >
+            {preset.label}
+          </button>
+        ))}
+        <button
+          className={`pd-panel__viewport-btn ${activeViewport === null ? "pd-panel__viewport-btn--active" : ""}`}
+          onClick={() => handleViewportPreset(null)}
+          title="Restore original window size"
+          type="button"
+        >
+          Full
+        </button>
+        {activeViewport !== null && actualViewport !== null && (
+          <span className="pd-panel__viewport-readout">{actualViewport}px</span>
+        )}
+      </div>
+
       <div className="pd-panel__body">
-        {elementData || changes.length > 0 ? (
+        {elementData || changes.length > 0 || activeTab === "tokens" ? (
           <>
             {elementData && (
               <ElementInfo data={elementData} multiEdit={multiEdit} onToggleMultiEdit={handleToggleMultiEdit} multiSelectCount={multiSelectCount} />
@@ -446,6 +496,12 @@ export function App() {
                 {changes.length > 0 && (
                   <span className="pd-panel__tab-badge">{changes.length}</span>
                 )}
+              </button>
+              <button
+                className={`pd-panel__tab ${activeTab === "tokens" ? "pd-panel__tab--active" : ""}`}
+                onClick={() => setActiveTab("tokens")}
+              >
+                Tokens
               </button>
               <button
                 className={`pd-panel__tab ${activeTab === "ai" ? "pd-panel__tab--active" : ""}`}
@@ -477,6 +533,7 @@ export function App() {
                   url={pageUrl}
                 />
               )}
+              {activeTab === "tokens" && <TokensTab />}
               {activeTab === "ai" && (
                 elementData ? (
                   <AITab
@@ -529,6 +586,13 @@ export function App() {
               </div>
             )}
             <div className="pd-panel__empty-icon"><DiamondIcon size={36} /></div>
+            <button
+              className="pd-panel__tokens-link"
+              onClick={() => setActiveTab("tokens")}
+              type="button"
+            >
+              Edit design tokens →
+            </button>
             <div className="pd-panel__empty-title">Select an element</div>
             <div className="pd-panel__empty-subtitle">
               Hover over the page and click an element to inspect and edit its

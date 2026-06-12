@@ -23,6 +23,53 @@ const STORAGE_KEYS: Record<Provider, string> = {
   gemini: "geminiApiKey",
 };
 
+/** Padding (CSS px) around the element when cropping, for visual context */
+const CROP_CONTEXT_PX = 24;
+/** Cap crop dimensions so the payload stays small */
+const MAX_CROP_DIM = 1400;
+
+/**
+ * Crop a full-viewport screenshot down to the selected element's bounding
+ * rect (plus context padding). The capture is in device pixels while the rect
+ * is in CSS px, so the scale factor is derived from the tab's viewport width.
+ * Returns null when the element is outside the captured viewport.
+ */
+async function cropToElement(
+  dataUrl: string,
+  rect: { x: number; y: number; width: number; height: number },
+  viewportWidth: number | undefined
+): Promise<string | null> {
+  const img = new Image();
+  await new Promise<void>((resolve, reject) => {
+    img.onload = () => resolve();
+    img.onerror = () => reject(new Error("screenshot decode failed"));
+    img.src = dataUrl;
+  });
+
+  const scale = viewportWidth ? img.naturalWidth / viewportWidth : 1;
+  let sx = (rect.x - CROP_CONTEXT_PX) * scale;
+  let sy = (rect.y - CROP_CONTEXT_PX) * scale;
+  let sw = (rect.width + CROP_CONTEXT_PX * 2) * scale;
+  let sh = (rect.height + CROP_CONTEXT_PX * 2) * scale;
+
+  // Clamp to the captured area
+  sx = Math.max(0, sx);
+  sy = Math.max(0, sy);
+  sw = Math.min(sw, img.naturalWidth - sx);
+  sh = Math.min(sh, img.naturalHeight - sy);
+  if (sw < 4 || sh < 4) return null;
+
+  // Downscale large crops
+  const downscale = Math.min(1, MAX_CROP_DIM / Math.max(sw, sh));
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.round(sw * downscale);
+  canvas.height = Math.round(sh * downscale);
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return null;
+  ctx.drawImage(img, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
+  return canvas.toDataURL("image/png");
+}
+
 interface AITabProps {
   elementData: ElementData | null;
   critiqueResponse: AISuggestion[] | null;
@@ -108,12 +155,28 @@ export function AITab({
     });
   }, [provider]);
 
-  const handleNLSubmit = useCallback(() => {
+  const handleNLSubmit = useCallback(async () => {
     if (!instruction.trim() || !elementData || !activeKey) return;
     setNlLoading(true);
     onClearNLEdit();
     onClearError();
     setDismissedEdits(new Set());
+
+    // Best-effort: attach a screenshot cropped to the selected element so the
+    // model sees the element's actual appearance, not just its CSS values.
+    let screenshotDataUrl: string | undefined;
+    try {
+      const resp: any = await chrome.runtime.sendMessage({
+        type: "CAPTURE_SCREENSHOT",
+      } satisfies Message);
+      if (resp?.dataUrl) {
+        const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+        const viewportWidth = tabs[0]?.width;
+        screenshotDataUrl =
+          (await cropToElement(resp.dataUrl, elementData.rect, viewportWidth)) ?? undefined;
+      }
+    } catch { /* screenshot is optional — proceed without it */ }
+
     chrome.runtime.sendMessage({
       type: "AI_NL_EDIT_REQUEST",
       instruction: instruction.trim(),
@@ -121,6 +184,7 @@ export function AITab({
       computedStyles: elementData.computedStyles,
       apiKey: activeKey,
       provider,
+      screenshotDataUrl,
     } satisfies Message);
   }, [instruction, elementData, activeKey, provider, onClearNLEdit, onClearError]);
 

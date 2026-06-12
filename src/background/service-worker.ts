@@ -323,7 +323,7 @@ chrome.runtime.onMessage.addListener(
         break;
 
       case "AI_NL_EDIT_REQUEST":
-        runNLEdit(message.apiKey, message.instruction, message.selector, message.computedStyles, message.provider)
+        runNLEdit(message.apiKey, message.instruction, message.selector, message.computedStyles, message.provider, message.screenshotDataUrl)
           .then((changes) => {
             chrome.runtime.sendMessage({
               type: "AI_NL_EDIT_RESPONSE",

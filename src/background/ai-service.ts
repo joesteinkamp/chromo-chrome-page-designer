@@ -238,17 +238,29 @@ export async function runNLEdit(
   instruction: string,
   selector: string,
   computedStyles: Record<string, string>,
-  provider: Provider = "anthropic"
+  provider: Provider = "anthropic",
+  screenshotDataUrl?: string
 ): Promise<Array<{ property: string; value: string }>> {
   const system =
-    "You are a CSS expert. Given an element's current styles and a natural language instruction, return the CSS property changes needed. ALWAYS return ONLY a valid JSON array of {\"property\": \"css-property\", \"value\": \"css-value\"} objects. No explanations, no markdown, no text. If you cannot determine changes, return an empty array [].";
+    "You are a CSS expert. Given an element's current styles and a natural language instruction, return the CSS property changes needed. When a screenshot of the element is provided, use it to understand the element's current visual appearance and context. ALWAYS return ONLY a valid JSON array of {\"property\": \"css-property\", \"value\": \"css-value\"} objects. No explanations, no markdown, no text. If you cannot determine changes, return an empty array [].";
 
-  const userContent = [
-    {
-      type: "text",
-      text: `Element: ${selector}\nCurrent styles: ${JSON.stringify(computedStyles)}\nInstruction: ${instruction}\n\nReturn ONLY a JSON array. If unsure, return [].`,
-    },
-  ];
+  const userContent: Array<Record<string, any>> = [];
+
+  if (screenshotDataUrl) {
+    const match = screenshotDataUrl.match(/^data:(image\/\w+);base64,(.+)$/);
+    if (match) {
+      const [, mediaType, base64Data] = match;
+      userContent.push({
+        type: "image",
+        source: { type: "base64", media_type: mediaType, data: base64Data },
+      });
+    }
+  }
+
+  userContent.push({
+    type: "text",
+    text: `Element: ${selector}\nCurrent styles: ${JSON.stringify(computedStyles)}\nInstruction: ${instruction}\n\nReturn ONLY a JSON array. If unsure, return [].`,
+  });
 
   const responseText = await callProvider(provider, apiKey, system, userContent, 1000);
   return extractJSON(responseText) as Array<{ property: string; value: string }>;

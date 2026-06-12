@@ -10,6 +10,7 @@ import { generateSelector } from "../shared/selector";
 import { getMode, type MoveMode } from "./move-mode";
 import { recordStyleChange, recordMoveChange, startBatch, endBatch } from "./change-tracker";
 import { updateSpacing } from "./spacing-overlay";
+import { collectSnapTargets, applySnap, hideGuides, destroyGuides, type SnapRect } from "./alignment-guides";
 
 let isDragging = false;
 let dragElement: HTMLElement | SVGElement | null = null;
@@ -27,6 +28,10 @@ let dragMode: MoveMode = "position";
 let startTop = 0;
 let startLeft = 0;
 let originalPosition = "";
+// Smart-guide snapping (position mode): element rect and sibling/parent rects
+// captured at drag start, both in viewport coordinates
+let startRect: DOMRect | null = null;
+let snapTargets: SnapRect[] = [];
 
 // Reorder mode state
 let ghost: HTMLDivElement | null = null;
@@ -76,6 +81,8 @@ function onMouseMove(e: MouseEvent): void {
       startTop = parseFloat(computed.top) || 0;
       startLeft = parseFloat(computed.left) || 0;
       originalPosition = computed.position;
+      startRect = dragElement.getBoundingClientRect();
+      snapTargets = collectSnapTargets(dragElement);
       if (originalPosition === "static") {
         dragElement.style.setProperty("position", "relative", "important");
         recordStyleChange(dragElement, "position", "static", "relative");
@@ -90,8 +97,26 @@ function onMouseMove(e: MouseEvent): void {
   }
 
   if (dragMode === "position") {
-    const newTop = startTop + dy;
-    const newLeft = startLeft + dx;
+    let snapDx = 0;
+    let snapDy = 0;
+    // Smart guides: snap edges/centers to siblings and parent (Alt disables)
+    if (startRect && !e.altKey) {
+      const proposed = {
+        left: startRect.left + dx,
+        top: startRect.top + dy,
+        right: startRect.right + dx,
+        bottom: startRect.bottom + dy,
+        cx: (startRect.left + startRect.right) / 2 + dx,
+        cy: (startRect.top + startRect.bottom) / 2 + dy,
+      };
+      const snap = applySnap(proposed, snapTargets);
+      snapDx = snap.dx;
+      snapDy = snap.dy;
+    } else {
+      hideGuides();
+    }
+    const newTop = startTop + dy + snapDy;
+    const newLeft = startLeft + dx + snapDx;
     dragElement.style.setProperty("top", `${newTop}px`, "important");
     dragElement.style.setProperty("left", `${newLeft}px`, "important");
     // Keep selection overlay, spacing/padding visualization, and badge in sync
@@ -237,6 +262,7 @@ function cleanup(): void {
 
   ghost?.remove();
   insertionLine?.remove();
+  destroyGuides();
 
   document.removeEventListener("mousemove", onMouseMove, true);
   document.removeEventListener("mouseup", onMouseUp, true);
@@ -248,6 +274,8 @@ function cleanup(): void {
   insertionLine = null;
   dropTarget = null;
   originalPosition = "";
+  startRect = null;
+  snapTargets = [];
 
   onDragEnd?.();
   onDragEnd = null;

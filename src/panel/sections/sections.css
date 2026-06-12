@@ -516,3 +516,45 @@
   color: #f66;
   border-color: #f66;
 }
+
+/* --- Style sources section (cascade visibility) --- */
+.pd-sources__row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 2px 0;
+  min-width: 0;
+}
+
+.pd-sources__prop {
+  flex: 0 0 35%;
+  font-size: 10px;
+  color: var(--pd-text-secondary, #aaa);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pd-sources__rule {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 10px;
+  color: var(--pd-text, #d6d6d6);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pd-sources__rule--inline {
+  color: var(--pd-accent, #0c8ce9);
+  font-family: inherit;
+}
+
+.pd-sources__sheet {
+  color: var(--pd-text-tertiary, #777);
+}
+
+.pd-sources__important {
+  color: #e8a33d;
+}

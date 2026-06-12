@@ -131,6 +131,10 @@ export function extractElementData(element: Element): ElementData {
   let componentInfo: ElementData["componentInfo"];
   try { componentInfo = extractComponentInfo(element); } catch { /* */ }
 
+  // Resolve which rule supplies each property (cascade visibility)
+  let styleSources: ElementData["styleSources"];
+  try { styleSources = extractStyleSources(element, TRACKED_PROPERTIES); } catch { /* */ }
+
   // Capture parent layout context so the panel can show position controls
   // only when the element is free-positioned (parent is not auto-layout).
   let parentLayout: ElementData["parentLayout"];
@@ -176,6 +180,7 @@ export function extractElementData(element: Element): ElementData {
     tailwindClasses: tailwindClasses.length > 0 ? tailwindClasses : undefined,
     tailwindDetected: tailwindDetected || undefined,
     cssVariables: Object.keys(cssVariables).length > 0 ? cssVariables : undefined,
+    styleSources,
     componentInfo,
   };
 }
@@ -211,6 +216,116 @@ function normalizeColor(value: string, context: Element): string | null {
     return `rgb(${parseInt(m[1], 16)},${parseInt(m[2], 16)},${parseInt(m[3], 16)})`;
   }
   return null;
+}
+
+// --- Style cascade sources ---------------------------------------------------
+
+/**
+ * Resolve which CSS rule wins the cascade for each tracked property, so the
+ * inspector can show "Fill comes from `.btn-primary` in theme.css" and the
+ * export can target the right rule instead of overriding it blindly.
+ *
+ * Approximation of the real cascade: !important > inline > specificity >
+ * source order. Cross-origin sheets are skipped (their declarations can't be
+ * read), so a property may show a lower-priority source on such pages.
+ */
+function extractStyleSources(
+  element: Element,
+  properties: readonly string[]
+): Record<string, NonNullable<ElementData["styleSources"]>[string]> {
+  const best: Record<string, { source: NonNullable<ElementData["styleSources"]>[string]; score: number }> = {};
+  let order = 0;
+
+  const visitRules = (rules: CSSRuleList, sheetLabel: string | null) => {
+    for (let j = 0; j < rules.length; j++) {
+      const rule = rules[j];
+      // Descend into matching @media / @supports groups
+      if (rule instanceof CSSMediaRule) {
+        try {
+          if (window.matchMedia(rule.conditionText).matches) visitRules(rule.cssRules, sheetLabel);
+        } catch { /* unparsable condition */ }
+        continue;
+      }
+      if (!(rule instanceof CSSStyleRule)) {
+        if ("cssRules" in rule) {
+          try { visitRules((rule as CSSGroupingRule).cssRules, sheetLabel); } catch { /* */ }
+        }
+        continue;
+      }
+      order++;
+      let matched: string | null = null;
+      try {
+        if (!element.matches(rule.selectorText)) continue;
+        // Find the specific complex selector that matched, for specificity
+        for (const part of rule.selectorText.split(",")) {
+          try {
+            if (element.matches(part.trim())) { matched = part.trim(); break; }
+          } catch { /* invalid fragment */ }
+        }
+      } catch { continue; }
+      const spec = selectorSpecificity(matched ?? rule.selectorText);
+      for (const prop of properties) {
+        const val = rule.style.getPropertyValue(prop);
+        if (!val) continue;
+        const important = rule.style.getPropertyPriority(prop) === "important";
+        const score = (important ? 1e12 : 0) + spec * 1e6 + order;
+        if (!best[prop] || score > best[prop].score) {
+          best[prop] = {
+            score,
+            source: { selector: matched ?? rule.selectorText, sheet: sheetLabel, important },
+          };
+        }
+      }
+    }
+  };
+
+  try {
+    const sheets = document.styleSheets;
+    for (let i = 0; i < sheets.length; i++) {
+      let rules: CSSRuleList;
+      try { rules = sheets[i].cssRules; } catch { continue; } // cross-origin
+      let label: string | null = null;
+      const href = sheets[i].href;
+      if (href) {
+        try { label = new URL(href).pathname.split("/").pop() || href; } catch { label = href; }
+      }
+      visitRules(rules, label);
+    }
+  } catch { /* security restriction */ }
+
+  // Inline styles: non-important inline beats all non-important rules;
+  // !important inline (our own edits) beats everything.
+  const inlineStyle = (element as HTMLElement).style;
+  if (inlineStyle) {
+    for (const prop of properties) {
+      const val = inlineStyle.getPropertyValue(prop);
+      if (!val) continue;
+      const important = inlineStyle.getPropertyPriority(prop) === "important";
+      const score = important ? 2e12 : 0.9e12;
+      if (!best[prop] || score > best[prop].score) {
+        best[prop] = {
+          score,
+          source: { selector: "", sheet: null, important, inline: true },
+        };
+      }
+    }
+  }
+
+  const result: Record<string, NonNullable<ElementData["styleSources"]>[string]> = {};
+  for (const [prop, entry] of Object.entries(best)) {
+    result[prop] = entry.source;
+  }
+  return result;
+}
+
+/** Approximate CSS specificity as a single comparable number */
+function selectorSpecificity(selector: string): number {
+  const ids = (selector.match(/#[\w-]+/g) || []).length;
+  const classes = (selector.match(/\.[\w-]+|\[[^\]]*\]|:(?!:)[\w-]+(\([^)]*\))?/g) || []).length;
+  const types =
+    (selector.match(/(^|[\s>+~])[a-zA-Z][\w-]*/g) || []).length +
+    (selector.match(/::[\w-]+/g) || []).length;
+  return Math.min(ids, 99) * 10000 + Math.min(classes, 99) * 100 + Math.min(types, 99);
 }
 
 // --- Design token (CSS variable) editing -----------------------------------

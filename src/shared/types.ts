@@ -54,6 +54,17 @@ export interface ElementData {
   tailwindDetected?: boolean;
   /** CSS variable references for properties (property -> "var(--name)") */
   cssVariables?: Record<string, string>;
+  /** Which CSS rule wins the cascade for each property — shows where a value
+   *  comes from so the developer/agent edits the right rule */
+  styleSources?: Record<string, {
+    /** The matching complex selector of the winning rule (empty for inline) */
+    selector: string;
+    /** Stylesheet filename, or null for <style> blocks / inline */
+    sheet: string | null;
+    important: boolean;
+    /** True when the winning declaration is the element's inline style */
+    inline?: boolean;
+  }>;
   /** Component info from framework detection (React/Vue/Svelte) */
   componentInfo?: {
     framework: "react" | "vue" | "svelte" | null;

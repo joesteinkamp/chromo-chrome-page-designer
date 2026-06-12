@@ -239,6 +239,34 @@
   color: var(--pd-text);
 }
 
+/* Minus button to remove a section's value (sits beside the chevron) */
+.pd-section__minus-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border: none;
+  border-radius: var(--pd-radius);
+  background: none;
+  color: var(--pd-text-muted);
+  cursor: pointer;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.pd-section__minus-btn:hover {
+  background: var(--pd-danger-dim, rgba(229, 72, 77, 0.1));
+  color: var(--pd-danger, #e5484d);
+}
+
+/* Group the optional minus button with the chevron in a section header */
+.pd-section__header-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
 /* ── Spacing groups & popover ── */
 .pd-spacing__group {
   margin-bottom: var(--pd-space-4);

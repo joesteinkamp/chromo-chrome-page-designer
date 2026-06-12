@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useMemo, useEffect } from "react";
 import { NumberInput, ColorPicker } from "../controls";
-import { ChevronDown, PlusIcon } from "../icons";
+import { ChevronDown, PlusIcon, MinusIcon } from "../icons";
 import "./sections.css";
 
 interface ShadowSectionProps {
@@ -147,6 +147,10 @@ export const ShadowSection: React.FC<ShadowSectionProps> = ({
     () => emit({ ...shadow, inset: !shadow.inset }),
     [shadow, emit]
   );
+  const handleRemove = useCallback(
+    () => onStyleChange("box-shadow", "none"),
+    [onStyleChange]
+  );
 
   return (
     <div className={`pd-section${sectionDisabled ? " pd-section--disabled" : ""}`}>
@@ -158,7 +162,12 @@ export const ShadowSection: React.FC<ShadowSectionProps> = ({
         {collapsed && !hasValue ? (
           <button className="pd-section__plus-btn" onClick={(e) => { e.stopPropagation(); setCollapsed(false); }} type="button"><PlusIcon size={12} /></button>
         ) : (
-          <span className={`pd-section__arrow${collapsed ? " pd-section__arrow--collapsed" : ""}`}><ChevronDown size={12} /></span>
+          <div className="pd-section__header-actions">
+            {hasValue && (
+              <button className="pd-section__minus-btn" onClick={(e) => { e.stopPropagation(); handleRemove(); }} type="button" title="Remove shadow"><MinusIcon size={12} /></button>
+            )}
+            <span className={`pd-section__arrow${collapsed ? " pd-section__arrow--collapsed" : ""}`}><ChevronDown size={12} /></span>
+          </div>
         )}
       </div>
       {!collapsed && (

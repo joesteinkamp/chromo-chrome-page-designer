@@ -94,6 +94,9 @@ export type Message =
   // Screenshot
   | { type: "CAPTURE_SCREENSHOT" }
   | { type: "SCREENSHOT_CAPTURED"; dataUrl: string }
+  // "Before" screenshot captured when edit mode was activated on this page,
+  // for before/after pairs in the developer handoff
+  | { type: "GET_BEFORE_SCREENSHOT" }
   // Navigation
   | { type: "OPEN_OPTIONS_PAGE" }
   // Injection failure (background → panel)

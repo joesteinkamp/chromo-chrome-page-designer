@@ -67,6 +67,7 @@ chrome.runtime.onMessage.addListener(
             const injected = await ensureContentScript(tab.id);
             if (injected) {
               activatedTabs.add(tab.id);
+              captureBeforeShot(tab.id);
               sendToTab(tab.id, { type: "ACTIVATE" });
             } else {
               chrome.runtime.sendMessage({ type: "INJECTION_FAILED" } satisfies Message).catch(() => {});
@@ -86,6 +87,9 @@ chrome.runtime.onMessage.addListener(
             return;
           }
           activatedTabs.add(tabId);
+          // Snapshot the page before any edits — paired with an "after" shot
+          // at export time for the developer handoff.
+          captureBeforeShot(tabId);
           // Use sendMessage with callback to ensure delivery
           chrome.tabs.sendMessage(tabId, message, (resp) => {
             void chrome.runtime.lastError;
@@ -371,6 +375,27 @@ chrome.runtime.onMessage.addListener(
         }).catch(() => sendResponse({ viewportWidth: null }));
         return true;
 
+      case "GET_BEFORE_SCREENSHOT":
+        getActiveTabId().then(async (tabId) => {
+          if (!tabId) {
+            sendResponse({ dataUrl: null });
+            return;
+          }
+          try {
+            const key = beforeShotKey(tabId);
+            const [stored, tab] = await Promise.all([
+              chrome.storage.session.get(key),
+              chrome.tabs.get(tabId),
+            ]);
+            const entry = stored[key];
+            // Only valid for the page it was captured on
+            sendResponse({ dataUrl: entry && entry.url === tab.url ? entry.dataUrl : null });
+          } catch {
+            sendResponse({ dataUrl: null });
+          }
+        });
+        return true;
+
       // --- Screenshot ---
       case "CAPTURE_SCREENSHOT":
         captureScreenshot()
@@ -453,6 +478,34 @@ async function resizeViewport(targetWidth: number | null): Promise<number | null
   await delay(150);
   const after = await chrome.tabs.get(tabId);
   return after.width ?? null;
+}
+
+// --- "Before" screenshot for the developer handoff ---
+
+function beforeShotKey(tabId: number): string {
+  return `pdBeforeShot:${tabId}`;
+}
+
+/**
+ * Snapshot the visible page when edit mode is activated, before any edits.
+ * Stored per tab+URL in session storage (JPEG to stay well under quota) and
+ * paired with an "after" capture when the user sends change instructions.
+ * Re-activations on the same page keep the original — only a navigation
+ * refreshes the baseline.
+ */
+function captureBeforeShot(tabId: number): void {
+  (async () => {
+    try {
+      const tab = await chrome.tabs.get(tabId);
+      const key = beforeShotKey(tabId);
+      const existing = await chrome.storage.session.get(key);
+      if (existing[key]?.url === tab.url) return;
+      const dataUrl = await captureScreenshot("jpeg");
+      await chrome.storage.session.set({
+        [key]: { url: tab.url, dataUrl, timestamp: Date.now() },
+      });
+    } catch { /* best-effort — restricted pages can't be captured */ }
+  })();
 }
 
 // --- Content script injection ---
@@ -610,6 +663,7 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
 chrome.tabs.onRemoved.addListener((tabId) => {
   activatedTabs.delete(tabId);
   if (activeTabId === tabId) activeTabId = null;
+  chrome.storage.session.remove(beforeShotKey(tabId)).catch(() => {});
 });
 
 // Open side panel on action click

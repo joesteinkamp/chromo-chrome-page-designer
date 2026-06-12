@@ -346,16 +346,59 @@ export function App() {
 
   // --- Send menu actions ---
 
+  const downloadDataUrl = (dataUrl: string, filename: string) => {
+    const link = document.createElement("a");
+    link.href = dataUrl;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+  };
+
+  /**
+   * Download the before/after screenshot pair: "before" was captured when
+   * edit mode was activated on this page, "after" is captured now. Returns a
+   * note for the copied prompt listing the files (empty when capture fails).
+   */
+  const downloadBeforeAfterShots = async (): Promise<string> => {
+    try {
+      const ts = Date.now();
+      const [beforeResp, afterResp]: any[] = await Promise.all([
+        chrome.runtime.sendMessage({ type: "GET_BEFORE_SCREENSHOT" } satisfies Message),
+        chrome.runtime.sendMessage({ type: "CAPTURE_SCREENSHOT" } satisfies Message),
+      ]);
+      const files: string[] = [];
+      if (beforeResp?.dataUrl) {
+        const name = `chromo-before-${ts}.jpg`;
+        downloadDataUrl(beforeResp.dataUrl, name);
+        files.push(name);
+      }
+      if (afterResp?.dataUrl) {
+        const name = `chromo-after-${ts}.png`;
+        downloadDataUrl(afterResp.dataUrl, name);
+        files.push(name);
+      }
+      if (files.length === 2) {
+        return `\n\nBefore/after screenshots of the page were downloaded (${files.join(", ")}). Attach both images to this request — "before" is the page when editing started, "after" shows the desired result.`;
+      }
+      if (files.length === 1) {
+        return `\n\nA screenshot of the page's desired final state was downloaded (${files[0]}). Attach it to this request for visual context.`;
+      }
+    } catch { /* screenshots are optional context */ }
+    return "";
+  };
+
   const sendMenuActions = [
     {
       label: "Copy Change Instructions",
-      action: () => {
+      action: async () => {
         const summary = exportAsSummary(pageUrl, changes, undefined, componentMapRef.current);
         const hasComments = changes.some((c) => c.type === "comment");
         const basePrompt = `Apply these visual design changes to the codebase. Each change includes a CSS selector and, when available, the React/Vue/Svelte component name and source file. Use the component context to find the right file, then apply the property changes. When a change includes a Tailwind hint (e.g. replace \`p-4\` with \`p-6\`), edit the utility classes instead of writing raw CSS. When a change notes that a value matches a design token, use the var() reference instead of a hardcoded value. Entries marked "prop" are component prop edits — change the prop at the usage site in source code. Changes annotated with a viewport width were made at that responsive size — scope them with the matching media query or responsive utility variant (e.g. Tailwind \`max-md:\`) instead of applying them at all sizes.`;
         const commentPrompt = `\n\nEntries marked "Comment # (designer intent)" are freeform instructions from the designer about changes that couldn't be expressed as style edits (e.g. "use a dropdown instead of buttons", "swap this for the Button component"). Treat comments as higher-priority than style diffs when they conflict, and use judgment to implement the requested change — which may involve swapping components, changing behavior, or restructuring markup rather than just adjusting CSS.`;
         const prompt = hasComments ? `${basePrompt}${commentPrompt}` : basePrompt;
-        navigator.clipboard.writeText(`${prompt}\n\n${summary}`);
+        const shotNote = await downloadBeforeAfterShots();
+        navigator.clipboard.writeText(`${prompt}\n\n${summary}${shotNote}`);
         if (changes.length > 0) {
           setArchivedSends((prev) => [
             { id: `send-${Date.now()}`, timestamp: Date.now(), changes: [...changes] },

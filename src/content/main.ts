@@ -37,7 +37,7 @@ import {
   selectMultipleDirectly,
 } from "./element-picker";
 import { extractElementData, applyStyleToElement, findMatchingElements, removeAutoLayout } from "./style-bridge";
-import { applyComponentProp } from "./framework-detect";
+import { applyComponentProp, extractComponentInfo } from "./framework-detect";
 import { startInlineEdit, stopInlineEdit, isEditing } from "./inline-edit";
 import { initDragDrop, isDragActive, cancelDrag } from "./drag-drop";
 import { tryStartResize, isResizeActive } from "./resize";
@@ -70,6 +70,7 @@ import {
   recordWrapChange,
   recordDuplicateChange,
   recordDeleteChange,
+  recordPropChange,
   startBatch,
   endBatch,
   recordCommentChange,
@@ -286,7 +287,25 @@ chrome.runtime.onMessage.addListener(
       case "APPLY_PROP": {
         const el = getSelectedElement();
         if (el) {
-          applyComponentProp(el, message.framework, message.componentName, message.propName, message.propValue, message.propType);
+          // Read the current prop value before applying so the change records from → to
+          let from: string | number | boolean | null = null;
+          let fromType: "string" | "number" | "boolean" | "null" = "null";
+          try {
+            const info = extractComponentInfo(el);
+            const prop = info?.props?.find((p) => p.name === message.propName);
+            if (prop) {
+              from = prop.value;
+              fromType = prop.type;
+            }
+          } catch { /* component info is best-effort */ }
+
+          const applied = applyComponentProp(el, message.framework, message.componentName, message.propName, message.propValue, message.propType);
+          if (applied && from !== message.propValue) {
+            recordPropChange(
+              el, message.framework, message.componentName, message.propName,
+              from, fromType, message.propValue, message.propType
+            );
+          }
           // Wait a frame for the framework to re-render, then refresh
           requestAnimationFrame(() => {
             refreshSelection();

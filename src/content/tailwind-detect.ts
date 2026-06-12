@@ -314,6 +314,59 @@ export function suggestTailwindClass(property: string, value: string): string | 
   return null;
 }
 
+/**
+ * Per-property patterns matching the existing utility class that a new
+ * suggestion would replace. The color "text-" prefix collides with font-size
+ * and alignment utilities, so those exclude each other's value sets.
+ */
+const FONT_SIZE_VALUES = "xs|sm|base|lg|xl|[2-9]xl";
+const TEXT_ALIGN_VALUES = "left|center|right|justify";
+
+function conflictPattern(property: string): RegExp | null {
+  const spacingPrefix = SPACING_PROP_MAP[property];
+  if (spacingPrefix) {
+    return new RegExp(`^-?${spacingPrefix}-`);
+  }
+  if (property === "color") {
+    return new RegExp(`^text-(?!(?:${FONT_SIZE_VALUES}|${TEXT_ALIGN_VALUES}|ellipsis|clip|wrap|nowrap)$)`);
+  }
+  const colorPrefix = COLOR_PROP_MAP[property];
+  if (colorPrefix) {
+    return new RegExp(`^${colorPrefix}-(?!gradient)`);
+  }
+  switch (property) {
+    case "font-size":
+      return new RegExp(`^text-(?:${FONT_SIZE_VALUES})$`);
+    case "font-weight":
+      return /^font-(thin|extralight|light|normal|medium|semibold|bold|extrabold|black)$/;
+    case "border-radius":
+      return /^rounded(-(none|sm|md|lg|xl|2xl|3xl|full))?$/;
+    case "opacity":
+      return /^opacity-\d+$/;
+    case "text-align":
+      return new RegExp(`^text-(?:${TEXT_ALIGN_VALUES})$`);
+    case "display":
+      return /^(flex|inline-flex|grid|inline-grid|block|inline-block|inline|hidden|contents|table|flow-root)$/;
+    default:
+      return null;
+  }
+}
+
+/**
+ * Find the Tailwind class already on the element that a new suggestion for
+ * this property would replace (e.g. property "padding-top" → existing "pt-4").
+ * Only considers unprefixed utilities — responsive/state variants are left alone.
+ */
+export function findReplacedTailwindClass(element: Element, property: string): string | null {
+  const pattern = conflictPattern(property);
+  if (!pattern) return null;
+  for (const cls of extractTailwindClasses(element)) {
+    if (cls.includes(":")) continue;
+    if (pattern.test(cls)) return cls;
+  }
+  return null;
+}
+
 /** Parse a pixel value string to a number, or return null */
 function parsePx(value: string): number | null {
   const m = value.match(/^(-?\d+(?:\.\d+)?)px$/);

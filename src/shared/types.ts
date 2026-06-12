@@ -88,7 +88,8 @@ export type Change =
   | HideChange
   | WrapChange
   | DuplicateChange
-  | CommentChange;
+  | CommentChange
+  | PropChange;
 
 export interface BaseChange {
   id: string;
@@ -105,6 +106,12 @@ export interface StyleChange extends BaseChange {
   property: string;
   from: string;
   to: string;
+  /** Suggested Tailwind utility class for the new value (when Tailwind is detected) */
+  tailwindAdd?: string;
+  /** Existing Tailwind class on the element that the suggestion replaces */
+  tailwindRemove?: string;
+  /** Design token (CSS variable) whose value matches the new value */
+  matchedToken?: string;
 }
 
 export interface TextChange extends BaseChange {
@@ -169,6 +176,22 @@ export interface CommentChange extends BaseChange {
   text: string;
   /** Session-wide enumeration (1, 2, 3…) shown in the badge */
   number: number;
+}
+
+/**
+ * A framework component prop edit (React/Vue/Svelte) — maps 1:1 to a source
+ * code change (e.g. `variant="secondary"` → `variant="primary"`), unlike a
+ * CSS override.
+ */
+export interface PropChange extends BaseChange {
+  type: "prop";
+  framework: "react" | "vue" | "svelte";
+  componentName: string;
+  propName: string;
+  from: string | number | boolean | null;
+  fromType: "string" | "number" | "boolean" | "null";
+  to: string | number | boolean | null;
+  toType: "string" | "number" | "boolean" | "null";
 }
 
 /** Exported changeset format for Claude Code / Codex */

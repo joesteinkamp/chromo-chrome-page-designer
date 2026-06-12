@@ -180,9 +180,16 @@ export function exportAsSummary(
       switch (change.type) {
         case "style": {
           const label = CSS_TO_FIGMA[change.property] || change.property;
-          lines.push(
-            `- Changed **${label}**: \`${change.from}\` → \`${change.to}\``
-          );
+          let line = `- Changed **${label}**: \`${change.from}\` → \`${change.to}\``;
+          if (change.tailwindAdd) {
+            line += change.tailwindRemove
+              ? ` — Tailwind: replace \`${change.tailwindRemove}\` with \`${change.tailwindAdd}\``
+              : ` — Tailwind: add \`${change.tailwindAdd}\``;
+          }
+          if (change.matchedToken) {
+            line += ` — matches design token \`${change.matchedToken}\`; prefer \`var(${change.matchedToken})\``;
+          }
+          lines.push(line);
           break;
         }
         case "text":
@@ -218,6 +225,11 @@ export function exportAsSummary(
         case "comment":
           lines.push(
             `- **Comment #${change.number} (designer intent):** ${change.text}`
+          );
+          break;
+        case "prop":
+          lines.push(
+            `- Changed **prop \`${change.propName}\`** on \`<${change.componentName}>\` (${change.framework}): \`${JSON.stringify(change.from)}\` → \`${JSON.stringify(change.to)}\` — edit the component usage in source, not CSS`
           );
           break;
       }
@@ -261,6 +273,8 @@ function summarizeChanges(changes: Change[]): string {
     parts.push(`${counts.duplicate} duplication${counts.duplicate > 1 ? "s" : ""}`);
   if (counts.comment)
     parts.push(`${counts.comment} comment${counts.comment > 1 ? "s" : ""}`);
+  if (counts.prop)
+    parts.push(`${counts.prop} component prop edit${counts.prop > 1 ? "s" : ""}`);
 
   return parts.join(", ") || "No changes";
 }

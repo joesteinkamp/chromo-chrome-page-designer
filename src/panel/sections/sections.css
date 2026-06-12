@@ -472,3 +472,20 @@
   background: var(--pd-accent);
   color: #fff;
 }
+
+/* --- Component section (framework prop editing) --- */
+.pd-section__hint {
+  font-size: 10px;
+  color: var(--pd-text-tertiary, #888);
+  padding: 0 0 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pd-section__checkbox {
+  accent-color: #0c8ce9;
+  width: 14px;
+  height: 14px;
+  cursor: pointer;
+}

@@ -327,7 +327,7 @@ export function App() {
       action: () => {
         const summary = exportAsSummary(pageUrl, changes, undefined, componentMapRef.current);
         const hasComments = changes.some((c) => c.type === "comment");
-        const basePrompt = `Apply these visual design changes to the codebase. Each change includes a CSS selector and, when available, the React/Vue/Svelte component name and source file. Use the component context to find the right file, then apply the property changes.`;
+        const basePrompt = `Apply these visual design changes to the codebase. Each change includes a CSS selector and, when available, the React/Vue/Svelte component name and source file. Use the component context to find the right file, then apply the property changes. When a change includes a Tailwind hint (e.g. replace \`p-4\` with \`p-6\`), edit the utility classes instead of writing raw CSS. When a change notes that a value matches a design token, use the var() reference instead of a hardcoded value. Entries marked "prop" are component prop edits — change the prop at the usage site in source code.`;
         const commentPrompt = `\n\nEntries marked "Comment # (designer intent)" are freeform instructions from the designer about changes that couldn't be expressed as style edits (e.g. "use a dropdown instead of buttons", "swap this for the Button component"). Treat comments as higher-priority than style diffs when they conflict, and use judgment to implement the requested change — which may involve swapping components, changing behavior, or restructuring markup rather than just adjusting CSS.`;
         const prompt = hasComments ? `${basePrompt}${commentPrompt}` : basePrompt;
         navigator.clipboard.writeText(`${prompt}\n\n${summary}`);

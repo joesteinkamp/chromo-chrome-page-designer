@@ -180,6 +180,39 @@ export function extractElementData(element: Element): ElementData {
   };
 }
 
+/**
+ * Find a design token (CSS variable) on the page whose value matches the
+ * given color value. Lets the export say "use var(--brand-primary)" instead
+ * of a hex literal when the designer picked a color that already exists as a
+ * token.
+ */
+export function findMatchingToken(element: Element, value: string): string | null {
+  const target = normalizeColor(value, element);
+  if (!target) return null;
+  let tokens: Array<{ name: string; value: string }>;
+  try { tokens = extractDesignTokens(element); } catch { return null; }
+  for (const token of tokens) {
+    if (normalizeColor(token.value, element) === target) return token.name;
+  }
+  return null;
+}
+
+/** Normalize any CSS color to a comparable lowercase rgb() string */
+function normalizeColor(value: string, context: Element): string | null {
+  const resolved = resolveColorValue(value, context).trim().toLowerCase();
+  if (resolved.startsWith("rgb")) return resolved.replace(/\s+/g, "");
+  // Expand hex to rgb for comparison
+  let hex = resolved;
+  if (/^#[0-9a-f]{3}$/.test(hex)) {
+    hex = `#${hex[1]}${hex[1]}${hex[2]}${hex[2]}${hex[3]}${hex[3]}`;
+  }
+  const m = hex.match(/^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/);
+  if (m) {
+    return `rgb(${parseInt(m[1], 16)},${parseInt(m[2], 16)},${parseInt(m[3], 16)})`;
+  }
+  return null;
+}
+
 /** Apply a CSS property change to an element */
 export function applyStyleToElement(
   element: HTMLElement | SVGElement,

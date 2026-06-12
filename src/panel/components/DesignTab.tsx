@@ -10,6 +10,7 @@ import {
   OpacitySection,
   BlurSection,
   SpacingSection,
+  ComponentSection,
 } from "../sections";
 import { TypographyTab } from "./TypographyTab";
 import type { ElementData } from "../../shared/types";
@@ -44,6 +45,9 @@ export const DesignTab = React.memo(function DesignTab({
 
   return (
     <div className="pd-design-tab">
+      {data.componentInfo && (
+        <ComponentSection componentInfo={data.componentInfo} />
+      )}
       <DimensionsSection
         computedStyles={computedStyles}
         authoredStyles={data.authoredStyles}

@@ -4,6 +4,9 @@
  */
 
 import { generateSelector, IFRAME_SELECTOR_SEP } from "../shared/selector";
+import { detectTailwind, suggestTailwindClass, findReplacedTailwindClass } from "./tailwind-detect";
+import { findMatchingToken } from "./style-bridge";
+import { applyComponentProp } from "./framework-detect";
 import type {
   Change,
   StyleChange,
@@ -16,6 +19,7 @@ import type {
   WrapChange,
   DuplicateChange,
   CommentChange,
+  PropChange,
 } from "../shared/types";
 
 let changes: Change[] = [];
@@ -58,6 +62,35 @@ function makeId(): string {
 
 // --- Record changes ---
 
+/**
+ * Compute source-aware hints for a style change: the Tailwind utility the new
+ * value maps to (and which existing class it replaces), and any page design
+ * token whose value matches. These travel with the change into the export so
+ * the AI agent can edit the codebase in its own vocabulary.
+ */
+function computeStyleHints(
+  element: Element,
+  property: string,
+  to: string
+): Pick<StyleChange, "tailwindAdd" | "tailwindRemove" | "matchedToken"> {
+  const hints: Pick<StyleChange, "tailwindAdd" | "tailwindRemove" | "matchedToken"> = {};
+  try {
+    if (detectTailwind()) {
+      const add = suggestTailwindClass(property, to);
+      if (add) {
+        hints.tailwindAdd = add;
+        const remove = findReplacedTailwindClass(element, property);
+        if (remove && remove !== add) hints.tailwindRemove = remove;
+      }
+    }
+  } catch { /* hint computation must never break recording */ }
+  try {
+    const token = findMatchingToken(element, to);
+    if (token) hints.matchedToken = token;
+  } catch { /* ditto */ }
+  return hints;
+}
+
 export function recordStyleChange(
   element: Element,
   property: string,
@@ -72,6 +105,10 @@ export function recordStyleChange(
     existing.to = to;
     existing.timestamp = Date.now();
     existing.description = `Changed ${property} from "${truncate(existing.from)}" to "${truncate(to)}"`;
+    const hints = computeStyleHints(element, property, to);
+    existing.tailwindAdd = hints.tailwindAdd;
+    existing.tailwindRemove = hints.tailwindRemove;
+    existing.matchedToken = hints.matchedToken;
     // If we've gone back to the original value, remove the change entirely
     if (existing.from === to) {
       changes.splice(changes.indexOf(existing), 1);
@@ -89,6 +126,7 @@ export function recordStyleChange(
     property,
     from,
     to,
+    ...computeStyleHints(element, property, to),
     ...(currentBatchId ? { batchId: currentBatchId } : {}),
   };
   changes.push(change);
@@ -340,6 +378,52 @@ function notifyCommentsChanged(): void {
   }
 }
 
+export function recordPropChange(
+  element: Element,
+  framework: "react" | "vue" | "svelte",
+  componentName: string,
+  propName: string,
+  from: string | number | boolean | null,
+  fromType: "string" | "number" | "boolean" | "null",
+  to: string | number | boolean | null,
+  toType: "string" | "number" | "boolean" | "null"
+): Change {
+  const selector = getSelector(element);
+
+  // Coalesce repeated edits of the same prop on the same component
+  const existing = findExisting(selector, "prop");
+  if (existing && existing.type === "prop" && existing.propName === propName) {
+    existing.to = to;
+    existing.toType = toType;
+    existing.timestamp = Date.now();
+    existing.description = `Changed <${componentName}> prop ${propName} to ${JSON.stringify(to)}`;
+    if (existing.from === to) {
+      changes.splice(changes.indexOf(existing), 1);
+    }
+    broadcastChanges();
+    return existing;
+  }
+
+  const change: PropChange = {
+    id: makeId(),
+    timestamp: Date.now(),
+    selector,
+    description: `Changed <${componentName}> prop ${propName} to ${JSON.stringify(to)}`,
+    type: "prop",
+    framework,
+    componentName,
+    propName,
+    from,
+    fromType,
+    to,
+    toType,
+  };
+  changes.push(change);
+  redoStack = [];
+  broadcastChanges();
+  return change;
+}
+
 export function recordDuplicateChange(
   original: Element,
   clone: Element
@@ -522,6 +606,14 @@ function applyUndo(change: Change): boolean {
       // change is removed from the list and commentsListeners are notified.
       return true;
     }
+
+    case "prop": {
+      if (!element) return false;
+      return applyComponentProp(
+        element, change.framework, change.componentName,
+        change.propName, change.from, change.fromType
+      );
+    }
   }
 }
 
@@ -612,6 +704,14 @@ function applyRedo(change: Change): boolean {
     case "comment": {
       // Same as undo — the pin will re-appear via commentsListeners.
       return true;
+    }
+
+    case "prop": {
+      if (!element) return false;
+      return applyComponentProp(
+        element, change.framework, change.componentName,
+        change.propName, change.to, change.toType
+      );
     }
   }
 }

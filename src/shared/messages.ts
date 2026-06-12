@@ -80,6 +80,8 @@ export type Message =
   | { type: "SAVED_EDITS_AVAILABLE"; url: string }
   | { type: "REPLAY_CHANGES"; changes: Change[] }
   | { type: "REPLAY_RESULT"; applied: number; failed: number }
+  // Viewport presets (panel → background). null width = restore original size.
+  | { type: "VIEWPORT_RESIZE"; width: number | null }
   // Screenshot
   | { type: "CAPTURE_SCREENSHOT" }
   | { type: "SCREENSHOT_CAPTURED"; dataUrl: string }

@@ -99,6 +99,9 @@ export interface BaseChange {
   description: string;
   /** Groups related changes (e.g. multi-edit) for batch undo */
   batchId?: string;
+  /** Page viewport width (CSS px) when the change was made — used to scope
+   *  changes made at mobile/tablet sizes to responsive breakpoints on export */
+  viewport?: number;
 }
 
 export interface StyleChange extends BaseChange {

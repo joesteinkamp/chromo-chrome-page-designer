@@ -338,6 +338,13 @@ chrome.runtime.onMessage.addListener(
           });
         break;
 
+      // --- Viewport presets ---
+      case "VIEWPORT_RESIZE":
+        resizeViewport(message.width).then((viewportWidth) => {
+          sendResponse({ viewportWidth });
+        }).catch(() => sendResponse({ viewportWidth: null }));
+        return true;
+
       // --- Screenshot ---
       case "CAPTURE_SCREENSHOT":
         captureScreenshot()
@@ -351,6 +358,51 @@ chrome.runtime.onMessage.addListener(
     }
   }
 );
+
+// --- Viewport presets ---
+
+/** Window width before the first viewport preset was applied, for "Full" reset */
+let originalWindowWidth: number | null = null;
+
+/**
+ * Resize the browser window so the page viewport hits the target CSS width.
+ * The delta between the tab's viewport width (tab.width) and the window's
+ * outer width accounts for browser chrome and the open side panel.
+ * Returns the resulting viewport width (best effort), or null.
+ */
+async function resizeViewport(targetWidth: number | null): Promise<number | null> {
+  const tabId = await getActiveTabId();
+  if (!tabId) return null;
+  const tab = await chrome.tabs.get(tabId);
+  if (tab.windowId === undefined) return null;
+  const win = await chrome.windows.get(tab.windowId);
+
+  if (targetWidth === null) {
+    if (originalWindowWidth !== null) {
+      await chrome.windows.update(tab.windowId, { width: originalWindowWidth });
+      originalWindowWidth = null;
+    }
+    const restored = await chrome.tabs.get(tabId);
+    return restored.width ?? null;
+  }
+
+  // A maximized/fullscreen window ignores width — switch to normal first
+  if (win.state !== "normal") {
+    await chrome.windows.update(tab.windowId, { state: "normal" });
+  }
+  if (originalWindowWidth === null) {
+    originalWindowWidth = win.width ?? null;
+  }
+
+  const current = await chrome.windows.get(tab.windowId);
+  const viewportWidth = tab.width ?? current.width ?? 0;
+  const chromeWidth = (current.width ?? 0) - viewportWidth;
+  await chrome.windows.update(tab.windowId, {
+    width: Math.max(320, targetWidth + chromeWidth),
+  });
+  const after = await chrome.tabs.get(tabId);
+  return after.width ?? null;
+}
 
 // --- Content script injection ---
 

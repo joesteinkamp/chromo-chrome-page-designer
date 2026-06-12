@@ -120,6 +120,7 @@ export function recordStyleChange(
   const change: StyleChange = {
     id: makeId(),
     timestamp: Date.now(),
+    viewport: window.innerWidth,
     selector,
     description: `Changed ${property} from "${truncate(from)}" to "${truncate(to)}"`,
     type: "style",
@@ -158,6 +159,7 @@ export function recordTextChange(
   const change: TextChange = {
     id: makeId(),
     timestamp: Date.now(),
+    viewport: window.innerWidth,
     selector,
     description: `Changed text from "${truncate(from, 30)}" to "${truncate(to, 30)}"`,
     type: "text",
@@ -183,6 +185,7 @@ export function recordMoveChange(
   const change: MoveChange = {
     id: makeId(),
     timestamp: Date.now(),
+    viewport: window.innerWidth,
     selector,
     description: `Moved element from position ${fromIndex} to ${toIndex}`,
     type: "move",
@@ -222,6 +225,7 @@ export function recordResizeChange(
   const change: ResizeChange = {
     id: makeId(),
     timestamp: Date.now(),
+    viewport: window.innerWidth,
     selector,
     description: `Resized from ${from.width}×${from.height} to ${to.width}×${to.height}`,
     type: "resize",
@@ -243,6 +247,7 @@ export function recordImageChange(
   const change: ImageChange = {
     id: makeId(),
     timestamp: Date.now(),
+    viewport: window.innerWidth,
     selector,
     description: `Replaced image source`,
     type: "image",
@@ -264,6 +269,7 @@ export function recordDeleteChange(
   const change: DeleteChange = {
     id: makeId(),
     timestamp: Date.now(),
+    viewport: window.innerWidth,
     selector,
     description: `Deleted ${element.tagName.toLowerCase()} element`,
     type: "delete",
@@ -285,6 +291,7 @@ export function recordHideChange(
   const change: HideChange = {
     id: makeId(),
     timestamp: Date.now(),
+    viewport: window.innerWidth,
     selector,
     description: `Hidden ${element.tagName.toLowerCase()} element`,
     type: "hide",
@@ -305,6 +312,7 @@ export function recordWrapChange(
   const change: WrapChange = {
     id: makeId(),
     timestamp: Date.now(),
+    viewport: window.innerWidth,
     selector,
     description: `Wrapped ${element.tagName.toLowerCase()} in a group`,
     type: "wrap",
@@ -325,6 +333,7 @@ export function recordCommentChange(
   const change: CommentChange = {
     id: makeId(),
     timestamp: Date.now(),
+    viewport: window.innerWidth,
     selector,
     description: `Comment #${number}: "${truncate(text, 60)}"`,
     type: "comment",
@@ -407,6 +416,7 @@ export function recordPropChange(
   const change: PropChange = {
     id: makeId(),
     timestamp: Date.now(),
+    viewport: window.innerWidth,
     selector,
     description: `Changed <${componentName}> prop ${propName} to ${JSON.stringify(to)}`,
     type: "prop",
@@ -433,6 +443,7 @@ export function recordDuplicateChange(
   const change: DuplicateChange = {
     id: makeId(),
     timestamp: Date.now(),
+    viewport: window.innerWidth,
     selector,
     description: `Duplicated ${original.tagName.toLowerCase()} element`,
     type: "duplicate",
@@ -835,6 +846,10 @@ function findExisting(
   for (let i = changes.length - 1; i >= 0; i--) {
     const c = changes[i];
     if (c.selector === selector && c.type === type) {
+      // Don't coalesce edits made at a different viewport size — a mobile
+      // tweak and a desktop tweak of the same property are distinct changes
+      // that export to different breakpoints.
+      if (c.viewport !== undefined && c.viewport !== window.innerWidth) continue;
       if (type === "style" && property) {
         if (c.type === "style" && c.property === property) return c;
       } else {

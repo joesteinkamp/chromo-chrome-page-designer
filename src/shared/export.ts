@@ -165,6 +165,17 @@ export function exportAsSummary(
   // Group by selector
   const groups = groupBySelector(collapsed, componentMap);
 
+  // Viewport annotations only matter when changes were made at a narrow
+  // viewport, or when the session mixes multiple viewport sizes.
+  const viewports = new Set(collapsed.map((c) => c.viewport).filter((v): v is number => v !== undefined));
+  const annotateViewports = viewports.size > 1 || Array.from(viewports).some((v) => v < 1024);
+  const viewportNote = (c: Change): string => {
+    if (!annotateViewports || c.viewport === undefined) return "";
+    if (c.viewport < 640) return ` _(at ${c.viewport}px viewport — scope to a mobile breakpoint)_`;
+    if (c.viewport < 1024) return ` _(at ${c.viewport}px viewport — scope to a tablet breakpoint)_`;
+    return viewports.size > 1 ? ` _(at ${c.viewport}px viewport)_` : "";
+  };
+
   for (const group of groups) {
     let header = `### \`${group.selector}\``;
     if (group.component?.componentName) {
@@ -177,6 +188,7 @@ export function exportAsSummary(
     lines.push(header);
 
     for (const change of group.changes) {
+      const linesBefore = lines.length;
       switch (change.type) {
         case "style": {
           const label = CSS_TO_FIGMA[change.property] || change.property;
@@ -232,6 +244,11 @@ export function exportAsSummary(
             `- Changed **prop \`${change.propName}\`** on \`<${change.componentName}>\` (${change.framework}): \`${JSON.stringify(change.from)}\` → \`${JSON.stringify(change.to)}\` — edit the component usage in source, not CSS`
           );
           break;
+      }
+
+      const note = viewportNote(change);
+      if (note && lines.length > linesBefore) {
+        lines[lines.length - 1] += note;
       }
     }
 

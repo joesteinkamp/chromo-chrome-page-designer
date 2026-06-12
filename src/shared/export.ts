@@ -244,6 +244,11 @@ export function exportAsSummary(
             `- Changed **prop \`${change.propName}\`** on \`<${change.componentName}>\` (${change.framework}): \`${JSON.stringify(change.from)}\` → \`${JSON.stringify(change.to)}\` — edit the component usage in source, not CSS`
           );
           break;
+        case "token":
+          lines.push(
+            `- Changed **design token \`${change.name}\`**: \`${change.from}\` → \`${change.to}\` — update the token where it's defined (e.g. :root, theme config), not per-element`
+          );
+          break;
       }
 
       const note = viewportNote(change);
@@ -292,6 +297,8 @@ function summarizeChanges(changes: Change[]): string {
     parts.push(`${counts.comment} comment${counts.comment > 1 ? "s" : ""}`);
   if (counts.prop)
     parts.push(`${counts.prop} component prop edit${counts.prop > 1 ? "s" : ""}`);
+  if (counts.token)
+    parts.push(`${counts.token} design token edit${counts.token > 1 ? "s" : ""}`);
 
   return parts.join(", ") || "No changes";
 }

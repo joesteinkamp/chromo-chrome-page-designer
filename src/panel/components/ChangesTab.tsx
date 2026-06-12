@@ -26,6 +26,7 @@ const TYPE_ICONS: Record<Change["type"], ReactNode> = {
   duplicate: <DuplicateIcon size={14} />,
   comment: <CommentIcon size={14} />,
   prop: <DiamondIcon size={14} />,
+  token: <PaletteIcon size={14} />,
 };
 
 function relativeTime(timestamp: number): string {

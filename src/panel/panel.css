@@ -887,3 +887,16 @@ body {
   color: var(--pd-text-tertiary, #888);
   font-variant-numeric: tabular-nums;
 }
+
+.pd-panel__tokens-link {
+  background: transparent;
+  border: none;
+  color: var(--pd-accent, #0c8ce9);
+  cursor: pointer;
+  font-size: 11px;
+  margin-bottom: 12px;
+}
+
+.pd-panel__tokens-link:hover {
+  text-decoration: underline;
+}

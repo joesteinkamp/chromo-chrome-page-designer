@@ -6,12 +6,13 @@ import { ElementInfo } from "./components/ElementInfo";
 import { DesignTab } from "./components/DesignTab";
 import { ChangesTab } from "./components/ChangesTab";
 import { AITab } from "./components/AITab";
+import { TokensTab } from "./components/TokensTab";
 import { AgentSyncSection, type AgentSyncStatus } from "./components/AgentSyncSection";
 import { exportAsSummary, type ComponentContext } from "../shared/export";
 import type { Change } from "../shared/types";
 import type { Message, AISuggestion } from "../shared/messages";
 
-type Tab = "design" | "changes" | "ai";
+type Tab = "design" | "changes" | "tokens" | "ai";
 
 /** Viewport presets for responsive editing (CSS px) */
 const VIEWPORT_PRESETS = [
@@ -475,7 +476,7 @@ export function App() {
       </div>
 
       <div className="pd-panel__body">
-        {elementData || changes.length > 0 ? (
+        {elementData || changes.length > 0 || activeTab === "tokens" ? (
           <>
             {elementData && (
               <ElementInfo data={elementData} multiEdit={multiEdit} onToggleMultiEdit={handleToggleMultiEdit} multiSelectCount={multiSelectCount} />
@@ -495,6 +496,12 @@ export function App() {
                 {changes.length > 0 && (
                   <span className="pd-panel__tab-badge">{changes.length}</span>
                 )}
+              </button>
+              <button
+                className={`pd-panel__tab ${activeTab === "tokens" ? "pd-panel__tab--active" : ""}`}
+                onClick={() => setActiveTab("tokens")}
+              >
+                Tokens
               </button>
               <button
                 className={`pd-panel__tab ${activeTab === "ai" ? "pd-panel__tab--active" : ""}`}
@@ -526,6 +533,7 @@ export function App() {
                   url={pageUrl}
                 />
               )}
+              {activeTab === "tokens" && <TokensTab />}
               {activeTab === "ai" && (
                 elementData ? (
                   <AITab
@@ -578,6 +586,13 @@ export function App() {
               </div>
             )}
             <div className="pd-panel__empty-icon"><DiamondIcon size={36} /></div>
+            <button
+              className="pd-panel__tokens-link"
+              onClick={() => setActiveTab("tokens")}
+              type="button"
+            >
+              Edit design tokens →
+            </button>
             <div className="pd-panel__empty-title">Select an element</div>
             <div className="pd-panel__empty-subtitle">
               Hover over the page and click an element to inspect and edit its

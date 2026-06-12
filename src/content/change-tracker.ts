@@ -5,7 +5,7 @@
 
 import { generateSelector, IFRAME_SELECTOR_SEP } from "../shared/selector";
 import { detectTailwind, suggestTailwindClass, findReplacedTailwindClass } from "./tailwind-detect";
-import { findMatchingToken } from "./style-bridge";
+import { findMatchingToken, setTokenOverride } from "./style-bridge";
 import { applyComponentProp } from "./framework-detect";
 import type {
   Change,
@@ -20,6 +20,7 @@ import type {
   DuplicateChange,
   CommentChange,
   PropChange,
+  TokenChange,
 } from "../shared/types";
 
 let changes: Change[] = [];
@@ -434,6 +435,43 @@ export function recordPropChange(
   return change;
 }
 
+export function recordTokenChange(
+  name: string,
+  from: string,
+  to: string
+): Change {
+  // Coalesce repeated edits of the same token
+  for (let i = changes.length - 1; i >= 0; i--) {
+    const c = changes[i];
+    if (c.type === "token" && c.name === name) {
+      c.to = to;
+      c.timestamp = Date.now();
+      c.description = `Changed design token ${name} from "${truncate(c.from)}" to "${truncate(to)}"`;
+      if (c.from === to) {
+        changes.splice(i, 1);
+      }
+      broadcastChanges();
+      return c;
+    }
+  }
+
+  const change: TokenChange = {
+    id: makeId(),
+    timestamp: Date.now(),
+    viewport: window.innerWidth,
+    selector: ":root",
+    description: `Changed design token ${name} from "${truncate(from)}" to "${truncate(to)}"`,
+    type: "token",
+    name,
+    from,
+    to,
+  };
+  changes.push(change);
+  redoStack = [];
+  broadcastChanges();
+  return change;
+}
+
 export function recordDuplicateChange(
   original: Element,
   clone: Element
@@ -625,6 +663,13 @@ function applyUndo(change: Change): boolean {
         change.propName, change.from, change.fromType
       );
     }
+
+    case "token": {
+      // Coalescing keeps `from` as the page's original value, so clearing the
+      // override restores it.
+      setTokenOverride(change.name, null);
+      return true;
+    }
   }
 }
 
@@ -724,6 +769,11 @@ function applyRedo(change: Change): boolean {
         change.propName, change.to, change.toType
       );
     }
+
+    case "token": {
+      setTokenOverride(change.name, change.to);
+      return true;
+    }
   }
 }
 
@@ -816,6 +866,9 @@ export function replayChanges(
         }
         case "hide":
           element.style.setProperty("display", "none", "important");
+          break;
+        case "token":
+          setTokenOverride(change.name, change.to);
           break;
       }
       // Re-record in local state

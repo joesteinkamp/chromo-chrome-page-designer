@@ -128,8 +128,13 @@ chrome.runtime.onMessage.addListener(
       case "SELECT_ELEMENT":
       case "WRAP_ELEMENT":
       case "FORCE_PSEUDO_STATE":
+      case "APPLY_TOKEN":
         forwardToContentScript(message);
         break;
+
+      case "GET_PAGE_TOKENS":
+        forwardToContentScript(message, sendResponse);
+        return true;
 
       case "GET_STATE":
         // Try to forward — if content script isn't there, respond with inactive

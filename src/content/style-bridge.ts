@@ -8,7 +8,7 @@ import { TRACKED_PROPERTIES } from "../shared/constants";
 import { generateBreadcrumb, generateSelector } from "../shared/selector";
 import { extractComponentInfo } from "./framework-detect";
 import { detectTailwind, extractTailwindClasses } from "./tailwind-detect";
-import type { ElementData } from "../shared/types";
+import type { ElementData, PageToken } from "../shared/types";
 
 /** Track which Google Fonts have been injected to avoid duplicates */
 const loadedGoogleFonts = new Set<string>();
@@ -211,6 +211,89 @@ function normalizeColor(value: string, context: Element): string | null {
     return `rgb(${parseInt(m[1], 16)},${parseInt(m[2], 16)},${parseInt(m[3], 16)})`;
   }
   return null;
+}
+
+// --- Design token (CSS variable) editing -----------------------------------
+
+/** Live token overrides applied via the injected :root stylesheet */
+const tokenOverrides = new Map<string, string>();
+
+const TOKEN_OVERRIDE_STYLE_ID = "__pd-token-overrides";
+
+/**
+ * Override (or clear, with null) a CSS custom property on :root. Overrides
+ * live in a single injected <style> appended to the document so they win the
+ * cascade; editing one token live-restyles everything that consumes it.
+ */
+export function setTokenOverride(name: string, value: string | null): void {
+  if (value === null) {
+    tokenOverrides.delete(name);
+  } else {
+    tokenOverrides.set(name, value);
+  }
+  let styleEl = document.getElementById(TOKEN_OVERRIDE_STYLE_ID) as HTMLStyleElement | null;
+  if (tokenOverrides.size === 0) {
+    styleEl?.remove();
+    return;
+  }
+  if (!styleEl) {
+    styleEl = document.createElement("style");
+    styleEl.id = TOKEN_OVERRIDE_STYLE_ID;
+    document.documentElement.appendChild(styleEl);
+  }
+  const decls = Array.from(tokenOverrides.entries())
+    .map(([n, v]) => `  ${n}: ${v} !important;`)
+    .join("\n");
+  styleEl.textContent = `:root {\n${decls}\n}`;
+}
+
+/** Current effective value of a token: live override, else computed on :root */
+export function getTokenValue(name: string): string {
+  const override = tokenOverrides.get(name);
+  if (override !== undefined) return override;
+  return window.getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+}
+
+function looksLikeColor(value: string): boolean {
+  return /^(#|rgb|hsl|oklch|oklab|lab|lch|color\()/i.test(value) || value === "transparent";
+}
+
+/**
+ * Collect CSS custom properties declared on :root/html across same-origin
+ * stylesheets, with their current computed values.
+ */
+export function collectPageTokens(): PageToken[] {
+  const names = new Set<string>();
+  try {
+    const sheets = document.styleSheets;
+    for (let i = 0; i < sheets.length && names.size < 150; i++) {
+      try {
+        const rules = sheets[i].cssRules;
+        for (let j = 0; j < rules.length && names.size < 150; j++) {
+          const rule = rules[j];
+          if (!(rule instanceof CSSStyleRule)) continue;
+          if (!/(^|,)\s*(:root|html)\s*($|,)/.test(rule.selectorText)) continue;
+          for (let k = 0; k < rule.style.length; k++) {
+            const prop = rule.style[k];
+            if (prop.startsWith("--")) names.add(prop);
+          }
+        }
+      } catch { /* cross-origin stylesheet */ }
+    }
+  } catch { /* security restriction */ }
+
+  const rootStyles = window.getComputedStyle(document.documentElement);
+  const tokens: PageToken[] = [];
+  for (const name of names) {
+    const value = (tokenOverrides.get(name) ?? rootStyles.getPropertyValue(name)).trim();
+    if (!value) continue;
+    tokens.push({ name, value, isColor: looksLikeColor(value) });
+  }
+  // Colors first, then alphabetical — matches what designers reach for
+  tokens.sort((a, b) =>
+    a.isColor === b.isColor ? a.name.localeCompare(b.name) : a.isColor ? -1 : 1
+  );
+  return tokens.slice(0, 100);
 }
 
 /** Apply a CSS property change to an element */

@@ -1,4 +1,4 @@
-import type { Change, ElementData } from "./types";
+import type { Change, ElementData, PageToken } from "./types";
 
 export interface AISuggestion {
   selector: string;
@@ -80,6 +80,10 @@ export type Message =
   | { type: "SAVED_EDITS_AVAILABLE"; url: string }
   | { type: "REPLAY_CHANGES"; changes: Change[] }
   | { type: "REPLAY_RESULT"; applied: number; failed: number }
+  // Design tokens (panel ↔ content script)
+  | { type: "GET_PAGE_TOKENS" }
+  | { type: "PAGE_TOKENS_RESPONSE"; tokens: PageToken[] }
+  | { type: "APPLY_TOKEN"; name: string; value: string }
   // Viewport presets (panel → background). null width = restore original size.
   | { type: "VIEWPORT_RESIZE"; width: number | null }
   // Screenshot

@@ -89,7 +89,8 @@ export type Change =
   | WrapChange
   | DuplicateChange
   | CommentChange
-  | PropChange;
+  | PropChange
+  | TokenChange;
 
 export interface BaseChange {
   id: string;
@@ -195,6 +196,26 @@ export interface PropChange extends BaseChange {
   fromType: "string" | "number" | "boolean" | "null";
   to: string | number | boolean | null;
   toType: "string" | "number" | "boolean" | "null";
+}
+
+/**
+ * A page-wide design token (CSS custom property) edit, applied by overriding
+ * the variable on :root. One token edit can restyle the whole page — exports
+ * as "change the token definition" rather than per-element CSS.
+ */
+export interface TokenChange extends BaseChange {
+  type: "token";
+  /** Custom property name, e.g. "--color-primary" */
+  name: string;
+  from: string;
+  to: string;
+}
+
+/** A CSS custom property defined on :root, surfaced in the Tokens tab */
+export interface PageToken {
+  name: string;
+  value: string;
+  isColor: boolean;
 }
 
 /** Exported changeset format for Claude Code / Codex */

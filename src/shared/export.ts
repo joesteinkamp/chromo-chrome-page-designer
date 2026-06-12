@@ -165,15 +165,25 @@ export function exportAsSummary(
   // Group by selector
   const groups = groupBySelector(collapsed, componentMap);
 
-  // Viewport annotations only matter when changes were made at a narrow
-  // viewport, or when the session mixes multiple viewport sizes.
-  const viewports = new Set(collapsed.map((c) => c.viewport).filter((v): v is number => v !== undefined));
-  const annotateViewports = viewports.size > 1 || Array.from(viewports).some((v) => v < 1024);
+  // Viewport annotations are relative: only when the session mixes viewport
+  // sizes do narrower-than-widest changes get breakpoint notes. An absolute
+  // threshold would misfire — the open side panel alone narrows the page
+  // viewport below typical breakpoints on laptops.
+  const viewports = collapsed
+    .map((c) => c.viewport)
+    .filter((v): v is number => v !== undefined);
+  const maxViewport = viewports.length > 0 ? Math.max(...viewports) : 0;
+  const annotateViewports = new Set(viewports).size > 1;
+  // Only these change types can be scoped with media queries / responsive
+  // utility variants. Tokens (:root-wide) and props can't.
+  const viewportScopable = new Set(["style", "resize", "hide"]);
   const viewportNote = (c: Change): string => {
     if (!annotateViewports || c.viewport === undefined) return "";
+    if (!viewportScopable.has(c.type)) return "";
+    if (c.viewport >= maxViewport) return "";
     if (c.viewport < 640) return ` _(at ${c.viewport}px viewport — scope to a mobile breakpoint)_`;
     if (c.viewport < 1024) return ` _(at ${c.viewport}px viewport — scope to a tablet breakpoint)_`;
-    return viewports.size > 1 ? ` _(at ${c.viewport}px viewport)_` : "";
+    return ` _(at ${c.viewport}px viewport)_`;
   };
 
   for (const group of groups) {

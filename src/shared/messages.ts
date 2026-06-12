@@ -86,6 +86,11 @@ export type Message =
   | { type: "APPLY_TOKEN"; name: string; value: string }
   // Viewport presets (panel → background). null width = restore original size.
   | { type: "VIEWPORT_RESIZE"; width: number | null }
+  // Current bounding rect of the selected element (panel → content script).
+  // Used to crop AI screenshots at capture time — selection-time rects go
+  // stale after scrolling.
+  | { type: "GET_SELECTED_RECT" }
+  | { type: "SELECTED_RECT_RESPONSE"; rect: { x: number; y: number; width: number; height: number } | null }
   // Screenshot
   | { type: "CAPTURE_SCREENSHOT" }
   | { type: "SCREENSHOT_CAPTURED"; dataUrl: string }

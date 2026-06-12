@@ -10,7 +10,7 @@
  * position: fixed and the highest z-index (above the overlay handles).
  */
 
-import { selectElementDirectly } from "./element-picker";
+import { selectElementDirectly, suspendPicker, resumePicker } from "./element-picker";
 import { showHover, hideHover } from "./overlay";
 import { recordMoveChange } from "./change-tracker";
 import { generateSelector } from "../shared/selector";
@@ -361,6 +361,7 @@ export function unmountLayersPanel(): void {
   window.removeEventListener("mouseup", onRowDragUp, true);
   dragSource = null;
   isRowDragging = false;
+  didDrag = false;
   dropRow = null;
   root?.remove();
   root = null;
@@ -630,6 +631,10 @@ function onRowDragMove(e: MouseEvent): void {
     }
     isRowDragging = true;
     root.classList.add(`${LAYERS_PANE_PREFIX}root--dragging`);
+    // Keep the element picker from reacting to the drag's mouse events —
+    // releasing over the host page would otherwise select/deselect whatever
+    // is under the cursor.
+    try { suspendPicker(); } catch { /* picker may not be active */ }
   }
   e.preventDefault();
   e.stopImmediatePropagation();
@@ -641,12 +646,16 @@ function onRowDragMove(e: MouseEvent): void {
   const targetEl = rowToElement.get(rowEl);
   if (!targetEl || targetEl === dragSource || dragSource.contains(targetEl)) return;
 
+  // Nothing can be dropped relative to <html>, and "into" it would place the
+  // element as a sibling of <head>/<body>.
+  if (targetEl === document.documentElement) return;
+
   const rect = rowEl.getBoundingClientRect();
   const ratio = (e.clientY - rect.top) / rect.height;
   if (ratio < 0.25) dropZone = "before";
   else if (ratio > 0.75) dropZone = "after";
   else dropZone = "into";
-  // Inserting before/after requires a parent; <html> rows only accept "into"
+  // Inserting before/after requires a parent; parentless rows only accept "into"
   if (dropZone !== "into" && !targetEl.parentElement) dropZone = "into";
 
   dropRow = rowEl;
@@ -670,6 +679,9 @@ function onRowDragUp(e: MouseEvent): void {
   // The browser fires a click right after mouseup; the click branch consumes
   // didDrag, and this covers releases outside the pane where no click reaches it.
   setTimeout(() => { didDrag = false; }, 0);
+  // Resume the picker after the trailing click has been dispatched, so it
+  // never sees the drag-release click.
+  setTimeout(() => { try { resumePicker(); } catch { /* */ } }, 0);
   e.preventDefault();
   e.stopImmediatePropagation();
 
@@ -698,6 +710,9 @@ function onRowDragUp(e: MouseEvent): void {
   const toParent = source.parentElement;
   if (!toParent) return;
   const toIndex = Array.from(toParent.children).indexOf(source);
+  // Dropping "after" the previous sibling (or "before" the next) is a DOM
+  // no-op — don't record a move that changes nothing.
+  if (toParent === fromParent && toIndex === fromIndex) return;
   recordMoveChange(source, fromParentSelector, fromIndex, generateSelector(toParent), toIndex);
 
   // Re-select the moved element so the overlay and side panel follow it

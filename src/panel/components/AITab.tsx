@@ -164,18 +164,33 @@ export function AITab({
 
     // Best-effort: attach a screenshot cropped to the selected element so the
     // model sees the element's actual appearance, not just its CSS values.
+    // Skipped for iframe selections — their rects are frame-relative and
+    // don't map onto the tab capture.
     let screenshotDataUrl: string | undefined;
-    try {
-      const resp: any = await chrome.runtime.sendMessage({
-        type: "CAPTURE_SCREENSHOT",
-      } satisfies Message);
-      if (resp?.dataUrl) {
-        const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
-        const viewportWidth = tabs[0]?.width;
-        screenshotDataUrl =
-          (await cropToElement(resp.dataUrl, elementData.rect, viewportWidth)) ?? undefined;
-      }
-    } catch { /* screenshot is optional — proceed without it */ }
+    if (!elementData.frameId) {
+      try {
+        // Re-fetch the rect at capture time: the selection-time rect goes
+        // stale if the user scrolled or the layout shifted since selecting.
+        const rectResp: any = await chrome.runtime.sendMessage({
+          type: "GET_SELECTED_RECT",
+        } satisfies Message);
+        const rect =
+          rectResp?.type === "SELECTED_RECT_RESPONSE" && rectResp.rect
+            ? rectResp.rect
+            : null;
+        if (rect) {
+          const resp: any = await chrome.runtime.sendMessage({
+            type: "CAPTURE_SCREENSHOT",
+          } satisfies Message);
+          if (resp?.dataUrl) {
+            const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+            const viewportWidth = tabs[0]?.width;
+            screenshotDataUrl =
+              (await cropToElement(resp.dataUrl, rect, viewportWidth)) ?? undefined;
+          }
+        }
+      } catch { /* screenshot is optional — proceed without it */ }
+    }
 
     chrome.runtime.sendMessage({
       type: "AI_NL_EDIT_REQUEST",

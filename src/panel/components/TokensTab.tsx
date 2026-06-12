@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import type { Message } from "../../shared/messages";
 import type { PageToken } from "../../shared/types";
 import "./tokens.css";
@@ -13,10 +13,14 @@ export function TokensTab() {
   const [filter, setFilter] = useState("");
 
   const loadTokens = useCallback(() => {
+    // Fallback: if the content script never answers (restricted page, closed
+    // tab), don't hang on the loading state forever.
+    const timer = setTimeout(() => setTokens((prev) => prev ?? []), 3000);
     chrome.runtime.sendMessage(
       { type: "GET_PAGE_TOKENS" } satisfies Message,
       (resp: any) => {
         void chrome.runtime.lastError;
+        clearTimeout(timer);
         if (resp?.type === "PAGE_TOKENS_RESPONSE") {
           setTokens(resp.tokens);
         } else {
@@ -92,9 +96,15 @@ interface TokenRowProps {
 
 function TokenRow({ token, onApply }: TokenRowProps) {
   const [local, setLocal] = useState(token.value);
+  // The native color input fires per picker-drag tick; debounce the apply so
+  // the content script isn't asked to rebuild overrides + refresh per tick.
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     setLocal(token.value);
   }, [token.value]);
+  useEffect(() => () => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+  }, []);
 
   const commit = () => {
     const trimmed = local.trim();
@@ -114,8 +124,10 @@ function TokenRow({ token, onApply }: TokenRowProps) {
             className="pd-tokens__swatch-input"
             value={hexValue}
             onChange={(e) => {
-              setLocal(e.target.value);
-              onApply(token.name, e.target.value);
+              const value = e.target.value;
+              setLocal(value);
+              if (debounceRef.current) clearTimeout(debounceRef.current);
+              debounceRef.current = setTimeout(() => onApply(token.name, value), 150);
             }}
             title={token.value}
           />

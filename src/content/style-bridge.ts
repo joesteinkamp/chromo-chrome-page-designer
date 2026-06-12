@@ -7,7 +7,7 @@
 import { TRACKED_PROPERTIES } from "../shared/constants";
 import { generateBreadcrumb, generateSelector } from "../shared/selector";
 import { extractComponentInfo } from "./framework-detect";
-import { detectTailwind, extractTailwindClasses } from "./tailwind-detect";
+import { detectTailwind, extractTailwindClasses, normalizeToHex } from "./tailwind-detect";
 import type { ElementData, PageToken } from "../shared/types";
 
 /** Track which Google Fonts have been injected to avoid duplicates */
@@ -131,9 +131,19 @@ export function extractElementData(element: Element): ElementData {
   let componentInfo: ElementData["componentInfo"];
   try { componentInfo = extractComponentInfo(element); } catch { /* */ }
 
-  // Resolve which rule supplies each property (cascade visibility)
+  // Resolve which rule supplies each property (cascade visibility). The full
+  // stylesheet walk is too costly per slider tick, so results are cached
+  // briefly per element — selection changes recompute, drags hit the cache.
   let styleSources: ElementData["styleSources"];
-  try { styleSources = extractStyleSources(element, TRACKED_PROPERTIES); } catch { /* */ }
+  const cachedSources = styleSourcesCache.get(element);
+  if (cachedSources && Date.now() - cachedSources.time < STYLE_SOURCES_TTL_MS) {
+    styleSources = cachedSources.sources;
+  } else {
+    try {
+      styleSources = extractStyleSources(element, TRACKED_PROPERTIES);
+      styleSourcesCache.set(element, { time: Date.now(), sources: styleSources });
+    } catch { /* */ }
+  }
 
   // Capture parent layout context so the panel can show position controls
   // only when the element is free-positioned (parent is not auto-layout).
@@ -202,23 +212,16 @@ export function findMatchingToken(element: Element, value: string): string | nul
   return null;
 }
 
-/** Normalize any CSS color to a comparable lowercase rgb() string */
+/** Normalize any CSS color to comparable lowercase hex (shared canonical form) */
 function normalizeColor(value: string, context: Element): string | null {
-  const resolved = resolveColorValue(value, context).trim().toLowerCase();
-  if (resolved.startsWith("rgb")) return resolved.replace(/\s+/g, "");
-  // Expand hex to rgb for comparison
-  let hex = resolved;
-  if (/^#[0-9a-f]{3}$/.test(hex)) {
-    hex = `#${hex[1]}${hex[1]}${hex[2]}${hex[2]}${hex[3]}${hex[3]}`;
-  }
-  const m = hex.match(/^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/);
-  if (m) {
-    return `rgb(${parseInt(m[1], 16)},${parseInt(m[2], 16)},${parseInt(m[3], 16)})`;
-  }
-  return null;
+  return normalizeToHex(resolveColorValue(value, context));
 }
 
 // --- Style cascade sources ---------------------------------------------------
+
+/** Short-lived per-element cache for extractStyleSources results */
+const styleSourcesCache = new WeakMap<Element, { time: number; sources: ElementData["styleSources"] }>();
+const STYLE_SOURCES_TTL_MS = 1000;
 
 /**
  * Resolve which CSS rule wins the cascade for each tracked property, so the
@@ -346,6 +349,8 @@ export function setTokenOverride(name: string, value: string | null): void {
   } else {
     tokenOverrides.set(name, value);
   }
+  // Token values changed — cached extractions are stale
+  cachedDesignTokens = null;
   let styleEl = document.getElementById(TOKEN_OVERRIDE_STYLE_ID) as HTMLStyleElement | null;
   if (tokenOverrides.size === 0) {
     styleEl?.remove();
@@ -521,8 +526,12 @@ function countMatchingElements(element: Element): number {
   return findMatchingElements(element).length;
 }
 
+/** Cached color tokens — the :root walk is too costly to repeat per slider tick */
+let cachedDesignTokens: Array<{ name: string; value: string }> | null = null;
+
 /** Extract CSS custom properties (design tokens) that resolve to colors */
 function extractDesignTokens(element: Element): Array<{ name: string; value: string }> {
+  if (cachedDesignTokens) return cachedDesignTokens;
   const tokens: Array<{ name: string; value: string }> = [];
   const seen = new Set<string>();
 
@@ -564,6 +573,7 @@ function extractDesignTokens(element: Element): Array<{ name: string; value: str
     // Security restrictions
   }
 
+  cachedDesignTokens = tokens;
   return tokens;
 }
 

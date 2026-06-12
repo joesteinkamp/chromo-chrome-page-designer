@@ -321,6 +321,14 @@ export function suggestTailwindClass(property: string, value: string): string | 
  */
 const FONT_SIZE_VALUES = "xs|sm|base|lg|xl|[2-9]xl";
 const TEXT_ALIGN_VALUES = "left|center|right|justify";
+/** Tailwind palette names — color conflict matching must be value-anchored so
+ *  e.g. `border-color` never suggests removing `border-2` (a width utility). */
+const TW_COLOR_NAMES =
+  "inherit|current|transparent|white|black|slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose";
+
+function colorConflictPattern(prefix: string): RegExp {
+  return new RegExp(`^${prefix}-(?:${TW_COLOR_NAMES})(?:-\\d{2,3})?(?:\\/\\d{1,3})?$`);
+}
 
 function conflictPattern(property: string): RegExp | null {
   const spacingPrefix = SPACING_PROP_MAP[property];
@@ -328,11 +336,11 @@ function conflictPattern(property: string): RegExp | null {
     return new RegExp(`^-?${spacingPrefix}-`);
   }
   if (property === "color") {
-    return new RegExp(`^text-(?!(?:${FONT_SIZE_VALUES}|${TEXT_ALIGN_VALUES}|ellipsis|clip|wrap|nowrap)$)`);
+    return colorConflictPattern("text");
   }
   const colorPrefix = COLOR_PROP_MAP[property];
   if (colorPrefix) {
-    return new RegExp(`^${colorPrefix}-(?!gradient)`);
+    return colorConflictPattern(colorPrefix);
   }
   switch (property) {
     case "font-size":
@@ -374,7 +382,7 @@ function parsePx(value: string): number | null {
 }
 
 /** Normalize a CSS color to lowercase hex, or return null */
-function normalizeToHex(value: string): string | null {
+export function normalizeToHex(value: string): string | null {
   const trimmed = value.trim().toLowerCase();
 
   // Already hex

@@ -303,18 +303,24 @@ export function mountLayersPanel(onSelect: (el: Element) => void): void {
 
   document.documentElement.appendChild(root);
 
-  // All interaction inside the pane is dispatched from a single
-  // document-level capture listener. Doing the dispatch at document capture
-  // means (a) host-page listeners deeper in the DOM or in bubble phase can't
-  // preempt us, and (b) after we finish we stop propagation so host-page
-  // handlers never see pane events. This is the key difference from prior
-  // fixes — per-row bubble listeners were being swallowed by host-app
-  // capture handlers on complex SPAs.
-  document.addEventListener("click", onDocPaneCapture, true);
-  document.addEventListener("mousedown", onDocPaneCapture, true);
-  document.addEventListener("mouseup", onDocPaneCapture, true);
-  document.addEventListener("mouseover", onDocPaneCapture, true);
-  document.addEventListener("mouseout", onDocPaneCapture, true);
+  // All interaction inside the pane is dispatched from window-level CAPTURE
+  // listeners — the very first stop on the capture path, ahead of host-page
+  // listeners on document or any element (host pages register their document
+  // capture handlers at page load, before this content script injects, so a
+  // document-level dispatcher loses the race and pane clicks die on SPAs).
+  // Selection is additionally driven by our own mousedown→mouseup tracking
+  // (onPressUp) rather than the `click` event, which host pages can cancel.
+  //
+  // Order matters: press tracking is registered BEFORE the dispatcher —
+  // same-phase listeners on the same target run in registration order, and
+  // the dispatcher stops immediate propagation for pane-targeted events.
+  window.addEventListener("mousemove", onPressMove, true);
+  window.addEventListener("mouseup", onPressUp, true);
+  window.addEventListener("click", onWinPaneCapture, true);
+  window.addEventListener("mousedown", onWinPaneCapture, true);
+  window.addEventListener("mouseup", onWinPaneCapture, true);
+  window.addEventListener("mouseover", onWinPaneCapture, true);
+  window.addEventListener("mouseout", onWinPaneCapture, true);
 
   // Start collapsed except ancestors of current selection (if any).
   // By default, expand <html> so <body> is visible.
@@ -352,16 +358,18 @@ export function unmountLayersPanel(): void {
     cancelAnimationFrame(rerenderRaf);
     rerenderRaf = null;
   }
-  document.removeEventListener("click", onDocPaneCapture, true);
-  document.removeEventListener("mousedown", onDocPaneCapture, true);
-  document.removeEventListener("mouseup", onDocPaneCapture, true);
-  document.removeEventListener("mouseover", onDocPaneCapture, true);
-  document.removeEventListener("mouseout", onDocPaneCapture, true);
-  window.removeEventListener("mousemove", onRowDragMove, true);
-  window.removeEventListener("mouseup", onRowDragUp, true);
+  window.removeEventListener("mousemove", onPressMove, true);
+  window.removeEventListener("mouseup", onPressUp, true);
+  window.removeEventListener("click", onWinPaneCapture, true);
+  window.removeEventListener("mousedown", onWinPaneCapture, true);
+  window.removeEventListener("mouseup", onWinPaneCapture, true);
+  window.removeEventListener("mouseover", onWinPaneCapture, true);
+  window.removeEventListener("mouseout", onWinPaneCapture, true);
   dragSource = null;
+  pressTarget = null;
+  pressActive = false;
   isRowDragging = false;
-  didDrag = false;
+  consumeNextClick = false;
   dropRow = null;
   root?.remove();
   root = null;
@@ -541,14 +549,19 @@ export function isLayersPaneElement(el: Element | null): boolean {
 // --- Delegated event handling ---------------------------------------------
 
 /**
- * Single document-level capture dispatcher. Runs before any host-page bubble
- * listener and (assuming normal content-script load order) before any
- * host-page capture listener on document as well. If the event target is not
- * inside the pane we do nothing and let other handlers run. Otherwise we
- * dispatch the pane's own logic and then stop propagation so the host app
- * cannot react to clicks on our UI.
+ * Single window-level capture dispatcher. The window is the first target on
+ * the capture path, so this runs before host-page capture listeners on
+ * document/elements no matter when the host registered them. If the event
+ * target is not inside the pane we do nothing and let other handlers run.
+ * Otherwise we dispatch the pane's own logic and then stop propagation so
+ * the host app never sees pane events.
+ *
+ * Row selection itself happens in onPressUp (mousedown→mouseup tracking),
+ * NOT here — the `click` event is unreliable on pages that cancel it. The
+ * click branch below only consumes the trailing click, with a direct-handle
+ * fallback for clicks that arrive without tracked presses (synthetic events).
  */
-function onDocPaneCapture(e: Event): void {
+function onWinPaneCapture(e: Event): void {
   if (!root) return;
   const path = e.composedPath();
   if (!path.includes(root)) return;
@@ -557,10 +570,8 @@ function onDocPaneCapture(e: Event): void {
   const tgt = evt.target as Element | null;
 
   if (evt.type === "click" && tgt) {
-    // Swallow the click that follows a completed row drag — it would
-    // otherwise re-select the dragged element's old row position.
-    if (didDrag) {
-      didDrag = false;
+    if (consumeNextClick) {
+      consumeNextClick = false;
     } else {
       handlePaneClick(tgt);
     }
@@ -571,9 +582,8 @@ function onDocPaneCapture(e: Event): void {
 
   // Shield the host app and any other listeners from pane-targeted pointer
   // events, whether or not we acted on them. stopImmediatePropagation
-  // prevents subsequent document-level listeners (host app capture handlers
-  // registered after ours) from firing, and blocks capture descent to
-  // ancestors' children, so nothing else in the DOM sees the event.
+  // prevents every later listener (host capture handlers anywhere on the
+  // path, the element picker's document listeners) from firing.
   e.stopImmediatePropagation();
   if (evt.type === "click" || evt.type === "mousedown") {
     evt.preventDefault();
@@ -591,37 +601,40 @@ type DropZone = "before" | "after" | "into";
 
 const DRAG_START_THRESHOLD = 4;
 
+/** A left-button press started inside the pane is being tracked */
+let pressActive = false;
+/** Mousedown target of the tracked press, for click handling on mouseup */
+let pressTarget: Element | null = null;
+/** Swallow the browser's trailing click after we handled the press ourselves */
+let consumeNextClick = false;
 let dragSource: Element | null = null;
 let dragStartX = 0;
 let dragStartY = 0;
 let isRowDragging = false;
-let didDrag = false;
 let dropRow: HTMLDivElement | null = null;
 let dropZone: DropZone = "before";
 
 function handlePaneMouseDown(tgt: Element, evt: MouseEvent): void {
   if (evt.button !== 0) return;
+  pressActive = true;
+  pressTarget = tgt;
+  dragStartX = evt.clientX;
+  dragStartY = evt.clientY;
+  isRowDragging = false;
+  dragSource = null;
+
+  // Arm drag-reorder only for draggable rows; chevron/close presses are
+  // click-only. html/body can't be reparented.
   if (tgt.closest("[data-pd-layers-chevron]") || tgt.closest("[data-pd-layers-close]")) return;
   const rowEl = tgt.closest<HTMLDivElement>("[data-pd-layers-row]");
   if (!rowEl) return;
   const el = rowToElement.get(rowEl);
-  if (!el) return;
-  // html/body can't be reparented
-  if (el === document.documentElement || el === document.body) return;
-
+  if (!el || el === document.documentElement || el === document.body) return;
   dragSource = el;
-  dragStartX = evt.clientX;
-  dragStartY = evt.clientY;
-  isRowDragging = false;
-  // Window-level capture fires before the pane's own document-level capture
-  // dispatcher (which stops propagation of pane-targeted events), and before
-  // the element picker's document listeners.
-  window.addEventListener("mousemove", onRowDragMove, true);
-  window.addEventListener("mouseup", onRowDragUp, true);
 }
 
-function onRowDragMove(e: MouseEvent): void {
-  if (!dragSource || !root) return;
+function onPressMove(e: MouseEvent): void {
+  if (!pressActive || !dragSource || !root) return;
   if (!isRowDragging) {
     if (
       Math.abs(e.clientX - dragStartX) < DRAG_START_THRESHOLD &&
@@ -662,23 +675,38 @@ function onRowDragMove(e: MouseEvent): void {
   rowEl.classList.add(`${LAYERS_PANE_PREFIX}row--drop-${dropZone}`);
 }
 
-function onRowDragUp(e: MouseEvent): void {
-  window.removeEventListener("mousemove", onRowDragMove, true);
-  window.removeEventListener("mouseup", onRowDragUp, true);
+function onPressUp(e: MouseEvent): void {
+  if (!pressActive) return;
+  pressActive = false;
   root?.classList.remove(`${LAYERS_PANE_PREFIX}root--dragging`);
 
   const source = dragSource;
   const targetRow = dropRow;
   const zone = dropZone;
+  const press = pressTarget;
   clearDropIndicator();
   dragSource = null;
+  pressTarget = null;
 
-  if (!isRowDragging) return;
+  if (!isRowDragging) {
+    // Simple press-release: handle the "click" right here on mouseup, so the
+    // pane works even on pages that cancel or swallow click events. Only
+    // counts when the release also lands inside the pane.
+    const upTgt = e.target as Element | null;
+    if (press && upTgt && root && (root === upTgt || root.contains(upTgt))) {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      // Swallow the browser's trailing click — the interaction is done.
+      consumeNextClick = true;
+      setTimeout(() => { consumeNextClick = false; }, 0);
+      handlePaneClick(upTgt);
+    }
+    return;
+  }
+
   isRowDragging = false;
-  didDrag = true;
-  // The browser fires a click right after mouseup; the click branch consumes
-  // didDrag, and this covers releases outside the pane where no click reaches it.
-  setTimeout(() => { didDrag = false; }, 0);
+  consumeNextClick = true;
+  setTimeout(() => { consumeNextClick = false; }, 0);
   // Resume the picker after the trailing click has been dispatched, so it
   // never sees the drag-release click.
   setTimeout(() => { try { resumePicker(); } catch { /* */ } }, 0);

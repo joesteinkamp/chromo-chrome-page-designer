@@ -20,6 +20,9 @@ export interface ElementData {
   };
   /** Breadcrumb path e.g. "body > main > .hero > h1" */
   breadcrumb: string;
+  /** Breadcrumb segments with a resolvable selector each, for clickable
+   *  ancestor navigation. The last entry is the selected element itself. */
+  breadcrumbTrail?: Array<{ label: string; selector: string }>;
   /** Key computed styles (Figma-relevant subset) — always in resolved px */
   computedStyles: Record<string, string>;
   /** Authored style values preserving original units (%, rem, etc.) */

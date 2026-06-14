@@ -210,6 +210,21 @@ function buildFullPath(element: Element): string {
   return parts.join(" > ");
 }
 
+/** Build the short display label for one element in a breadcrumb */
+function breadcrumbLabel(element: Element): string {
+  let part = element.tagName.toLowerCase();
+  if (element.id) {
+    part = `#${element.id}`;
+  } else if (element.classList.length > 0) {
+    const cls = Array.from(element.classList)
+      .filter((c) => !c.startsWith("__pd-"))
+      .slice(0, 1)
+      .join(".");
+    if (cls) part += `.${cls}`;
+  }
+  return part;
+}
+
 /** Generate a human-readable breadcrumb for display */
 export function generateBreadcrumb(element: Element): string {
   const parts: string[] = [];
@@ -217,17 +232,7 @@ export function generateBreadcrumb(element: Element): string {
   let depth = 0;
 
   while (current && current !== document.documentElement && depth < 5) {
-    let part = current.tagName.toLowerCase();
-    if (current.id) {
-      part = `#${current.id}`;
-    } else if (current.classList.length > 0) {
-      const cls = Array.from(current.classList)
-        .filter((c) => !c.startsWith("__pd-"))
-        .slice(0, 1)
-        .join(".");
-      if (cls) part += `.${cls}`;
-    }
-    parts.unshift(part);
+    parts.unshift(breadcrumbLabel(current));
     current = current.parentElement;
     depth++;
   }
@@ -238,4 +243,32 @@ export function generateBreadcrumb(element: Element): string {
   }
 
   return parts.join(" > ");
+}
+
+/**
+ * Build a breadcrumb trail with a resolvable unique selector per ancestor, so
+ * the panel can make each segment clickable. Unlike the display string, the
+ * selector here is the full unique selector (iframe-aware) that resolves back
+ * to that exact ancestor — not the short label, which would match the wrong
+ * element. The iframe prefix entry (if any) carries an empty selector and is
+ * not meant to be clickable.
+ */
+export function generateBreadcrumbTrail(
+  element: Element
+): Array<{ label: string; selector: string }> {
+  const trail: Array<{ label: string; selector: string }> = [];
+  let current: Element | null = element;
+  let depth = 0;
+
+  while (current && current !== document.documentElement && depth < 5) {
+    trail.unshift({ label: breadcrumbLabel(current), selector: generateSelector(current) });
+    current = current.parentElement;
+    depth++;
+  }
+
+  if (window !== window.top) {
+    trail.unshift({ label: "iframe", selector: "" });
+  }
+
+  return trail;
 }

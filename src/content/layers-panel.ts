@@ -39,6 +39,15 @@ const rowToElement = new WeakMap<HTMLDivElement, Element>();
 
 let currentSelected: Element | null = null;
 
+/** Active search query (lowercased), empty when not filtering. */
+let searchQuery = "";
+/** Elements matching the active query, or null when not searching. */
+let searchMatch: Set<Element> | null = null;
+/** Ancestors of matches, kept visible to preserve tree structure. */
+let searchAncestor: Set<Element> = new Set();
+let searchInput: HTMLInputElement | null = null;
+let searchDebounce: number | null = null;
+
 // --- CSS (inline so we don't have to plumb a new file through Vite) ---
 
 const LAYERS_CSS = `
@@ -92,6 +101,33 @@ const LAYERS_CSS = `
 .${LAYERS_PANE_PREFIX}close:hover {
   background: #2d2d2d !important;
   color: #fff !important;
+}
+.${LAYERS_PANE_PREFIX}search {
+  flex: 0 0 auto !important;
+  margin: 6px 8px !important;
+  padding: 5px 8px !important;
+  background: #2a2a2a !important;
+  border: 1px solid #3a3a3a !important;
+  border-radius: 4px !important;
+  color: #e6e6e6 !important;
+  font-size: 12px !important;
+  font-family: inherit !important;
+  outline: none !important;
+}
+.${LAYERS_PANE_PREFIX}search:focus {
+  border-color: #0c8ce9 !important;
+}
+.${LAYERS_PANE_PREFIX}search::placeholder {
+  color: #777 !important;
+}
+.${LAYERS_PANE_PREFIX}row--match {
+  background: rgba(216, 168, 45, 0.18) !important;
+}
+.${LAYERS_PANE_PREFIX}empty {
+  padding: 12px 12px !important;
+  color: #888 !important;
+  font-style: italic !important;
+  font-size: 11px !important;
 }
 .${LAYERS_PANE_PREFIX}tree {
   flex: 1 1 auto !important;
@@ -210,6 +246,14 @@ const LAYERS_CSS = `
     border-bottom-color: #e5e5e5 !important;
     color: #666 !important;
   }
+  .${LAYERS_PANE_PREFIX}search {
+    background: #f4f4f4 !important;
+    border-color: #d8d8d8 !important;
+    color: #1a1a1a !important;
+  }
+  .${LAYERS_PANE_PREFIX}row--match {
+    background: rgba(216, 168, 45, 0.28) !important;
+  }
   .${LAYERS_PANE_PREFIX}close {
     color: #999 !important;
   }
@@ -297,6 +341,21 @@ export function mountLayersPanel(onSelect: (el: Element) => void): void {
   header.appendChild(closeBtn);
   root.appendChild(header);
 
+  searchInput = document.createElement("input");
+  searchInput.className = `${LAYERS_PANE_PREFIX}search`;
+  searchInput.type = "text";
+  searchInput.placeholder = "Search layers (tag, #id, .class)…";
+  searchInput.setAttribute("data-pd-layers-search", "1");
+  searchInput.setAttribute("aria-label", "Search layers");
+  searchInput.addEventListener("input", () => {
+    if (searchDebounce !== null) clearTimeout(searchDebounce);
+    searchDebounce = window.setTimeout(() => {
+      searchDebounce = null;
+      setSearchQuery(searchInput!.value);
+    }, 150);
+  });
+  root.appendChild(searchInput);
+
   treeContainer = document.createElement("div");
   treeContainer.className = `${LAYERS_PANE_PREFIX}tree`;
   root.appendChild(treeContainer);
@@ -314,6 +373,11 @@ export function mountLayersPanel(onSelect: (el: Element) => void): void {
   // Order matters: press tracking is registered BEFORE the dispatcher —
   // same-phase listeners on the same target run in registration order, and
   // the dispatcher stops immediate propagation for pane-targeted events.
+  // Shield typing in the search box from the extension's own keyboard
+  // shortcuts (keyboard.ts / element-picker.ts listen at document capture —
+  // later than window capture) so e.g. typing "p"/"r" or Backspace doesn't
+  // toggle move modes or delete the selected element.
+  window.addEventListener("keydown", onPaneKeyDown, true);
   window.addEventListener("mousemove", onPressMove, true);
   window.addEventListener("mouseup", onPressUp, true);
   window.addEventListener("click", onWinPaneCapture, true);
@@ -358,6 +422,15 @@ export function unmountLayersPanel(): void {
     cancelAnimationFrame(rerenderRaf);
     rerenderRaf = null;
   }
+  if (searchDebounce !== null) {
+    clearTimeout(searchDebounce);
+    searchDebounce = null;
+  }
+  searchQuery = "";
+  searchMatch = null;
+  searchAncestor = new Set();
+  searchInput = null;
+  window.removeEventListener("keydown", onPaneKeyDown, true);
   window.removeEventListener("mousemove", onPressMove, true);
   window.removeEventListener("mouseup", onPressUp, true);
   window.removeEventListener("click", onWinPaneCapture, true);
@@ -396,6 +469,52 @@ export function setSelectedInTree(element: Element | null): void {
   }
 }
 
+// --- Search ---
+
+/** Max matches scanned/collected per query, to bound work on huge pages. */
+const SEARCH_MATCH_CAP = 500;
+
+/** Does an element's tag, #id, or any .class contain the (lowercased) query? */
+function matchesQuery(el: Element, q: string): boolean {
+  if (el.tagName.toLowerCase().includes(q)) return true;
+  const id = (el as HTMLElement).id;
+  if (id && `#${id}`.toLowerCase().includes(q)) return true;
+  for (const c of el.classList) {
+    if (c.startsWith("__pd-")) continue;
+    if (`.${c}`.toLowerCase().includes(q)) return true;
+  }
+  return false;
+}
+
+/** Recompute the match + ancestor sets for the active query. */
+function setSearchQuery(raw: string): void {
+  searchQuery = raw.trim().toLowerCase();
+  if (!searchQuery) {
+    searchMatch = null;
+    searchAncestor = new Set();
+    renderTree();
+    return;
+  }
+
+  const match = new Set<Element>();
+  const ancestor = new Set<Element>();
+  const all = document.documentElement.getElementsByTagName("*");
+  for (let i = 0; i < all.length && match.size < SEARCH_MATCH_CAP; i++) {
+    const el = all[i];
+    if (!shouldShow(el)) continue;
+    if (!matchesQuery(el, searchQuery)) continue;
+    match.add(el);
+    let p = el.parentElement;
+    while (p && p !== document.documentElement.parentElement) {
+      ancestor.add(p);
+      p = p.parentElement;
+    }
+  }
+  searchMatch = match;
+  searchAncestor = ancestor;
+  renderTree();
+}
+
 // --- Rendering ---
 
 function scheduleRender(): void {
@@ -412,10 +531,21 @@ function renderTree(): void {
   const rootEl = document.documentElement;
   if (!rootEl) return;
   renderNode(rootEl, 0, treeContainer);
+  if (searchMatch !== null && searchMatch.size === 0) {
+    const empty = document.createElement("div");
+    empty.className = `${LAYERS_PANE_PREFIX}empty`;
+    empty.textContent = `No layers match “${searchQuery}”`;
+    treeContainer.appendChild(empty);
+  }
 }
 
 function renderNode(el: Element, depth: number, parentEl: HTMLElement): void {
   if (!shouldShow(el)) return;
+
+  // While searching, render only matches and their ancestors.
+  const searching = searchMatch !== null;
+  const isMatch = searching && searchMatch!.has(el);
+  if (searching && !isMatch && !searchAncestor.has(el)) return;
 
   const row = document.createElement("div");
   row.className = `${LAYERS_PANE_PREFIX}row`;
@@ -423,11 +553,15 @@ function renderNode(el: Element, depth: number, parentEl: HTMLElement): void {
   if (el === currentSelected) {
     row.classList.add(`${LAYERS_PANE_PREFIX}row--selected`);
   }
+  if (isMatch) {
+    row.classList.add(`${LAYERS_PANE_PREFIX}row--match`);
+  }
   row.style.setProperty("padding-left", `${depth * INDENT_PX + 4}px`, "important");
 
   const kids = visibleChildren(el);
   const hasKids = kids.length > 0;
-  const isOpen = expanded.has(el);
+  // Force ancestors open while searching so matches are reachable.
+  const isOpen = searching ? true : expanded.has(el);
 
   const chevron = document.createElement("span");
   chevron.className = `${LAYERS_PANE_PREFIX}chevron`;
@@ -478,7 +612,10 @@ function renderNode(el: Element, depth: number, parentEl: HTMLElement): void {
   parentEl.appendChild(row);
 
   if (hasKids && isOpen) {
-    const cap = uncapped.has(el) ? kids.length : CHILDREN_RENDER_CAP;
+    // The render cap doesn't apply while searching — the match/ancestor filter
+    // in renderNode already bounds how many children actually render, and a
+    // match could otherwise sit past the cap and vanish.
+    const cap = searching || uncapped.has(el) ? kids.length : CHILDREN_RENDER_CAP;
     const renderCount = Math.min(kids.length, cap);
     for (let i = 0; i < renderCount; i++) {
       renderNode(kids[i], depth + 1, parentEl);
@@ -586,7 +723,31 @@ function onWinPaneCapture(e: Event): void {
   // path, the element picker's document listeners) from firing.
   e.stopImmediatePropagation();
   if (evt.type === "click" || evt.type === "mousedown") {
-    evt.preventDefault();
+    // Don't preventDefault on the search box — that would block it from
+    // receiving focus and the caret.
+    if (!(tgt && tgt.closest("[data-pd-layers-search]"))) {
+      evt.preventDefault();
+    }
+  }
+}
+
+/**
+ * Keep keystrokes typed in the search box from reaching the extension's
+ * document-capture keyboard handlers (move-mode toggles, delete, undo). Runs
+ * at window capture, before those handlers, and stops propagation only for
+ * search-targeted events so normal page/extension shortcuts are unaffected.
+ */
+function onPaneKeyDown(e: KeyboardEvent): void {
+  if (!root) return;
+  const tgt = e.target as Element | null;
+  if (!tgt || !tgt.closest("[data-pd-layers-search]")) return;
+  e.stopImmediatePropagation();
+  if (e.key === "Escape") {
+    if (searchInput) {
+      searchInput.value = "";
+      searchInput.blur();
+    }
+    setSearchQuery("");
   }
 }
 

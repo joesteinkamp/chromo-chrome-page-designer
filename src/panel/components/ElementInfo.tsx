@@ -42,8 +42,27 @@ export function ElementInfo({ data, multiEdit, onToggleMultiEdit, multiSelectCou
     []
   );
 
-  // Parse breadcrumb into clickable segments
-  const breadcrumbParts = data.breadcrumb.split(" > ");
+  const handleBreadcrumbKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLSpanElement>) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        const selector = e.currentTarget.dataset.selector;
+        if (selector) {
+          chrome.runtime.sendMessage({
+            type: "SELECT_ELEMENT",
+            selector,
+          } satisfies Message);
+        }
+      }
+    },
+    []
+  );
+
+  // Prefer the trail with resolvable per-ancestor selectors; fall back to the
+  // display string (segments then carry no selector and aren't clickable).
+  const trail =
+    data.breadcrumbTrail ??
+    data.breadcrumb.split(" > ").map((label) => ({ label, selector: "" }));
 
   return (
     <div className="pd-element-info">
@@ -79,21 +98,27 @@ export function ElementInfo({ data, multiEdit, onToggleMultiEdit, multiSelectCou
       )}
 
       <div className="pd-element-info__breadcrumb">
-        {breadcrumbParts.map((part, i) => (
-          <React.Fragment key={i}>
-            {i > 0 && <span className="pd-element-info__breadcrumb-sep"> &gt; </span>}
-            <span
-              className="pd-element-info__breadcrumb-part"
-              data-selector={part}
-              onClick={i < breadcrumbParts.length - 1 ? handleBreadcrumbClick : undefined}
-              role={i < breadcrumbParts.length - 1 ? "button" : undefined}
-              tabIndex={i < breadcrumbParts.length - 1 ? 0 : undefined}
-              title={i < breadcrumbParts.length - 1 ? `Select ${part}` : undefined}
-            >
-              {part}
-            </span>
-          </React.Fragment>
-        ))}
+        {trail.map((seg, i) => {
+          // The last segment is the current element; segments with no selector
+          // (e.g. the iframe marker) aren't navigable.
+          const clickable = i < trail.length - 1 && Boolean(seg.selector);
+          return (
+            <React.Fragment key={i}>
+              {i > 0 && <span className="pd-element-info__breadcrumb-sep"> &gt; </span>}
+              <span
+                className={`pd-element-info__breadcrumb-part${clickable ? " pd-element-info__breadcrumb-part--clickable" : ""}`}
+                data-selector={clickable ? seg.selector : undefined}
+                onClick={clickable ? handleBreadcrumbClick : undefined}
+                onKeyDown={clickable ? handleBreadcrumbKeyDown : undefined}
+                role={clickable ? "button" : undefined}
+                tabIndex={clickable ? 0 : undefined}
+                title={clickable ? `Select ${seg.label}` : undefined}
+              >
+                {seg.label}
+              </span>
+            </React.Fragment>
+          );
+        })}
       </div>
 
       <div className="pd-element-info__badges">

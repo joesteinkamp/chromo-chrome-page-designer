@@ -5,7 +5,7 @@
  */
 
 import { TRACKED_PROPERTIES } from "../shared/constants";
-import { generateBreadcrumb, generateSelector } from "../shared/selector";
+import { generateBreadcrumb, generateBreadcrumbTrail, generateSelector } from "../shared/selector";
 import { extractComponentInfo } from "./framework-detect";
 import { detectTailwind, extractTailwindClasses, normalizeToHex } from "./tailwind-detect";
 import type { ElementData, PageToken } from "../shared/types";
@@ -175,6 +175,7 @@ export function extractElementData(element: Element): ElementData {
     },
     parentLayout,
     breadcrumb: generateBreadcrumb(element),
+    breadcrumbTrail: generateBreadcrumbTrail(element),
     computedStyles,
     authoredStyles,
     hasTextContent: hasDirectText(element),

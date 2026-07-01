@@ -121,16 +121,16 @@ export const DimensionsSection: React.FC<DimensionsSectionProps> = ({
               label="Min W"
             />
             <UnitInput
-              value={maxWidth}
-              onChange={handleMaxWidthChange}
-              label="Max W"
+              value={minHeight}
+              onChange={handleMinHeightChange}
+              label="Min H"
             />
           </div>
           <div className="pd-section__row pd-section__row--half">
             <UnitInput
-              value={minHeight}
-              onChange={handleMinHeightChange}
-              label="Min H"
+              value={maxWidth}
+              onChange={handleMaxWidthChange}
+              label="Max W"
             />
             <UnitInput
               value={maxHeight}

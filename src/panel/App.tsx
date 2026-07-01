@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from "react";
-import { DiamondIcon, UndoIcon, RedoIcon, LayersIcon } from "./icons";
+import { DiamondIcon, UndoIcon, RedoIcon, LayersIcon, ResponsiveIcon } from "./icons";
 import { useElementData } from "./hooks/useElementData";
 import { useStyleChange } from "./hooks/useStyleChange";
 import { ElementInfo } from "./components/ElementInfo";
@@ -59,6 +59,7 @@ export function App() {
   const [layersPaneEnabled, setLayersPaneEnabled] = useState(false);
   const [activeViewport, setActiveViewport] = useState<number | null>(null);
   const [actualViewport, setActualViewport] = useState<number | null>(null);
+  const [responsiveBarOpen, setResponsiveBarOpen] = useState(false);
 
   // Accumulate component context as elements are selected
   useEffect(() => {
@@ -462,6 +463,14 @@ export function App() {
           >
             <LayersIcon size={16} />
           </button>
+          <button
+            className={`pd-panel__icon-btn ${responsiveBarOpen ? "pd-panel__icon-btn--active" : ""}`}
+            onClick={() => setResponsiveBarOpen((open) => !open)}
+            title={responsiveBarOpen ? "Hide responsive options" : "Show responsive options (viewport presets)"}
+            aria-pressed={responsiveBarOpen}
+          >
+            <ResponsiveIcon size={16} />
+          </button>
         </div>
 
         <div className="pd-panel__header-right">
@@ -493,6 +502,7 @@ export function App() {
         </div>
       </header>
 
+      {responsiveBarOpen && (
       <div className="pd-panel__viewport-bar">
         {VIEWPORT_PRESETS.map((preset) => (
           <button
@@ -517,6 +527,7 @@ export function App() {
           <span className="pd-panel__viewport-readout">{actualViewport}px</span>
         )}
       </div>
+      )}
 
       <div className="pd-panel__body">
         {elementData || changes.length > 0 || activeTab === "tokens" ? (

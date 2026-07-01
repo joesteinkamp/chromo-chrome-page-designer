@@ -273,6 +273,16 @@ export function LayersIcon({ size = defaults.size, className = defaults.classNam
   );
 }
 
+export function ResponsiveIcon({ size = defaults.size, className = defaults.className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" className={`pd-icon ${className}`}>
+      <rect x="1.5" y="2.5" width="9" height="7" rx="1" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
+      <path d="M4.5 12H9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      <rect x="10" y="6.5" width="4.5" height="7" rx="1" fill="var(--pd-surface, #fff)" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 /* ── Position alignment (horizontal axis) ── */
 
 export function PositionLeftIcon({ size = defaults.size, className = defaults.className }: IconProps) {

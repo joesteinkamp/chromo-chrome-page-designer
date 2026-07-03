@@ -35,6 +35,8 @@ const commentsListeners = new Set<CommentsListener>();
 const selectorCache = new WeakMap<Element, string>();
 /** Direct element references for move changes — selectors are unreliable after DOM reorder */
 const moveElementRefs = new Map<string, Element>();
+/** Direct references to duplicate/paste clones — their selectors go stale if the clone is later moved */
+const duplicateElementRefs = new Map<string, Element>();
 
 /** Start a batch — all changes recorded until endBatch share a batchId */
 export function startBatch(): string {
@@ -118,9 +120,15 @@ export function recordStyleChange(
 ): Change {
   const selector = getSelector(element);
 
-  // Coalesce: if the last change is for the same element+property, update it
+  // Coalesce: if the last change is for the same element+property, update it.
+  // Only within the same batch context — coalescing a batched change into an
+  // unbatched one (or across batches) would let a single undo split a gesture.
   const existing = findExisting(selector, "style", property);
-  if (existing && existing.type === "style") {
+  if (
+    existing &&
+    existing.type === "style" &&
+    (existing.batchId ?? null) === currentBatchId
+  ) {
     existing.to = to;
     existing.timestamp = Date.now();
     // If we've gone back to the original value, remove the change entirely —
@@ -209,6 +217,7 @@ export function recordMoveChange(
     fromIndex,
     toParent,
     toIndex,
+    ...(currentBatchId ? { batchId: currentBatchId } : {}),
   };
   // Store direct element reference so undo/redo can find it regardless of selector validity
   moveElementRefs.set(change.id, element);
@@ -476,17 +485,30 @@ export function recordTokenChange(
 
 export function recordDuplicateChange(
   original: Element,
-  clone: Element
+  clone: Element,
+  insertTarget?: Element,
+  insertMode: "after" | "append" = "after"
 ): Change {
   const selector = getSelector(original);
   const cloneSelector = getSelector(clone);
   const change: DuplicateChange = {
     ...makeBase(),
     selector,
-    description: `Duplicated ${original.tagName.toLowerCase()} element`,
+    description:
+      insertMode === "append" && insertTarget
+        ? `Pasted ${original.tagName.toLowerCase()} into ${insertTarget.tagName.toLowerCase()}`
+        : `Duplicated ${original.tagName.toLowerCase()} element`,
     type: "duplicate",
     cloneSelector,
+    ...(insertTarget && insertTarget !== original
+      ? { targetSelector: getSelector(insertTarget) }
+      : {}),
+    ...(insertMode === "append" ? { insertMode } : {}),
+    ...(currentBatchId ? { batchId: currentBatchId } : {}),
   };
+  // Keep a direct reference — the clone's selector goes stale if it's moved
+  // later in the same gesture (alt-drag reorder) or the DOM shifts around it.
+  duplicateElementRefs.set(change.id, clone);
   changes.push(change);
   redoStack = [];
   broadcastChanges();
@@ -644,8 +666,11 @@ function applyUndo(change: Change): boolean {
     }
 
     case "duplicate": {
-      // Undo: remove the cloned element
-      const clone = resolveSelector(change.cloneSelector);
+      // Undo: remove the cloned element — prefer the live reference, since
+      // the clone's selector goes stale if it was moved after duplication.
+      const clone =
+        duplicateElementRefs.get(change.id) ??
+        resolveSelector(change.cloneSelector);
       if (clone) clone.remove();
       return true;
     }
@@ -752,10 +777,21 @@ function applyRedo(change: Change): boolean {
     }
 
     case "duplicate": {
-      // Redo: re-clone the element after itself
+      // Redo: re-clone the original at the recorded insertion point
+      // (after the original for duplicates, at the paste target for pastes).
       if (!element) return false;
+      const anchor =
+        (change.targetSelector && resolveSelector(change.targetSelector)) ||
+        element;
       const clone = element.cloneNode(true) as Element;
-      element.after(clone);
+      if (change.insertMode === "append") {
+        anchor.appendChild(clone);
+      } else {
+        anchor.after(clone);
+      }
+      duplicateElementRefs.set(change.id, clone);
+      selectorCache.delete(clone);
+      change.cloneSelector = generateSelector(clone);
       return true;
     }
 
@@ -881,6 +917,18 @@ export function replayChanges(
             continue;
           }
           break;
+        case "duplicate": {
+          const anchor =
+            (change.targetSelector && resolveSelector(change.targetSelector)) ||
+            element;
+          const replayClone = element.cloneNode(true) as Element;
+          if (change.insertMode === "append") {
+            anchor.appendChild(replayClone);
+          } else {
+            anchor.after(replayClone);
+          }
+          break;
+        }
       }
       // Re-record in local state
       changes.push({ ...change, id: makeId(), timestamp: Date.now() });

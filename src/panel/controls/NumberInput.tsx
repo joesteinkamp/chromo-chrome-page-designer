@@ -1,4 +1,5 @@
 import React, { useState, useRef, useCallback, useEffect, useMemo } from "react";
+import { evaluateExpression } from "./expr";
 import "./controls.css";
 
 interface NumberInputProps {
@@ -71,7 +72,13 @@ export const NumberInput: React.FC<NumberInputProps> = ({
   const showDropdown = isFocused && filtered.length > 0;
 
   const commitValue = useCallback(() => {
-    const parsed = parseFloat(localValue);
+    // Figma-style math ("100+24", "300/2"). If the input contains operators
+    // but doesn't evaluate, revert — parseFloat would silently commit just
+    // the leading number ("1/0" → 1), which reads as the math half-working.
+    const evaluated = evaluateExpression(localValue);
+    const looksLikeMath = /[+*/]|.-/.test(localValue.trim());
+    const parsed =
+      evaluated !== null ? evaluated : looksLikeMath ? NaN : parseFloat(localValue);
     if (!isNaN(parsed)) {
       const clamped = clamp(parsed);
       onChange(clamped);
@@ -119,12 +126,14 @@ export const NumberInput: React.FC<NumberInputProps> = ({
   const handleInputKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
       if (showDropdown) {
-        if (e.key === "ArrowDown") {
+        // Plain arrows navigate the suggestions; Shift+arrows fall through to
+        // value stepping so the ×10 nudge stays reachable on these fields.
+        if (e.key === "ArrowDown" && !e.shiftKey) {
           e.preventDefault();
           setActiveIndex((i) => (i < filtered.length - 1 ? i + 1 : 0));
           return;
         }
-        if (e.key === "ArrowUp") {
+        if (e.key === "ArrowUp" && !e.shiftKey) {
           e.preventDefault();
           setActiveIndex((i) => (i > 0 ? i - 1 : filtered.length - 1));
           return;
@@ -148,10 +157,10 @@ export const NumberInput: React.FC<NumberInputProps> = ({
         (e.target as HTMLInputElement).blur();
       } else if (e.key === "ArrowUp") {
         e.preventDefault();
-        onChange(clamp(value + step));
+        onChange(clamp(value + step * (e.shiftKey ? 10 : 1)));
       } else if (e.key === "ArrowDown") {
         e.preventDefault();
-        onChange(clamp(value - step));
+        onChange(clamp(value - step * (e.shiftKey ? 10 : 1)));
       }
     },
     [showDropdown, filtered, activeIndex, applySuggestion, value, step, clamp, onChange]
@@ -166,7 +175,8 @@ export const NumberInput: React.FC<NumberInputProps> = ({
       const handleMouseMove = (ev: MouseEvent) => {
         const delta = ev.clientX - dragRef.current.startX;
         const steps = Math.round(delta / 2);
-        const newVal = clamp(dragRef.current.startValue + steps * step);
+        const scrubStep = ev.shiftKey ? step * 10 : step;
+        const newVal = clamp(dragRef.current.startValue + steps * scrubStep);
         onChange(newVal);
       };
 

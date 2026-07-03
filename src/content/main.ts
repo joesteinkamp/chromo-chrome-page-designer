@@ -32,6 +32,7 @@ import {
   clearSelection,
   suspendPicker,
   resumePicker,
+  suppressNextClick,
   refreshSelection,
   selectElementDirectly,
   selectMultipleDirectly,
@@ -44,7 +45,7 @@ import { tryStartResize, isResizeActive } from "./resize";
 import { showImageToolbar, hideImageToolbar } from "./image-replace";
 import { showMoveToolbar, hideMoveToolbar } from "./move-mode";
 import { initKeyboard, destroyKeyboard } from "./keyboard";
-import { showSpacing, hideSpacing, updateSpacing } from "./spacing-overlay";
+import { showSpacing, hideSpacing, updateSpacing, hideMeasure } from "./spacing-overlay";
 import {
   recordSelectionChange,
   recordMultiSelectionChange,
@@ -605,6 +606,7 @@ function deactivate(): void {
   clearAllForcedStates();
   multiEditEnabled = false;
   hideSpacing();
+  hideMeasure();
 
   closeCommentPopover();
   unsubscribeComments?.();
@@ -731,8 +733,17 @@ function onElementMouseDown(
 
   suspendPicker();
   hideImageToolbar();
-  initDragDrop(element, e, () => {
+  initDragDrop(element, e, (finalElement, didDrag) => {
     resumePicker();
+    // The mouseup of a real drag is followed by a click — swallow it so the
+    // release point doesn't re-select whatever sits under the cursor.
+    if (didDrag) suppressNextClick();
+    if (finalElement && finalElement !== element && finalElement.isConnected) {
+      // Alt-drag duplicated — selection moves to the dragged copy
+      selectElementDirectly(finalElement);
+      onElementSelected(finalElement);
+      return;
+    }
     refreshSelection();
     const sel = getSelectedElement();
     if (sel) sendElementData(sel);

@@ -1,4 +1,5 @@
 import { EyedropperIcon } from "../icons";
+import { MIXED_VALUE } from "../../shared/constants";
 import React, {
   useState,
   useRef,
@@ -267,6 +268,9 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({
   designTokens,
   pageColors,
 }) => {
+  // The multi-selection disagrees on this color — show a "Mixed" state;
+  // picking any color applies it to the whole selection.
+  const isMixed = value === MIXED_VALUE;
   const rgba = useMemo(() => parseCSSColor(value), [value]);
   const hsla = useMemo(() => rgbaToHsla(rgba), [rgba]);
 
@@ -281,10 +285,15 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({
 
   // Sync all display states when external value changes
   useEffect(() => {
+    if (isMixed) {
+      setInlineHex("");
+      setOpacityInput("");
+      return;
+    }
     setHexInput(rgbaToHex(rgba));
     setInlineHex(toInlineHex(rgba));
     setOpacityInput(String(Math.round(rgba.a * 100)));
-  }, [rgba]);
+  }, [rgba, isMixed]);
 
   // Sync hue only when the actual color changes externally and is chromatic
   useEffect(() => {
@@ -535,13 +544,18 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({
           <div className="pd-color-picker__swatch-checkers" />
           <div
             className="pd-color-picker__swatch-color"
-            style={{ background: value }}
+            style={{
+              background: isMixed
+                ? "repeating-linear-gradient(45deg, #9aa0aa 0 3px, #d8dce2 3px 6px)"
+                : value,
+            }}
           />
         </button>
         <input
           className="pd-color-picker__hex-inline"
           type="text"
           value={inlineHex}
+          placeholder={isMixed ? "Mixed" : undefined}
           onChange={handleInlineHexChange}
           onBlur={handleInlineHexBlur}
           onKeyDown={handleInlineHexKeyDown}

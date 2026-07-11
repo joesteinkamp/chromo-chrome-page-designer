@@ -670,6 +670,14 @@ export function App() {
                 Multi-select
               </div>
               <div className="pd-panel__empty-hint">
+                <span className="pd-panel__empty-hint-key">Drag empty space</span>
+                Marquee select
+              </div>
+              <div className="pd-panel__empty-hint">
+                <span className="pd-panel__empty-hint-key">Right-click</span>
+                Command menu
+              </div>
+              <div className="pd-panel__empty-hint">
                 <span className="pd-panel__empty-hint-key">Shift+Enter</span>
                 Select parent
               </div>

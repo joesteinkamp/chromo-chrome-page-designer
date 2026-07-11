@@ -3,6 +3,7 @@ import { ColorPicker, GradientEditor, NumberInput, SelectDropdown } from "../con
 import { VarLabel } from "./VarLabel";
 import { ChevronDown, PlusIcon, MinusIcon, GearIcon } from "../icons";
 import { isGradient, parseGradient, buildGradient, defaultGradient } from "../../shared/gradient";
+import { parseNumericValue } from "../controls/mixed";
 import "./sections.css";
 
 interface StrokeSectionProps {
@@ -38,8 +39,8 @@ const SIDE_STYLE_PROPS = [
 ];
 
 function parsePx(val: string): number {
-  const num = parseFloat(val);
-  return isNaN(num) ? 0 : num;
+  // NaN → NumberInput renders the multi-selection "Mixed" placeholder
+  return parseNumericValue(val, 0);
 }
 
 function detectMode(widths: string[]): StrokeMode {

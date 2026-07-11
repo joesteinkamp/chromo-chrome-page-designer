@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useEffect } from "react";
 import { SliderInput } from "../controls";
 import { ChevronDown, PlusIcon } from "../icons";
+import { isMixedValue } from "../controls/mixed";
 import "./sections.css";
 
 interface BlurSectionProps {
@@ -9,6 +10,8 @@ interface BlurSectionProps {
 }
 
 function parseBlurFromFilter(filter: string): number {
+  // NaN = multi-selection "Mixed" — NumberInput renders the placeholder
+  if (isMixedValue(filter)) return NaN;
   if (!filter || filter === "none") return 0;
   const match = filter.match(/blur\(\s*([\d.]+)px\s*\)/);
   if (match) return parseFloat(match[1]);
@@ -20,7 +23,7 @@ export const BlurSection: React.FC<BlurSectionProps> = ({
   onStyleChange,
 }) => {
   const blurValue = parseBlurFromFilter(computedStyles["filter"] || "none");
-  const hasValue = blurValue > 0;
+  const hasValue = Number.isNaN(blurValue) || blurValue > 0;
   const [collapsed, setCollapsed] = useState(!hasValue);
   useEffect(() => { setCollapsed(!hasValue); }, [hasValue]);
 

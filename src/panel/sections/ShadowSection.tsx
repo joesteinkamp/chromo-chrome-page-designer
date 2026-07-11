@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useMemo, useEffect } from "react";
 import { NumberInput, ColorPicker } from "../controls";
 import { ChevronDown, PlusIcon, MinusIcon } from "../icons";
+import { isMixedValue } from "../controls/mixed";
 import "./sections.css";
 
 interface ShadowSectionProps {
@@ -106,14 +107,17 @@ export const ShadowSection: React.FC<ShadowSectionProps> = ({
   onStyleChange,
   disabled: sectionDisabled,
 }) => {
-  const rawShadow = computedStyles["box-shadow"] || "none";
+  // Multi-selection "Mixed" shadows can't be decomposed into shared controls —
+  // treat as unset; setting a shadow applies it to the whole selection.
+  const rawValue = computedStyles["box-shadow"] || "none";
+  const rawShadow = isMixedValue(rawValue) ? "none" : rawValue;
   const hasValue = rawShadow !== "none";
   const [collapsed, setCollapsed] = useState(!hasValue);
   useEffect(() => { setCollapsed(!hasValue); }, [hasValue]);
 
   const shadow = useMemo(
-    () => parseBoxShadow(computedStyles["box-shadow"] || "none"),
-    [computedStyles]
+    () => parseBoxShadow(rawShadow),
+    [rawShadow]
   );
 
   const emit = useCallback(

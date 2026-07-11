@@ -61,7 +61,11 @@ export const SliderInput: React.FC<SliderInputProps> = ({
     [onChange, valueFromClientX]
   );
 
-  const fillPercent = ((clamp(value) - min) / (max - min)) * 100;
+  // NaN = multi-selection "Mixed" — park the slider at 0 and let the
+  // embedded NumberInput render the Mixed placeholder.
+  const fillPercent = Number.isNaN(value)
+    ? 0
+    : ((clamp(value) - min) / (max - min)) * 100;
 
   return (
     <div className={`pd-slider-input ${className || ""}`}>

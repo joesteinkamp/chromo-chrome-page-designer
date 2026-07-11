@@ -5,6 +5,7 @@ import {
   NumberInput,
 } from "../controls";
 import { ChevronDown } from "../icons";
+import { parseNumericValue } from "../controls/mixed";
 import "./sections.css";
 
 interface AutoLayoutSectionProps {
@@ -16,8 +17,8 @@ interface AutoLayoutSectionProps {
 }
 
 function parseGap(val: string): number {
-  const num = parseFloat(val);
-  return isNaN(num) ? 0 : num;
+  // NaN → NumberInput renders the multi-selection "Mixed" placeholder
+  return parseNumericValue(val, 0);
 }
 
 export const AutoLayoutSection: React.FC<AutoLayoutSectionProps> = ({

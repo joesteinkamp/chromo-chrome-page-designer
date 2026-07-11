@@ -659,15 +659,39 @@ export function App() {
               </div>
               <div className="pd-panel__empty-hint">
                 <span className="pd-panel__empty-hint-key">Double-click</span>
-                Edit text
+                Drill in / edit text
+              </div>
+              <div className="pd-panel__empty-hint">
+                <span className="pd-panel__empty-hint-key">{navigator.platform.includes("Mac") ? "Cmd" : "Ctrl"}+Click</span>
+                Select deepest
               </div>
               <div className="pd-panel__empty-hint">
                 <span className="pd-panel__empty-hint-key">Shift+Click</span>
                 Multi-select
               </div>
               <div className="pd-panel__empty-hint">
+                <span className="pd-panel__empty-hint-key">Shift+Enter</span>
+                Select parent
+              </div>
+              <div className="pd-panel__empty-hint">
                 <span className="pd-panel__empty-hint-key">Tab</span>
                 Next sibling
+              </div>
+              <div className="pd-panel__empty-hint">
+                <span className="pd-panel__empty-hint-key">{navigator.platform.includes("Mac") ? "Opt" : "Alt"}+Hover</span>
+                Measure distance
+              </div>
+              <div className="pd-panel__empty-hint">
+                <span className="pd-panel__empty-hint-key">{navigator.platform.includes("Mac") ? "Opt" : "Alt"}+Drag</span>
+                Drag a copy
+              </div>
+              <div className="pd-panel__empty-hint">
+                <span className="pd-panel__empty-hint-key">{navigator.platform.includes("Mac") ? "Cmd" : "Ctrl"}+C/V</span>
+                Copy / paste element
+              </div>
+              <div className="pd-panel__empty-hint">
+                <span className="pd-panel__empty-hint-key">{navigator.platform.includes("Mac") ? "Cmd+Opt" : "Ctrl+Alt"}+C/V</span>
+                Copy / paste style
               </div>
               <div className="pd-panel__empty-hint">
                 <span className="pd-panel__empty-hint-key">Arrows</span>
@@ -695,7 +719,7 @@ export function App() {
               </div>
               <div className="pd-panel__empty-hint">
                 <span className="pd-panel__empty-hint-key">Esc</span>
-                Deselect
+                Select parent
               </div>
             </div>
           </div>

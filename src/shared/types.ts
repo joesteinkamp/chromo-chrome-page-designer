@@ -181,6 +181,18 @@ export interface DuplicateChange extends BaseChange {
   type: "duplicate";
   /** Selector of the cloned element */
   cloneSelector: string;
+  /**
+   * Selector of the element the clone was inserted relative to. Omitted for
+   * plain duplicates (insertion point is the original); set for clipboard
+   * pastes, where the destination differs from the copied element.
+   */
+  targetSelector?: string;
+  /**
+   * How the clone was inserted relative to the target: as the next sibling
+   * ("after", the default) or as its last child ("append" — paste into a
+   * selected container).
+   */
+  insertMode?: "after" | "append";
 }
 
 /**

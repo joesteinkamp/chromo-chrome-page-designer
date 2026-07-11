@@ -1,20 +1,32 @@
 /**
  * Drag to move — supports two modes controlled by move-mode.ts:
  *
- *   "position" — pixel movement via CSS top/left
+ *   "position" — pixel movement via CSS top/left, with smart-guide snapping
+ *                (hold Cmd/Ctrl to disable; Alt at drag start drags a copy)
  *   "reorder"  — DOM sibling reordering with ghost + insertion line
  */
 
 import { isOverlayElement, updateSelection } from "./overlay";
 import { generateSelector } from "../shared/selector";
 import { getMode, type MoveMode } from "./move-mode";
-import { recordStyleChange, recordMoveChange, startBatch, endBatch } from "./change-tracker";
+import {
+  recordStyleChange,
+  recordMoveChange,
+  recordDuplicateChange,
+  startBatch,
+  endBatch,
+} from "./change-tracker";
 import { updateSpacing } from "./spacing-overlay";
 import { collectSnapTargets, applySnap, hideGuides, destroyGuides, type SnapRect } from "./alignment-guides";
 
 let isDragging = false;
 let dragElement: HTMLElement | SVGElement | null = null;
-let onDragEnd: (() => void) | null = null;
+/** Called on drag end with the element that ended up being dragged (the
+ * clone when Alt-drag duplicated, otherwise the original) and whether the
+ * gesture actually crossed the drag threshold. */
+let onDragEnd:
+  | ((finalElement: HTMLElement | SVGElement | null, didDrag: boolean) => void)
+  | null = null;
 
 let startX = 0;
 let startY = 0;
@@ -24,6 +36,9 @@ let hasDragStarted = false;
 // Mode captured at drag start so it can't change mid-drag
 let dragMode: MoveMode = "position";
 
+// Alt held at drag start → we drag a fresh duplicate (Figma Option-drag)
+let altDuplicated = false;
+
 // Position mode state
 let startTop = 0;
 let startLeft = 0;
@@ -32,6 +47,9 @@ let originalPosition = "";
 // captured at drag start, both in viewport coordinates
 let startRect: DOMRect | null = null;
 let snapTargets: SnapRect[] = [];
+/** Set when the page scrolls mid-drag — snap targets are viewport-space
+ * rects captured at drag start, so they're invalid after a scroll. */
+let snapDisabledByScroll = false;
 
 // Reorder mode state
 let ghost: HTMLDivElement | null = null;
@@ -42,16 +60,18 @@ let insertBefore = true;
 export function initDragDrop(
   element: HTMLElement | SVGElement,
   e: MouseEvent,
-  callback: () => void
+  callback: (finalElement: HTMLElement | SVGElement | null, didDrag: boolean) => void
 ): void {
   dragElement = element;
   startX = e.clientX;
   startY = e.clientY;
   hasDragStarted = false;
+  snapDisabledByScroll = false;
   onDragEnd = callback;
 
   document.addEventListener("mousemove", onMouseMove, true);
   document.addEventListener("mouseup", onMouseUp, true);
+  document.addEventListener("scroll", onDragScroll, true);
 }
 
 export function isDragActive(): boolean {
@@ -76,6 +96,17 @@ function onMouseMove(e: MouseEvent): void {
     isDragging = true;
     dragMode = getMode();
 
+    // Alt at drag start → drag a duplicate, leaving the original in place.
+    // The whole gesture (clone + moves) batches into one undo step.
+    if (e.altKey && dragElement.parentElement) {
+      altDuplicated = true;
+      startBatch();
+      const clone = dragElement.cloneNode(true) as HTMLElement | SVGElement;
+      dragElement.after(clone);
+      recordDuplicateChange(dragElement, clone);
+      dragElement = clone;
+    }
+
     if (dragMode === "position") {
       const computed = window.getComputedStyle(dragElement);
       startTop = parseFloat(computed.top) || 0;
@@ -87,7 +118,7 @@ function onMouseMove(e: MouseEvent): void {
         dragElement.style.setProperty("position", "relative", "important");
         recordStyleChange(dragElement, "position", "static", "relative");
       }
-      startBatch();
+      if (!altDuplicated) startBatch();
     } else {
       // Reorder mode — show ghost and insertion line
       createGhost();
@@ -99,8 +130,10 @@ function onMouseMove(e: MouseEvent): void {
   if (dragMode === "position") {
     let snapDx = 0;
     let snapDy = 0;
-    // Smart guides: snap edges/centers to siblings and parent (Alt disables)
-    if (startRect && !e.altKey) {
+    // Smart guides: snap edges/centers to siblings and parent. Cmd/Ctrl
+    // temporarily disables snapping (Figma-style; Alt is taken by drag-
+    // duplicate), and a mid-drag scroll invalidates the cached targets.
+    if (startRect && !snapDisabledByScroll && !(e.metaKey || e.ctrlKey)) {
       const proposed = {
         left: startRect.left + dx,
         top: startRect.top + dy,
@@ -177,7 +210,6 @@ function onMouseUp(_e: MouseEvent): void {
       const computed = window.getComputedStyle(dragElement);
       recordStyleChange(dragElement, "top", `${startTop}px`, computed.top);
       recordStyleChange(dragElement, "left", `${startLeft}px`, computed.left);
-      endBatch();
     } else if (dropTarget) {
       // Reorder mode — perform the DOM move
       const originalParent = dragElement.parentElement;
@@ -254,7 +286,16 @@ function createInsertionLine(): void {
   document.documentElement.appendChild(insertionLine);
 }
 
+function onDragScroll(): void {
+  if (!hasDragStarted) return;
+  snapDisabledByScroll = true;
+  hideGuides();
+}
+
 function cleanup(): void {
+  const finalElement = dragElement;
+  const didDrag = hasDragStarted;
+
   if (dragElement) {
     dragElement.style.opacity = "";
     dragElement.style.pointerEvents = "";
@@ -264,11 +305,19 @@ function cleanup(): void {
   insertionLine?.remove();
   destroyGuides();
 
+  // Close any batch opened during the gesture — covers every exit path,
+  // including cancelDrag() mid-drag, so a stale batchId can't leak into
+  // unrelated future changes.
+  endBatch();
+
   document.removeEventListener("mousemove", onMouseMove, true);
   document.removeEventListener("mouseup", onMouseUp, true);
+  document.removeEventListener("scroll", onDragScroll, true);
 
   isDragging = false;
   hasDragStarted = false;
+  altDuplicated = false;
+  snapDisabledByScroll = false;
   dragElement = null;
   ghost = null;
   insertionLine = null;
@@ -277,6 +326,6 @@ function cleanup(): void {
   startRect = null;
   snapTargets = [];
 
-  onDragEnd?.();
+  onDragEnd?.(finalElement, didDrag);
   onDragEnd = null;
 }

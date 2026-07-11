@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown } from "../icons";
+import { evaluateExpression } from "./expr";
 import "./controls.css";
 
 const DEFAULT_UNITS = ["px", "rem", "em", "%", "vw", "vh", "auto"];
@@ -80,7 +81,13 @@ export const UnitInput: React.FC<UnitInputProps> = ({
       setLocalValue("Auto");
       return;
     }
-    const num = parseFloat(trimmed);
+    // Figma-style math ("100+24"); falls back to plain parsing (handles
+    // "12rem" etc.). Operator-containing input that doesn't evaluate reverts
+    // rather than committing just the leading number.
+    const evaluated = evaluateExpression(trimmed);
+    const looksLikeMath = /[+*/]|.-/.test(trimmed);
+    const num =
+      evaluated !== null ? evaluated : looksLikeMath ? NaN : parseFloat(trimmed);
     if (isNaN(num)) {
       // revert
       setLocalValue(isAuto ? "Auto" : formatNumber(parsed.num));
@@ -117,7 +124,8 @@ export const UnitInput: React.FC<UnitInputProps> = ({
       } else if (e.key === "ArrowUp" || e.key === "ArrowDown") {
         if (isAuto) return;
         e.preventDefault();
-        const step = parsed.unit === "rem" || parsed.unit === "em" ? 0.125 : 1;
+        const base = parsed.unit === "rem" || parsed.unit === "em" ? 0.125 : 1;
+        const step = e.shiftKey ? base * 10 : base;
         const delta = e.key === "ArrowUp" ? step : -step;
         const next = parsed.num + delta;
         onChange(`${next}${parsed.unit}`);
@@ -137,7 +145,8 @@ export const UnitInput: React.FC<UnitInputProps> = ({
       const handleMouseMove = (ev: MouseEvent) => {
         const delta = ev.clientX - dragRef.current.startX;
         const steps = Math.round(delta / 2);
-        const newVal = dragRef.current.startValue + steps * step;
+        const scrubStep = ev.shiftKey ? step * 10 : step;
+        const newVal = dragRef.current.startValue + steps * scrubStep;
         onChange(`${newVal}${parsed.unit}`);
       };
 

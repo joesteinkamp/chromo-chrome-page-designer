@@ -1,7 +1,7 @@
 /**
  * Keyboard shortcuts for Chromo Design.
  *
- * Esc — deselect element
+ * Esc — select parent element (deselects at top level, Figma-style)
  * Tab / Shift+Tab — cycle through sibling elements
  * Cmd+Z / Ctrl+Z — undo last action (edit OR selection change, Figma-style)
  * Cmd+Shift+Z / Ctrl+Shift+Z — redo last undone action
@@ -11,6 +11,8 @@
  * Cmd+H / Ctrl+H — hide element (display: none)
  * Cmd+G / Cmd+Option+G — wrap element in a group (div)
  * Cmd+D — duplicate selected element
+ * Cmd+C / Cmd+V — copy element / paste after selection
+ * Cmd+Alt+C / Cmd+Alt+V — copy styles / paste styles onto selection
  */
 
 import { isOverlayElement } from "./overlay";
@@ -36,6 +38,14 @@ import {
   lastSelectionRedoTimestamp,
   withSuppressedRecording,
 } from "./selection-history";
+import {
+  copyElement,
+  pasteElement,
+  hasCopiedElement,
+  copyStyles,
+  pasteStyles,
+  hasCopiedStyles,
+} from "./clipboard";
 
 interface KeyboardCallbacks {
   getSelectedElement: () => Element | null;
@@ -88,12 +98,22 @@ function onKeyDown(e: KeyboardEvent): void {
   const isMeta = e.metaKey || e.ctrlKey;
   const selected = callbacks.getSelectedElement();
 
-  // Esc — deselect
+  // Esc — climb to the parent (Figma-style); deselect only at the top level.
+  // Click-drill makes deep selections routine, so Esc is the way back out.
   if (e.key === "Escape") {
     if (selected) {
       e.preventDefault();
       e.stopPropagation();
-      callbacks.clearSelection();
+      const parent = selected.parentElement;
+      if (
+        parent &&
+        parent !== document.body &&
+        parent !== document.documentElement
+      ) {
+        callbacks.selectElement(parent);
+      } else {
+        callbacks.clearSelection();
+      }
     }
     return;
   }
@@ -178,6 +198,44 @@ function onKeyDown(e: KeyboardEvent): void {
       e.preventDefault();
       e.stopPropagation();
       callbacks.duplicateElement(selected);
+    }
+    return;
+  }
+
+  // Cmd+C — copy element; Cmd+Alt+C — copy styles. Physical key codes are
+  // used because Alt remaps e.key on macOS (Alt+C → "ç"). When the user has
+  // real page text selected, let the native copy through untouched.
+  if (isMeta && e.code === "KeyC") {
+    const textSelection = window.getSelection();
+    if (textSelection && !textSelection.isCollapsed) return;
+    if (selected && selected instanceof HTMLElement) {
+      e.preventDefault();
+      e.stopPropagation();
+      if (e.altKey) {
+        copyStyles(selected);
+      } else {
+        copyElement(selected);
+      }
+    }
+    return;
+  }
+
+  // Cmd+V — paste copied element after selection; Cmd+Alt+V — paste styles
+  // onto selection. Only consume the event when there's something to paste.
+  if (isMeta && e.code === "KeyV") {
+    if (selected && selected instanceof HTMLElement) {
+      if (e.altKey && hasCopiedStyles()) {
+        e.preventDefault();
+        e.stopPropagation();
+        pasteStyles(selected);
+        callbacks.refreshSelection();
+        callbacks.sendElementData(selected);
+      } else if (!e.altKey && hasCopiedElement()) {
+        e.preventDefault();
+        e.stopPropagation();
+        const clone = pasteElement(selected);
+        if (clone) callbacks.selectElement(clone);
+      }
     }
     return;
   }

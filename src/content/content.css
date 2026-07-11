@@ -492,12 +492,13 @@
   display: block !important;
 }
 
-/* Distance line to sibling */
+/* Distance line to sibling — same measurement red as Alt-measure/guides,
+   so all "distance in px" feedback reads as one system (Figma-style) */
 .__pd-distance-line {
   position: fixed !important;
   z-index: 2147483646 !important;
   pointer-events: none !important;
-  background: #ff4f9e !important;
+  background: #f24822 !important;
   display: none !important;
 }
 
@@ -506,11 +507,11 @@
   z-index: 2147483646 !important;
   pointer-events: none !important;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
-  font-size: 9px !important;
+  font-size: 10px !important;
   font-weight: 600 !important;
-  padding: 1px 3px !important;
-  border-radius: 2px !important;
-  background: #ff4f9e !important;
+  padding: 2px 4px !important;
+  border-radius: 3px !important;
+  background: #f24822 !important;
   color: #fff !important;
   display: none !important;
   white-space: nowrap !important;
@@ -520,3 +521,26 @@
 .__pd-distance-label--visible {
   display: block !important;
 }
+
+/* Alt-hover measurement lines (Figma red) */
+.__pd-measure-line {
+  position: fixed !important;
+  z-index: 2147483647 !important;
+  pointer-events: none !important;
+  background: #f24822 !important;
+}
+
+.__pd-measure-label {
+  position: fixed !important;
+  z-index: 2147483647 !important;
+  pointer-events: none !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+  font-size: 10px !important;
+  font-weight: 600 !important;
+  padding: 2px 4px !important;
+  border-radius: 3px !important;
+  background: #f24822 !important;
+  color: #fff !important;
+  white-space: nowrap !important;
+}
+

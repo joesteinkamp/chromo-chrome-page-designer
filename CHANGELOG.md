@@ -25,6 +25,7 @@
 
 - Hide element rebound from Cmd+H to Shift+Cmd+H — macOS reserves Cmd+H, so the old binding never reached the page.
 - Esc now selects the parent element (Figma-style climb out of a deep selection), deselecting only at the top level.
+- Split the Send Changes menu's "Copy Change Instructions" action, which silently downloaded before/after screenshots as a side effect, into three explicit options: Copy Change Instructions (copies only), Save Before & After Screenshots (downloads only), and Copy Instructions & Save Screenshots (does both). Removed the now-redundant single-shot "Copy Screenshot"/"Save Screenshot" items.
 
 ### Fixed
 

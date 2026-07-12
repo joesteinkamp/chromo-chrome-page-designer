@@ -181,8 +181,8 @@ export function SidebarSelected() {
             {sendMenuOpen && (
               <div className="pd-panel__send-menu">
                 <button className="pd-panel__send-menu-item" onClick={() => setSendMenuOpen(false)}>Copy Change Instructions</button>
-                <button className="pd-panel__send-menu-item" onClick={() => setSendMenuOpen(false)}>Copy Screenshot</button>
-                <button className="pd-panel__send-menu-item" onClick={() => setSendMenuOpen(false)}>Save Screenshot</button>
+                <button className="pd-panel__send-menu-item" onClick={() => setSendMenuOpen(false)}>Save Before & After Screenshots</button>
+                <button className="pd-panel__send-menu-item" onClick={() => setSendMenuOpen(false)}>Copy Instructions & Save Screenshots</button>
               </div>
             )}
           </div>

@@ -297,41 +297,6 @@ export function App() {
 
   // --- Screenshot ---
 
-  const handleScreenshot = useCallback(async () => {
-    try {
-      const response: any = await chrome.runtime.sendMessage(
-        { type: "CAPTURE_SCREENSHOT" } satisfies Message
-      );
-      if (response?.dataUrl) {
-        const link = document.createElement("a");
-        link.href = response.dataUrl;
-        link.download = `chromo-design-${Date.now()}.png`;
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
-      }
-    } catch (e) {
-      console.error("Screenshot failed:", e);
-    }
-  }, []);
-
-  const handleCopyScreenshot = useCallback(async () => {
-    try {
-      const response: any = await chrome.runtime.sendMessage(
-        { type: "CAPTURE_SCREENSHOT" } satisfies Message
-      );
-      if (response?.dataUrl) {
-        const res = await fetch(response.dataUrl);
-        const blob = await res.blob();
-        await navigator.clipboard.write([
-          new ClipboardItem({ "image/png": blob }),
-        ]);
-      }
-    } catch (e) {
-      console.error("Copy screenshot failed:", e);
-    }
-  }, []);
-
   // --- Send menu actions ---
 
   const downloadDataUrl = (dataUrl: string, filename: string) => {
@@ -376,38 +341,47 @@ export function App() {
     return "";
   };
 
+  const buildInstructionsPrompt = (): string => {
+    const summary = exportAsSummary(pageUrl, changes, undefined, componentMapRef.current);
+    const hasComments = changes.some((c) => c.type === "comment");
+    const basePrompt = `Apply these visual design changes to the codebase. Each change includes a CSS selector and, when available, the React/Vue/Svelte component name and source file. Use the component context to find the right file, then apply the property changes. When a change includes a Tailwind hint (e.g. replace \`p-4\` with \`p-6\`), edit the utility classes instead of writing raw CSS. When a change notes that a value matches a design token, use the var() reference instead of a hardcoded value. Entries marked "prop" are component prop edits — change the prop at the usage site in source code. Changes annotated with a viewport width were made at that responsive size — scope them with the matching media query or responsive utility variant (e.g. Tailwind \`max-md:\`) instead of applying them at all sizes.`;
+    const commentPrompt = `\n\nEntries marked "Comment # (designer intent)" are freeform instructions from the designer about changes that couldn't be expressed as style edits (e.g. "use a dropdown instead of buttons", "swap this for the Button component"). Treat comments as higher-priority than style diffs when they conflict, and use judgment to implement the requested change — which may involve swapping components, changing behavior, or restructuring markup rather than just adjusting CSS.`;
+    const prompt = hasComments ? `${basePrompt}${commentPrompt}` : basePrompt;
+    return `${prompt}\n\n${summary}`;
+  };
+
+  const archiveAndClearChanges = () => {
+    if (changes.length > 0) {
+      setArchivedSends((prev) => [
+        { id: `send-${Date.now()}`, timestamp: Date.now(), changes: [...changes] },
+        ...prev,
+      ]);
+      chrome.runtime.sendMessage({ type: "CLEAR_CHANGES" } satisfies Message);
+    }
+  };
+
   const sendMenuActions = [
     {
       label: "Copy Change Instructions",
       action: async () => {
-        const summary = exportAsSummary(pageUrl, changes, undefined, componentMapRef.current);
-        const hasComments = changes.some((c) => c.type === "comment");
-        const basePrompt = `Apply these visual design changes to the codebase. Each change includes a CSS selector and, when available, the React/Vue/Svelte component name and source file. Use the component context to find the right file, then apply the property changes. When a change includes a Tailwind hint (e.g. replace \`p-4\` with \`p-6\`), edit the utility classes instead of writing raw CSS. When a change notes that a value matches a design token, use the var() reference instead of a hardcoded value. Entries marked "prop" are component prop edits — change the prop at the usage site in source code. Changes annotated with a viewport width were made at that responsive size — scope them with the matching media query or responsive utility variant (e.g. Tailwind \`max-md:\`) instead of applying them at all sizes.`;
-        const commentPrompt = `\n\nEntries marked "Comment # (designer intent)" are freeform instructions from the designer about changes that couldn't be expressed as style edits (e.g. "use a dropdown instead of buttons", "swap this for the Button component"). Treat comments as higher-priority than style diffs when they conflict, and use judgment to implement the requested change — which may involve swapping components, changing behavior, or restructuring markup rather than just adjusting CSS.`;
-        const prompt = hasComments ? `${basePrompt}${commentPrompt}` : basePrompt;
+        navigator.clipboard.writeText(buildInstructionsPrompt());
+        archiveAndClearChanges();
+        setSendMenuOpen(false);
+      },
+    },
+    {
+      label: "Save Before & After Screenshots",
+      action: async () => {
+        await downloadBeforeAfterShots();
+        setSendMenuOpen(false);
+      },
+    },
+    {
+      label: "Copy Instructions & Save Screenshots",
+      action: async () => {
         const shotNote = await downloadBeforeAfterShots();
-        navigator.clipboard.writeText(`${prompt}\n\n${summary}${shotNote}`);
-        if (changes.length > 0) {
-          setArchivedSends((prev) => [
-            { id: `send-${Date.now()}`, timestamp: Date.now(), changes: [...changes] },
-            ...prev,
-          ]);
-          chrome.runtime.sendMessage({ type: "CLEAR_CHANGES" } satisfies Message);
-        }
-        setSendMenuOpen(false);
-      },
-    },
-    {
-      label: "Copy Screenshot",
-      action: () => {
-        handleCopyScreenshot();
-        setSendMenuOpen(false);
-      },
-    },
-    {
-      label: "Save Screenshot",
-      action: () => {
-        handleScreenshot();
+        navigator.clipboard.writeText(`${buildInstructionsPrompt()}${shotNote}`);
+        archiveAndClearChanges();
         setSendMenuOpen(false);
       },
     },

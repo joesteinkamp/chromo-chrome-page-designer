@@ -8,7 +8,7 @@
  * Enter — enter inline edit mode on selected element
  * Arrow keys — nudge position by 1px (Shift = 10px)
  * Delete/Backspace — delete selected element from DOM
- * Cmd+H / Ctrl+H — hide element (display: none)
+ * Shift+Cmd+H / Shift+Ctrl+H — hide element (display: none)
  * Cmd+G / Cmd+Option+G — wrap element in a group (div)
  * Cmd+D — duplicate selected element
  * Cmd+C / Cmd+V — copy element / paste after selection
@@ -58,6 +58,7 @@ interface KeyboardCallbacks {
   wrapInGroup: (element: HTMLElement) => void;
   duplicateElement: (element: HTMLElement) => void;
   deleteElement: (element: HTMLElement) => void;
+  hideElement: (element: HTMLElement) => void;
 }
 
 let callbacks: KeyboardCallbacks | null = null;
@@ -240,16 +241,13 @@ function onKeyDown(e: KeyboardEvent): void {
     return;
   }
 
-  // Cmd+H / Ctrl+H — hide element
-  if (isMeta && (e.key === "h" || e.key === "H")) {
+  // Shift+Cmd+H / Shift+Ctrl+H — hide element(s). Plain Cmd+H is reserved by
+  // macOS (Hide App) and never reaches the page, so Figma's ⇧⌘H is used.
+  if (isMeta && e.shiftKey && e.code === "KeyH") {
     if (selected && selected instanceof HTMLElement) {
       e.preventDefault();
       e.stopPropagation();
-      const computed = window.getComputedStyle(selected);
-      const prevDisplay = computed.display;
-      selected.style.setProperty("display", "none", "important");
-      recordHideChange(selected, prevDisplay);
-      callbacks.clearSelection();
+      callbacks.hideElement(selected);
     }
     return;
   }

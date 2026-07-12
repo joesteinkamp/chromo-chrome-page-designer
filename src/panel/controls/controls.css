@@ -47,6 +47,15 @@
   margin: 0;
 }
 
+/* "Mixed" multi-selection placeholders read as state, not an empty field */
+.pd-number-input__input::placeholder,
+.pd-unit-input__input::placeholder,
+.pd-color-picker__hex-inline::placeholder {
+  color: var(--pd-text);
+  opacity: 0.7;
+  font-style: italic;
+}
+
 .pd-number-input__suffix {
   font-size: var(--pd-text-sm);
   color: var(--pd-text-muted);

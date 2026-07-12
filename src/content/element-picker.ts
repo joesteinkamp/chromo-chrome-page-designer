@@ -113,6 +113,7 @@ export function suspendPicker(): void {
   suspended = true;
   hideHover();
   hideMeasure();
+  cancelMarquee();
 }
 
 /** Resume the picker after another interaction mode completes */
@@ -135,6 +136,9 @@ export function refreshSelection(): void {
 /** Programmatically select an element (used by keyboard nav, breadcrumbs) */
 export function selectElementDirectly(element: Element): void {
   selectedElement = element;
+  // A direct single-select replaces any multi-selection — leaving the list
+  // populated would keep fanning edits out to stale elements.
+  multiSelectedElements = [];
   hoveredElement = null;
   hideHover();
   showSelection(element);
@@ -533,11 +537,7 @@ function onDoubleClick(e: MouseEvent): void {
       next = next.parentElement;
     }
     if (next.parentElement === selectedElement && !isOverlayElement(next)) {
-      selectedElement = next;
-      hoveredElement = null;
-      hideHover();
-      showSelection(next);
-      callbacks?.onSelect(next);
+      selectElementDirectly(next);
       return;
     }
   }
@@ -550,8 +550,10 @@ function onKeyUp(e: KeyboardEvent): void {
 }
 
 function onWindowBlur(): void {
-  // Alt+Tab away never delivers the Alt keyup — don't strand measure lines
+  // Alt+Tab away never delivers the Alt keyup or the marquee's mouseup —
+  // don't strand measure lines or a live rubber band.
   hideMeasure();
+  cancelMarquee();
 }
 
 function onMouseDown(e: MouseEvent): void {
@@ -601,7 +603,10 @@ function onMouseDown(e: MouseEvent): void {
 }
 
 function onMouseUp(e: MouseEvent): void {
+  if (!isActive || suspended) return;
   if (!marqueeStart) return;
+  // Only a primary-button release completes the marquee
+  if (e.button !== 0) return;
 
   if (!marqueeEl) {
     // Never crossed the threshold — a plain click; the click handler decides
@@ -617,7 +622,18 @@ function onMouseUp(e: MouseEvent): void {
 }
 
 function onKeyDown(e: KeyboardEvent): void {
-  if (!isActive || suspended || !selectedElement) return;
+  if (!isActive || suspended) return;
+
+  // Escape cancels an in-progress marquee before any other meaning of Esc
+  if (e.key === "Escape" && marqueeStart) {
+    e.preventDefault();
+    e.stopPropagation();
+    e.stopImmediatePropagation();
+    cancelMarquee();
+    return;
+  }
+
+  if (!selectedElement) return;
   if (e.key !== "Enter") return;
 
   if (e.shiftKey) {
@@ -627,11 +643,7 @@ function onKeyDown(e: KeyboardEvent): void {
       e.preventDefault();
       e.stopPropagation();
       e.stopImmediatePropagation();
-      selectedElement = parent;
-      hoveredElement = null;
-      hideHover();
-      showSelection(selectedElement);
-      callbacks?.onSelect(selectedElement);
+      selectElementDirectly(parent);
     }
   } else {
     // Enter: go down to first child element if one exists
@@ -640,11 +652,7 @@ function onKeyDown(e: KeyboardEvent): void {
       e.preventDefault();
       e.stopPropagation();
       e.stopImmediatePropagation();
-      selectedElement = firstChild;
-      hoveredElement = null;
-      hideHover();
-      showSelection(selectedElement);
-      callbacks?.onSelect(selectedElement);
+      selectElementDirectly(firstChild);
     }
     // No child elements — don't consume the event, let keyboard.ts
     // handle it for inline text editing

@@ -586,12 +586,14 @@ function activate(): void {
       }
     },
     duplicateElement: (el) => {
-      const clone = duplicateElement(el);
+      // Duplicates the whole multi-selection when one is live
+      const clone = duplicateSelectedElements(el);
       if (clone) {
         selectElementDirectly(clone);
         onElementSelected(clone);
       }
     },
+    hideElement: (el) => hideSelectedElements(el),
     deleteElement: (el) => {
       deleteSelectedElements(el);
       clearSelection();
@@ -702,17 +704,10 @@ function onMultiSelect(elements: Element[], primary: Element): void {
   hideSpacing();
   const nonPrimary = elements.filter((el) => el !== primary);
   showMultiSelectOverlays(nonPrimary);
-  // Keep the plain ELEMENT_SELECTED broadcast for non-panel consumers
-  // (agent sync, background) — the panel's state settles on the
-  // MULTI_ELEMENT_SELECTED that follows.
+  // sendElementData broadcasts the plain ELEMENT_SELECTED for non-panel
+  // consumers, then follows with the merged MULTI_ELEMENT_SELECTED (with
+  // Figma-style "Mixed" placeholders) that the panel settles on.
   sendElementData(primary);
-  safeSendMessage({
-    type: "MULTI_ELEMENT_SELECTED",
-    count: elements.length,
-    // Merged view: properties the selection disagrees on become MIXED_VALUE,
-    // which the panel renders as Figma-style "Mixed" placeholders.
-    data: extractMergedElementData(elements, primary),
-  } satisfies Message);
 }
 
 // --- Double-click → inline text edit ---
@@ -794,9 +789,14 @@ function onContextMenu(e: MouseEvent): void {
   e.stopPropagation();
   e.stopImmediatePropagation();
 
-  // Figma-style: right-clicking outside the selection selects the target first
+  // Figma-style: right-clicking outside the selection selects the target
+  // first. A hit on ANY member of a multi-selection counts as inside — the
+  // selection must survive so menu commands can act on the whole set.
   let target = getSelectedElement();
-  if (!target || (hit !== target && !target.contains(hit))) {
+  const insideSelection =
+    (target && (hit === target || target.contains(hit))) ||
+    getMultiSelectedElements().some((m) => m === hit || m.contains(hit));
+  if (!insideSelection) {
     const resolved = resolveTargetAt(e.clientX, e.clientY, e.metaKey || e.ctrlKey);
     if (!resolved) return;
     selectElementDirectly(resolved);
@@ -846,7 +846,10 @@ function buildContextMenuEntries(el: HTMLElement): MenuEntry[] {
       shortcut: `${modAlt}V`,
       disabled: !hasCopiedStyles(),
       action: () => {
-        pasteStyles(el);
+        // Restyle the whole multi-selection, like panel edits do
+        for (const t of collectSelectedElements(el)) {
+          pasteStyles(t);
+        }
         refreshSelection();
         sendElementData(el);
       },
@@ -854,7 +857,7 @@ function buildContextMenuEntries(el: HTMLElement): MenuEntry[] {
     {
       label: "Duplicate",
       shortcut: `${mod}D`,
-      action: () => selectClone(duplicateElement(el)),
+      action: () => selectClone(duplicateSelectedElements(el)),
     },
     "separator",
     {
@@ -886,13 +889,8 @@ function buildContextMenuEntries(el: HTMLElement): MenuEntry[] {
     "separator",
     {
       label: "Hide",
-      shortcut: `${mod}H`,
-      action: () => {
-        const prevDisplay = window.getComputedStyle(el).display;
-        el.style.setProperty("display", "none", "important");
-        recordHideChange(el, prevDisplay);
-        clearSelection();
-      },
+      shortcut: isMac ? "⇧⌘H" : "Shift+Ctrl+H",
+      action: () => hideSelectedElements(el),
     },
     {
       label: "Delete",
@@ -903,6 +901,40 @@ function buildContextMenuEntries(el: HTMLElement): MenuEntry[] {
       },
     },
   ];
+}
+
+/**
+ * Hide the whole selection (primary + multi-selected) as one undoable batch.
+ * Shared by the Shift+Cmd+H shortcut and the context menu.
+ */
+function hideSelectedElements(primary: HTMLElement): void {
+  const targets = collectSelectedElements(primary);
+  const batched = targets.length > 1;
+  if (batched) startBatch();
+  for (const t of targets) {
+    const prevDisplay = window.getComputedStyle(t).display;
+    t.style.setProperty("display", "none", "important");
+    recordHideChange(t, prevDisplay);
+  }
+  if (batched) endBatch();
+  clearSelection();
+}
+
+/**
+ * Duplicate the whole selection as one undoable batch; returns the clone of
+ * the primary so the caller can move selection onto it.
+ */
+function duplicateSelectedElements(primary: HTMLElement): HTMLElement | null {
+  const targets = collectSelectedElements(primary);
+  const batched = targets.length > 1;
+  if (batched) startBatch();
+  let primaryClone: HTMLElement | null = null;
+  for (const t of targets) {
+    const clone = duplicateElement(t);
+    if (t === primary) primaryClone = clone;
+  }
+  if (batched) endBatch();
+  return primaryClone;
 }
 
 // --- Comment popover helpers ---
@@ -978,6 +1010,19 @@ function sendElementData(element: Element): void {
     type: "ELEMENT_SELECTED",
     data,
   } satisfies Message);
+
+  // With a live multi-selection, follow up with the merged view so the panel
+  // keeps its "Mixed" placeholders and N-selected badge after every edit —
+  // a plain ELEMENT_SELECTED alone would flip it to single-select while the
+  // content script keeps fanning edits out to the whole selection.
+  const multiEls = getMultiSelectedElements();
+  if (multiEls.length > 1 && multiEls.includes(element)) {
+    safeSendMessage({
+      type: "MULTI_ELEMENT_SELECTED",
+      count: multiEls.length,
+      data: extractMergedElementData(multiEls, element),
+    } satisfies Message);
+  }
 }
 
 /** Collect primary + multi-selected elements as HTMLElements */

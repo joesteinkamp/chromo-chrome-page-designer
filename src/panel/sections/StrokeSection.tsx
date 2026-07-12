@@ -3,7 +3,7 @@ import { ColorPicker, GradientEditor, NumberInput, SelectDropdown } from "../con
 import { VarLabel } from "./VarLabel";
 import { ChevronDown, PlusIcon, MinusIcon, GearIcon } from "../icons";
 import { isGradient, parseGradient, buildGradient, defaultGradient } from "../../shared/gradient";
-import { parseNumericValue } from "../controls/mixed";
+import { isMixedValue, parseNumericValue } from "../controls/mixed";
 import "./sections.css";
 
 interface StrokeSectionProps {
@@ -120,7 +120,8 @@ export const StrokeSection: React.FC<StrokeSectionProps> = ({
 
   const ensureBorderStyle = useCallback(
     (width: number) => {
-      if (width > 0 && borderStyle === "none") {
+      // Mixed border-style still needs a concrete style for the width to show
+      if (width > 0 && (borderStyle === "none" || isMixedValue(borderStyle))) {
         onStyleChange("border-style", "solid");
       }
     },
@@ -162,10 +163,14 @@ export const StrokeSection: React.FC<StrokeSectionProps> = ({
 
   const switchToGradient = useCallback(() => {
     // border-image only paints when there's a visible solid border to fill.
-    if (borderStyle === "none") onStyleChange("border-style", "solid");
+    if (borderStyle === "none" || isMixedValue(borderStyle)) {
+      onStyleChange("border-style", "solid");
+    }
     if (sideWidths.every((w) => parsePx(w) === 0)) onStyleChange("border-width", "2px");
     onStyleChange("border-image-slice", "1");
-    onStyleChange("border-image-source", buildGradient(defaultGradient(borderColor)));
+    // Never seed from the multi-selection Mixed sentinel — it isn't a color
+    const seed = isMixedValue(borderColor) ? "#4f9eff" : borderColor;
+    onStyleChange("border-image-source", buildGradient(defaultGradient(seed)));
   }, [borderStyle, sideWidths, borderColor, onStyleChange]);
 
   const handleRemove = useCallback(() => {

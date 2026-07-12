@@ -670,8 +670,8 @@ export function App() {
                 Multi-select
               </div>
               <div className="pd-panel__empty-hint">
-                <span className="pd-panel__empty-hint-key">Drag empty space</span>
-                Marquee select
+                <span className="pd-panel__empty-hint-key">Drag</span>
+                Marquee from empty space
               </div>
               <div className="pd-panel__empty-hint">
                 <span className="pd-panel__empty-hint-key">Right-click</span>
@@ -714,7 +714,7 @@ export function App() {
                 Remove element
               </div>
               <div className="pd-panel__empty-hint">
-                <span className="pd-panel__empty-hint-key">{navigator.platform.includes("Mac") ? "Cmd" : "Ctrl"}+H</span>
+                <span className="pd-panel__empty-hint-key">Shift+{navigator.platform.includes("Mac") ? "Cmd" : "Ctrl"}+H</span>
                 Hide element
               </div>
               <div className="pd-panel__empty-hint">

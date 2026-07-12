@@ -1,6 +1,7 @@
 import React, { useState, useCallback } from "react";
 import { NumberInput } from "./NumberInput";
 import { LinkIcon, UnlinkIcon } from "../icons";
+import { parseNumericValue } from "./mixed";
 import "./controls.css";
 
 interface CornerRadiusInputProps {
@@ -13,8 +14,8 @@ interface CornerRadiusInputProps {
 const CORNER_LABELS = ["TL", "TR", "BR", "BL"] as const;
 
 function parseRadius(v: string): number {
-  const num = parseFloat(v);
-  return isNaN(num) ? 0 : num;
+  // NaN → NumberInput renders the multi-selection "Mixed" placeholder
+  return parseNumericValue(v, 0);
 }
 
 export const CornerRadiusInput: React.FC<CornerRadiusInputProps> = ({

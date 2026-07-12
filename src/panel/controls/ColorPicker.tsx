@@ -286,6 +286,7 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({
   // Sync all display states when external value changes
   useEffect(() => {
     if (isMixed) {
+      setHexInput("");
       setInlineHex("");
       setOpacityInput("");
       return;

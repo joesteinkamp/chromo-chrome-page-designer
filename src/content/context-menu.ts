@@ -5,6 +5,8 @@
  * Commands themselves live in main.ts and are passed in as entries.
  */
 
+import { suppressNextClick } from "./element-picker";
+
 export interface MenuItem {
   label: string;
   shortcut?: string;
@@ -95,6 +97,11 @@ export function showContextMenu(x: number, y: number, entries: MenuEntry[]): voi
 function onGlobalMouseDown(e: MouseEvent): void {
   if (menuEl && !menuEl.contains(e.target as Node)) {
     hideContextMenu();
+    // Swallow the dismissing gesture (native-menu convention) — it should
+    // close the menu, not also change the selection underneath.
+    e.preventDefault();
+    e.stopPropagation();
+    suppressNextClick();
   }
 }
 

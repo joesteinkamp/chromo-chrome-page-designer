@@ -12,7 +12,8 @@
 
 import { selectElementDirectly, suspendPicker, resumePicker } from "./element-picker";
 import { showHover, hideHover } from "./overlay";
-import { recordMoveChange } from "./change-tracker";
+import { recordMoveChange, recordHideChange, undoChange } from "./change-tracker";
+import { extractComponentInfo } from "./framework-detect";
 import { generateSelector } from "../shared/selector";
 
 /** Prefix for every element we inject; used by overlay helpers to skip us. */
@@ -34,6 +35,12 @@ const expanded = new WeakSet<Element>();
 const uncapped = new WeakSet<Element>();
 /** Map from live Element -> its rendered row, used for highlight + scrollIntoView. */
 const rowForElement = new WeakMap<Element, HTMLDivElement>();
+/** Nearest framework-component name per element (null = none). The main-world
+ * bridge call is synchronous but not free — cache so re-renders are cheap. */
+const componentNameCache = new WeakMap<Element, string | null>();
+/** Elements hidden via the row eye toggle → the hide-change id, so a second
+ * click can undo that exact change (keeping the changeset clean). */
+const eyeHidden = new Map<Element, string>();
 /** Reverse: row DIV -> live Element, used for event delegation. */
 const rowToElement = new WeakMap<HTMLDivElement, Element>();
 
@@ -233,6 +240,35 @@ const LAYERS_CSS = `
 .${LAYERS_PANE_PREFIX}root--dragging .${LAYERS_PANE_PREFIX}row {
   cursor: grabbing !important;
 }
+.${LAYERS_PANE_PREFIX}component {
+  color: #b28aff !important;
+  font-weight: 600 !important;
+  margin-right: 4px !important;
+}
+.${LAYERS_PANE_PREFIX}eye {
+  border: none !important;
+  background: transparent !important;
+  color: #999 !important;
+  font-size: 11px !important;
+  line-height: 1 !important;
+  padding: 0 2px !important;
+  margin-left: 4px !important;
+  cursor: pointer !important;
+  opacity: 0 !important;
+}
+.${LAYERS_PANE_PREFIX}row:hover .${LAYERS_PANE_PREFIX}eye {
+  opacity: 1 !important;
+}
+.${LAYERS_PANE_PREFIX}eye--off {
+  opacity: 1 !important;
+  color: #e0e0e0 !important;
+}
+.${LAYERS_PANE_PREFIX}row--hidden .${LAYERS_PANE_PREFIX}tag,
+.${LAYERS_PANE_PREFIX}row--hidden .${LAYERS_PANE_PREFIX}id,
+.${LAYERS_PANE_PREFIX}row--hidden .${LAYERS_PANE_PREFIX}cls,
+.${LAYERS_PANE_PREFIX}row--hidden .${LAYERS_PANE_PREFIX}component {
+  opacity: 0.45 !important;
+}
 
 /* ── Light mode overrides ── */
 @media (prefers-color-scheme: light) {
@@ -291,6 +327,15 @@ const LAYERS_CSS = `
   }
   .${LAYERS_PANE_PREFIX}cls {
     color: #1a7a5e !important;
+  }
+  .${LAYERS_PANE_PREFIX}component {
+    color: #9747ff !important;
+  }
+  .${LAYERS_PANE_PREFIX}eye {
+    color: #999 !important;
+  }
+  .${LAYERS_PANE_PREFIX}eye--off {
+    color: #555 !important;
   }
   .${LAYERS_PANE_PREFIX}count {
     color: #aaa !important;
@@ -539,6 +584,49 @@ function renderTree(): void {
   }
 }
 
+function nearestComponentName(el: Element): string | null {
+  const cached = componentNameCache.get(el);
+  if (cached !== undefined) return cached;
+  let name: string | null = null;
+  try {
+    name = extractComponentInfo(el).componentName;
+  } catch {
+    /* main-world bridge unavailable */
+  }
+  componentNameCache.set(el, name);
+  return name;
+}
+
+/**
+ * Show the component name only on the component's own DOM root — the row
+ * whose nearest component differs from its parent's. Descendants share the
+ * same nearest component and stay plain tag rows, like Figma's layer list.
+ */
+function componentRootName(el: Element): string | null {
+  const name = nearestComponentName(el);
+  if (!name) return null;
+  const parent = el.parentElement;
+  if (parent && nearestComponentName(parent) === name) return null;
+  return name;
+}
+
+/** Hide/show an element from the tree's eye toggle. Hiding records a normal
+ *  hide change; showing undoes that exact change, keeping handoff clean. */
+function toggleEyeHidden(el: Element): void {
+  const existingChangeId = eyeHidden.get(el);
+  if (existingChangeId !== undefined) {
+    eyeHidden.delete(el);
+    undoChange(existingChangeId);
+  } else if (el instanceof HTMLElement || el instanceof SVGElement) {
+    const prev = window.getComputedStyle(el).display;
+    if (prev === "none") return; // hidden by the page itself — leave alone
+    el.style.setProperty("display", "none", "important");
+    const change = recordHideChange(el, prev);
+    eyeHidden.set(el, change.id);
+  }
+  scheduleRender();
+}
+
 function renderNode(el: Element, depth: number, parentEl: HTMLElement): void {
   if (!shouldShow(el)) return;
 
@@ -576,10 +664,24 @@ function renderNode(el: Element, depth: number, parentEl: HTMLElement): void {
   }
   row.appendChild(chevron);
 
+  // Component root rows lead with the component's name, Figma-purple —
+  // the tree then reads like a layer list (<ProductCard>) instead of divs.
+  const componentName = componentRootName(el);
+  if (componentName) {
+    const comp = document.createElement("span");
+    comp.className = `${LAYERS_PANE_PREFIX}component`;
+    comp.textContent = `<${componentName}>`;
+    row.appendChild(comp);
+  }
+
   const tag = document.createElement("span");
   tag.className = `${LAYERS_PANE_PREFIX}tag`;
   tag.textContent = el.tagName.toLowerCase();
   row.appendChild(tag);
+
+  if (eyeHidden.has(el)) {
+    row.classList.add(`${LAYERS_PANE_PREFIX}row--hidden`);
+  }
 
   if (el.id) {
     const id = document.createElement("span");
@@ -606,6 +708,17 @@ function renderNode(el: Element, depth: number, parentEl: HTMLElement): void {
     count.textContent = String(kids.length);
     row.appendChild(count);
   }
+
+  // Eye toggle — appears on row hover; stays visible while hidden
+  const eye = document.createElement("button");
+  eye.type = "button";
+  eye.className =
+    `${LAYERS_PANE_PREFIX}eye` +
+    (eyeHidden.has(el) ? ` ${LAYERS_PANE_PREFIX}eye--off` : "");
+  eye.setAttribute("data-pd-layers-eye", "1");
+  eye.title = eyeHidden.has(el) ? "Show element" : "Hide element";
+  eye.textContent = "👁";
+  row.appendChild(eye);
 
   rowForElement.set(el, row);
   rowToElement.set(row, el);
@@ -948,6 +1061,12 @@ function handlePaneClick(tgt: Element): void {
   if (!rowEl) return;
   const el = rowToElement.get(rowEl);
   if (!el) return;
+
+  // Eye toggle → hide/show without changing the selection
+  if (tgt.closest("[data-pd-layers-eye]")) {
+    toggleEyeHidden(el);
+    return;
+  }
 
   // Chevron → toggle expand. Anywhere else on the row → select.
   const chevron = tgt.closest("[data-pd-layers-chevron]");

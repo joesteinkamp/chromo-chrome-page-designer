@@ -23,13 +23,28 @@ export const BlurSection: React.FC<BlurSectionProps> = ({
   onStyleChange,
 }) => {
   const blurValue = parseBlurFromFilter(computedStyles["filter"] || "none");
-  const hasValue = Number.isNaN(blurValue) || blurValue > 0;
+  // Backdrop blur = Figma's "Background blur" — blurs what's behind the box
+  const backdropValue = parseBlurFromFilter(
+    computedStyles["backdrop-filter"] || "none"
+  );
+  const hasValue =
+    Number.isNaN(blurValue) ||
+    blurValue > 0 ||
+    Number.isNaN(backdropValue) ||
+    backdropValue > 0;
   const [collapsed, setCollapsed] = useState(!hasValue);
   useEffect(() => { setCollapsed(!hasValue); }, [hasValue]);
 
   const handleChange = useCallback(
     (v: number) => {
       onStyleChange("filter", v > 0 ? `blur(${v}px)` : "none");
+    },
+    [onStyleChange]
+  );
+
+  const handleBackdropChange = useCallback(
+    (v: number) => {
+      onStyleChange("backdrop-filter", v > 0 ? `blur(${v}px)` : "none");
     },
     [onStyleChange]
   );
@@ -56,6 +71,18 @@ export const BlurSection: React.FC<BlurSectionProps> = ({
               min={0}
               max={50}
               step={1}
+              label="Layer"
+              suffix="px"
+            />
+          </div>
+          <div className="pd-section__row">
+            <SliderInput
+              value={backdropValue}
+              onChange={handleBackdropChange}
+              min={0}
+              max={50}
+              step={1}
+              label="Backdrop"
               suffix="px"
             />
           </div>

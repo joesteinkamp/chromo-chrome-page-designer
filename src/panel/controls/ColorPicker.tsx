@@ -673,7 +673,10 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({
                     title={`${token.name}: ${token.value}`}
                     style={{ background: token.value }}
                     onClick={() => {
-                      onChange(token.value);
+                      // Bind to the token, don't bake in its current value —
+                      // the changeset then speaks the codebase's design
+                      // system (var(--brand-500), not a hex literal).
+                      onChange(`var(${token.name})`);
                     }}
                   />
                 ))}

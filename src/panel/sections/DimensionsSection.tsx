@@ -1,12 +1,14 @@
 import React, { useState, useCallback } from "react";
 import { UnitInput } from "../controls";
-import { ChevronDown } from "../icons";
+import { ChevronDown, LinkIcon, UnlinkIcon } from "../icons";
 import "./sections.css";
 
 interface DimensionsSectionProps {
   computedStyles: Record<string, string>;
   authoredStyles?: Record<string, string>;
   onStyleChange: (property: string, value: string) => void;
+  /** Rendered size — the ratio source for the aspect lock */
+  rect?: { width: number; height: number };
 }
 
 /**
@@ -37,8 +39,14 @@ export const DimensionsSection: React.FC<DimensionsSectionProps> = ({
   computedStyles,
   authoredStyles,
   onStyleChange,
+  rect,
 }) => {
   const [collapsed, setCollapsed] = useState(false);
+  // Aspect lock (Figma's constrain-proportions link): editing W in px also
+  // writes the proportional H, and vice versa. Ratio comes from the live
+  // rendered rect. Non-px units pass through unconstrained — a proportional
+  // counterpart for "50%" isn't well-defined.
+  const [aspectLocked, setAspectLocked] = useState(false);
 
   const width = displayValue(authoredStyles?.["width"]);
   const height = displayValue(authoredStyles?.["height"]);
@@ -48,13 +56,27 @@ export const DimensionsSection: React.FC<DimensionsSectionProps> = ({
   const maxHeight = displayValue(authoredStyles?.["max-height"]);
 
   const handleWidthChange = useCallback(
-    (v: string) => onStyleChange("width", v),
-    [onStyleChange]
+    (v: string) => {
+      onStyleChange("width", v);
+      const px = /^(-?[\d.]+)px$/.exec(v.trim());
+      if (aspectLocked && px && rect && rect.width > 0 && rect.height > 0) {
+        const newH = Math.round((parseFloat(px[1]) * rect.height / rect.width) * 100) / 100;
+        onStyleChange("height", `${newH}px`);
+      }
+    },
+    [onStyleChange, aspectLocked, rect]
   );
 
   const handleHeightChange = useCallback(
-    (v: string) => onStyleChange("height", v),
-    [onStyleChange]
+    (v: string) => {
+      onStyleChange("height", v);
+      const px = /^(-?[\d.]+)px$/.exec(v.trim());
+      if (aspectLocked && px && rect && rect.width > 0 && rect.height > 0) {
+        const newW = Math.round((parseFloat(px[1]) * rect.width / rect.height) * 100) / 100;
+        onStyleChange("width", `${newW}px`);
+      }
+    },
+    [onStyleChange, aspectLocked, rect]
   );
 
   /**
@@ -102,12 +124,20 @@ export const DimensionsSection: React.FC<DimensionsSectionProps> = ({
       </div>
       {!collapsed && (
         <div className="pd-section__content">
-          <div className="pd-section__row pd-section__row--half">
+          <div className="pd-section__row pd-dimensions__wh">
             <UnitInput
               value={width}
               onChange={handleWidthChange}
               label="W"
             />
+            <button
+              className={`pd-corner-radius__link-btn${aspectLocked ? " pd-corner-radius__link-btn--active" : ""}`}
+              onClick={() => setAspectLocked((l) => !l)}
+              type="button"
+              title={aspectLocked ? "Unlock aspect ratio" : "Lock aspect ratio"}
+            >
+              {aspectLocked ? <LinkIcon size={14} /> : <UnlinkIcon size={14} />}
+            </button>
             <UnitInput
               value={height}
               onChange={handleHeightChange}

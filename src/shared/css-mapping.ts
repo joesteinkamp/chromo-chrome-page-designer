@@ -63,6 +63,9 @@ export const FIGMA_LABELS: Record<string, string> = {
   Shadow: "box-shadow",
   Blur: "filter",
   "Backdrop blur": "backdrop-filter",
+  "Blend mode": "mix-blend-mode",
+  Italic: "font-style",
+  "Aspect ratio": "aspect-ratio",
 };
 
 /** Reverse mapping: CSS property → Figma label */

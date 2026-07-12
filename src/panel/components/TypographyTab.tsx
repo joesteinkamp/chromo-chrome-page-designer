@@ -178,6 +178,12 @@ export function TypographyTab({ computedStyles, onStyleChange }: Props) {
 
   const handleFontFamily = useCallback((v: string) => onStyleChange("font-family", v), [onStyleChange]);
   const handleFontWeight = useCallback((v: string) => onStyleChange("font-weight", v), [onStyleChange]);
+  const isItalic = (computedStyles["font-style"] || "normal").startsWith("italic") ||
+    (computedStyles["font-style"] || "").startsWith("oblique");
+  const handleItalicToggle = useCallback(
+    () => onStyleChange("font-style", isItalic ? "normal" : "italic"),
+    [onStyleChange, isItalic]
+  );
   const handleFontSize = useCallback((v: number) => onStyleChange("font-size", `${v}px`), [onStyleChange]);
   const handleLineHeight = useCallback((v: number) => onStyleChange("line-height", `${v}px`), [onStyleChange]);
   const handleLetterSpacing = useCallback((v: number) => onStyleChange("letter-spacing", `${v}px`), [onStyleChange]);
@@ -383,6 +389,20 @@ export function TypographyTab({ computedStyles, onStyleChange }: Props) {
               step={0.1}
               suffix="px"
             />
+          </div>
+
+          {/* Italic — its own group so it doesn't read as a fourth alignment */}
+          <div className="pd-section__row">
+            <div className="pd-typography__btn-group">
+              <button
+                type="button"
+                className={`pd-typography__btn${isItalic ? " pd-typography__btn--active" : ""}`}
+                title="Italic"
+                onClick={handleItalicToggle}
+              >
+                <span style={{ fontStyle: "italic", fontSize: 12 }}>I</span>
+              </button>
+            </div>
           </div>
 
           {/* Alignment buttons — horizontal + vertical */}

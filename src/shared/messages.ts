@@ -26,6 +26,8 @@ export type Message =
   | { type: "LAYERS_PANE_STATE"; enabled: boolean }
   // Style changes (panel → content script)
   | { type: "APPLY_STYLE"; property: string; value: string }
+  // Several properties applied as ONE undoable batch (e.g. aspect-locked W+H)
+  | { type: "APPLY_STYLES"; changes: Array<{ property: string; value: string }> }
   | { type: "APPLY_STYLE_TO_MATCHING"; className: string; property: string; value: string }
   // Remove flex/grid auto layout from the selected element(s)
   | { type: "REMOVE_AUTO_LAYOUT" }

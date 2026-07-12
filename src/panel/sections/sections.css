@@ -78,6 +78,23 @@
   box-sizing: border-box;
 }
 
+/* W / [aspect-lock] / H row in Dimensions */
+.pd-dimensions__wh {
+  gap: var(--pd-space-2);
+}
+
+/* Stacked shadow layers in the effects list */
+.pd-shadow__item + .pd-shadow__item {
+  border-top: 1px solid var(--pd-border, rgba(128, 128, 128, 0.25));
+  margin-top: var(--pd-space-3);
+  padding-top: var(--pd-space-3);
+}
+
+.pd-dimensions__wh > .pd-unit-input {
+  flex: 1;
+  min-width: 0;
+}
+
 .pd-section__row--between {
   justify-content: space-between;
 }

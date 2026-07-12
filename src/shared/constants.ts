@@ -84,5 +84,10 @@ export const TRACKED_PROPERTIES = [
   "box-shadow",
   "filter",
   "backdrop-filter",
+  "mix-blend-mode",
   "overflow",
+  // Typography extras
+  "font-style",
+  // Layout extras
+  "aspect-ratio",
 ] as const;

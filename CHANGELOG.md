@@ -4,6 +4,11 @@
 
 ### Added
 
+- Multi-shadow effects list: stack drop and inset shadows with per-layer color/X/Y/blur/spread controls and add/remove.
+- Background (backdrop) blur slider beside Layer blur; blend-mode menu including plus-lighter in the section now named Appearance; italic toggle in Typography.
+- Aspect-ratio lock between W and H that co-writes proportional values as one undoable batch, resets per selection, and disables on non-px values.
+- Layers tree shows framework component names (Figma purple) on component-root rows and a hover eye that hides/shows elements as undoable changes.
+- Design-token swatches bind var(--name) instead of baking in the resolved value, so exported changesets speak the codebase's design system.
 - Marquee (rubber-band) selection: drag from empty page space to select the intersecting elements at the enclosing container's level.
 - Multi-select property editing with Figma-style "Mixed" placeholders across all panel controls — numeric fields, units, colors, dropdowns, and sliders; committing a value applies to the whole selection as one undo step.
 - Right-click context menu with keyboard shortcuts as labels; commands act on the full selection, and right-clicking outside the selection selects the target first.
@@ -22,6 +27,8 @@
 
 ### Fixed
 
+- Undoing the hide of an SVG element no longer wedges the entire undo stack; the layers eye stays in sync with undo/redo.
+- Blur sliders preserve other filter functions (e.g. saturate()) instead of overwriting the whole filter list.
 - Multi-selection state no longer desyncs between the panel and the page after the first edit, and the "Mixed" sentinel can never be committed as literal CSS.
 - Batched gestures undo as one step: duplicate/move changes now join undo batches, style-change coalescing respects batch boundaries, and cancelled drags no longer leak an open batch into later edits.
 - Undo after an alt-drag reorder no longer removes the wrong element (duplicate changes keep live clone references).

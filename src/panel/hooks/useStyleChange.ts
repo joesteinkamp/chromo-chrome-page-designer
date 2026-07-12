@@ -19,3 +19,21 @@ export function useStyleChange() {
 
   return sendStyleChange;
 }
+
+/**
+ * Like useStyleChange but applies several properties as ONE undoable batch —
+ * used for gestures that must revert atomically (aspect-locked W+H).
+ */
+export function useStyleBatch() {
+  const sendStyleBatch = useCallback(
+    (changes: Array<{ property: string; value: string }>) => {
+      chrome.runtime.sendMessage({
+        type: "APPLY_STYLES",
+        changes,
+      } satisfies Message);
+    },
+    []
+  );
+
+  return sendStyleBatch;
+}

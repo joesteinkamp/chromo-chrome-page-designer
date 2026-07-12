@@ -28,12 +28,30 @@ const DEFAULT_SHADOW: ShadowValues = {
   color: "rgba(0, 0, 0, 0.25)",
 };
 
-function parseBoxShadow(raw: string): ShadowValues {
-  if (!raw || raw === "none") {
-    return { ...DEFAULT_SHADOW, x: 0, y: 0, blur: 0, spread: 0 };
+/**
+ * Split a box-shadow list on top-level commas — commas inside color
+ * functions (rgba(), hsl()) don't separate shadows.
+ */
+function splitShadows(raw: string): string[] {
+  if (!raw || raw === "none") return [];
+  const parts: string[] = [];
+  let depth = 0;
+  let current = "";
+  for (const ch of raw) {
+    if (ch === "(") depth++;
+    else if (ch === ")") depth--;
+    if (ch === "," && depth === 0) {
+      parts.push(current.trim());
+      current = "";
+    } else {
+      current += ch;
+    }
   }
+  if (current.trim()) parts.push(current.trim());
+  return parts;
+}
 
-  const trimmed = raw.trim();
+function parseSingleShadow(raw: string): ShadowValues {
   const result: ShadowValues = {
     inset: false,
     x: 0,
@@ -44,30 +62,40 @@ function parseBoxShadow(raw: string): ShadowValues {
   };
 
   // Check for inset
-  let working = trimmed;
+  let working = raw.trim();
   if (working.startsWith("inset")) {
     result.inset = true;
     working = working.slice(5).trim();
   }
 
-  // Extract color — could be at the start or end
-  // Try to extract rgb/rgba/hsl/hsla/hex color
+  // Extract color — could be at the start or end. Computed values are
+  // usually rgb()/rgba(), but wide-gamut colors survive as color()/lab()/
+  // oklch() etc; extract any functional color with balanced parens so its
+  // numbers never leak into the offset/blur parsing.
   let colorStr = "";
-
-  // Match rgba(...) or rgb(...)
-  const rgbaMatch = working.match(/rgba?\([^)]+\)/);
-  if (rgbaMatch) {
-    colorStr = rgbaMatch[0];
-    working = working.replace(colorStr, "").trim();
+  const fnMatch = /(?:rgba?|hsla?|color-mix|color|lab|lch|oklab|oklch)\(/i.exec(working);
+  if (fnMatch) {
+    let depth = 0;
+    let end = fnMatch.index;
+    for (let i = fnMatch.index; i < working.length; i++) {
+      if (working[i] === "(") depth++;
+      else if (working[i] === ")") {
+        depth--;
+        if (depth === 0) {
+          end = i + 1;
+          break;
+        }
+      }
+    }
+    colorStr = working.slice(fnMatch.index, end);
+    working = (working.slice(0, fnMatch.index) + working.slice(end)).trim();
   } else {
-    // Match hex color
     const hexMatch = working.match(/#[0-9a-fA-F]{3,8}/);
     if (hexMatch) {
       colorStr = hexMatch[0];
       working = working.replace(colorStr, "").trim();
     }
   }
-
   if (colorStr) {
     result.color = colorStr;
   }
@@ -89,9 +117,6 @@ function parseBoxShadow(raw: string): ShadowValues {
 }
 
 function composeShadow(s: ShadowValues): string {
-  if (s.x === 0 && s.y === 0 && s.blur === 0 && s.spread === 0) {
-    return "none";
-  }
   const parts: string[] = [];
   if (s.inset) parts.push("inset");
   parts.push(`${s.x}px`);
@@ -115,46 +140,55 @@ export const ShadowSection: React.FC<ShadowSectionProps> = ({
   const [collapsed, setCollapsed] = useState(!hasValue);
   useEffect(() => { setCollapsed(!hasValue); }, [hasValue]);
 
-  const shadow = useMemo(
-    () => parseBoxShadow(rawShadow),
+  // Shadows are a list, Figma-style: stack as many drop/inset shadows as
+  // the design needs; each row edits one layer of the box-shadow value.
+  const shadows = useMemo(
+    () => splitShadows(rawShadow).map(parseSingleShadow),
     [rawShadow]
   );
 
+  // Compose edits from the last EMITTED list, not the last-received prop —
+  // a blur-commit followed immediately by a click on another row's control
+  // would otherwise rebuild the list from stale data and revert the commit.
+  // The prop catches up after the content-script round trip, clearing this.
+  const pendingRef = React.useRef<ShadowValues[] | null>(null);
+  useEffect(() => {
+    pendingRef.current = null;
+  }, [rawShadow]);
+  const currentShadows = useCallback(
+    () => pendingRef.current ?? shadows,
+    [shadows]
+  );
+
   const emit = useCallback(
-    (updated: ShadowValues) => {
-      onStyleChange("box-shadow", composeShadow(updated));
+    (list: ShadowValues[]) => {
+      pendingRef.current = list;
+      onStyleChange(
+        "box-shadow",
+        list.length > 0 ? list.map(composeShadow).join(", ") : "none"
+      );
     },
     [onStyleChange]
   );
 
-  const handleXChange = useCallback(
-    (v: number) => emit({ ...shadow, x: v }),
-    [shadow, emit]
+  const updateAt = useCallback(
+    (index: number, patch: Partial<ShadowValues>) => {
+      emit(currentShadows().map((s, i) => (i === index ? { ...s, ...patch } : s)));
+    },
+    [currentShadows, emit]
   );
-  const handleYChange = useCallback(
-    (v: number) => emit({ ...shadow, y: v }),
-    [shadow, emit]
+
+  const removeAt = useCallback(
+    (index: number) => {
+      emit(currentShadows().filter((_, i) => i !== index));
+    },
+    [currentShadows, emit]
   );
-  const handleBlurChange = useCallback(
-    (v: number) => emit({ ...shadow, blur: v }),
-    [shadow, emit]
-  );
-  const handleSpreadChange = useCallback(
-    (v: number) => emit({ ...shadow, spread: v }),
-    [shadow, emit]
-  );
-  const handleColorChange = useCallback(
-    (v: string) => emit({ ...shadow, color: v }),
-    [shadow, emit]
-  );
-  const handleInsetToggle = useCallback(
-    () => emit({ ...shadow, inset: !shadow.inset }),
-    [shadow, emit]
-  );
-  const handleRemove = useCallback(
-    () => onStyleChange("box-shadow", "none"),
-    [onStyleChange]
-  );
+
+  const addShadow = useCallback(() => {
+    emit([...currentShadows(), { ...DEFAULT_SHADOW }]);
+    setCollapsed(false);
+  }, [currentShadows, emit]);
 
   return (
     <div className={`pd-section${sectionDisabled ? " pd-section--disabled" : ""}`}>
@@ -164,61 +198,82 @@ export const ShadowSection: React.FC<ShadowSectionProps> = ({
       >
         <span className="pd-section__title">Shadow{sectionDisabled ? " (N/A)" : ""}</span>
         {collapsed && !hasValue ? (
-          <button className="pd-section__plus-btn" onClick={(e) => { e.stopPropagation(); setCollapsed(false); }} type="button"><PlusIcon size={12} /></button>
+          <button className="pd-section__plus-btn" onClick={(e) => { e.stopPropagation(); addShadow(); }} type="button" title="Add shadow"><PlusIcon size={12} /></button>
         ) : (
           <div className="pd-section__header-actions">
-            {hasValue && (
-              <button className="pd-section__minus-btn" onClick={(e) => { e.stopPropagation(); handleRemove(); }} type="button" title="Remove shadow"><MinusIcon size={12} /></button>
-            )}
+            <button className="pd-section__plus-btn" onClick={(e) => { e.stopPropagation(); addShadow(); }} type="button" title="Add shadow"><PlusIcon size={12} /></button>
             <span className={`pd-section__arrow${collapsed ? " pd-section__arrow--collapsed" : ""}`}><ChevronDown size={12} /></span>
           </div>
         )}
       </div>
       {!collapsed && (
         <div className="pd-section__content">
-          <div className="pd-section__row">
-            <ColorPicker
-              value={shadow.color}
-              onChange={handleColorChange}
-            />
+          {shadows.length === 0 && (
             <button
-              className={`pd-section__toggle-btn${shadow.inset ? " pd-section__toggle-btn--active" : ""}`}
-              onClick={handleInsetToggle}
+              className="pd-section__add-btn"
+              onClick={addShadow}
               type="button"
-              title={shadow.inset ? "Switch to drop shadow" : "Switch to inset shadow"}
             >
-              {shadow.inset ? "Inset" : "Drop"}
+              + Add shadow
             </button>
-          </div>
-          <div className="pd-section__row pd-section__row--half">
-            <NumberInput
-              value={shadow.x}
-              onChange={handleXChange}
-              label="X"
-              suffix="px"
-            />
-            <NumberInput
-              value={shadow.y}
-              onChange={handleYChange}
-              label="Y"
-              suffix="px"
-            />
-          </div>
-          <div className="pd-section__row pd-section__row--half">
-            <NumberInput
-              value={shadow.blur}
-              onChange={handleBlurChange}
-              label="Blur"
-              min={0}
-              suffix="px"
-            />
-            <NumberInput
-              value={shadow.spread}
-              onChange={handleSpreadChange}
-              label="Spread"
-              suffix="px"
-            />
-          </div>
+          )}
+          {shadows.map((shadow, i) => (
+            // Length in the key remounts rows on add/remove, so an open
+            // color popover can't end up editing a shifted neighbor's layer.
+            <div className="pd-shadow__item" key={`${shadows.length}-${i}`}>
+              <div className="pd-section__row">
+                <ColorPicker
+                  value={shadow.color}
+                  onChange={(v) => updateAt(i, { color: v })}
+                />
+                <button
+                  className={`pd-section__toggle-btn${shadow.inset ? " pd-section__toggle-btn--active" : ""}`}
+                  onClick={() => updateAt(i, { inset: !shadow.inset })}
+                  type="button"
+                  title={shadow.inset ? "Switch to drop shadow" : "Switch to inset shadow"}
+                >
+                  {shadow.inset ? "Inset" : "Drop"}
+                </button>
+                <button
+                  className="pd-section__minus-btn"
+                  onClick={() => removeAt(i)}
+                  type="button"
+                  title="Remove this shadow"
+                >
+                  <MinusIcon size={12} />
+                </button>
+              </div>
+              <div className="pd-section__row pd-section__row--half">
+                <NumberInput
+                  value={shadow.x}
+                  onChange={(v) => updateAt(i, { x: v })}
+                  label="X"
+                  suffix="px"
+                />
+                <NumberInput
+                  value={shadow.y}
+                  onChange={(v) => updateAt(i, { y: v })}
+                  label="Y"
+                  suffix="px"
+                />
+              </div>
+              <div className="pd-section__row pd-section__row--half">
+                <NumberInput
+                  value={shadow.blur}
+                  onChange={(v) => updateAt(i, { blur: v })}
+                  label="Blur"
+                  min={0}
+                  suffix="px"
+                />
+                <NumberInput
+                  value={shadow.spread}
+                  onChange={(v) => updateAt(i, { spread: v })}
+                  label="Spread"
+                  suffix="px"
+                />
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </div>

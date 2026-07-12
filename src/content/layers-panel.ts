@@ -12,7 +12,8 @@
 
 import { selectElementDirectly, suspendPicker, resumePicker } from "./element-picker";
 import { showHover, hideHover } from "./overlay";
-import { recordMoveChange } from "./change-tracker";
+import { recordMoveChange, recordHideChange, undoChange } from "./change-tracker";
+import { extractComponentInfo } from "./framework-detect";
 import { generateSelector } from "../shared/selector";
 
 /** Prefix for every element we inject; used by overlay helpers to skip us. */
@@ -34,6 +35,14 @@ const expanded = new WeakSet<Element>();
 const uncapped = new WeakSet<Element>();
 /** Map from live Element -> its rendered row, used for highlight + scrollIntoView. */
 const rowForElement = new WeakMap<Element, HTMLDivElement>();
+/** Nearest framework-component name per element (null = none). The main-world
+ * bridge call is synchronous but not free — cache so re-renders are cheap. */
+const componentNameCache = new WeakMap<Element, string | null>();
+/** Elements hidden via the row eye toggle → the hide-change id, so a second
+ * click can undo that exact change (keeping the changeset clean). WeakMap so
+ * removed elements aren't pinned; entries are also reconciled at render time
+ * because Cmd+Z / Changes-tab undo can remove the change out from under us. */
+const eyeHidden = new WeakMap<Element, string>();
 /** Reverse: row DIV -> live Element, used for event delegation. */
 const rowToElement = new WeakMap<HTMLDivElement, Element>();
 
@@ -233,6 +242,39 @@ const LAYERS_CSS = `
 .${LAYERS_PANE_PREFIX}root--dragging .${LAYERS_PANE_PREFIX}row {
   cursor: grabbing !important;
 }
+.${LAYERS_PANE_PREFIX}component {
+  color: #b28aff !important;
+  font-weight: 600 !important;
+  margin-right: 4px !important;
+  max-width: 110px !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  flex-shrink: 0 !important;
+}
+.${LAYERS_PANE_PREFIX}eye {
+  border: none !important;
+  background: transparent !important;
+  color: #999 !important;
+  font-size: 11px !important;
+  line-height: 1 !important;
+  padding: 0 2px !important;
+  margin-left: 4px !important;
+  cursor: pointer !important;
+  opacity: 0 !important;
+}
+.${LAYERS_PANE_PREFIX}row:hover .${LAYERS_PANE_PREFIX}eye {
+  opacity: 1 !important;
+}
+.${LAYERS_PANE_PREFIX}eye--off {
+  opacity: 1 !important;
+  color: #e0e0e0 !important;
+}
+.${LAYERS_PANE_PREFIX}row--hidden .${LAYERS_PANE_PREFIX}tag,
+.${LAYERS_PANE_PREFIX}row--hidden .${LAYERS_PANE_PREFIX}id,
+.${LAYERS_PANE_PREFIX}row--hidden .${LAYERS_PANE_PREFIX}cls,
+.${LAYERS_PANE_PREFIX}row--hidden .${LAYERS_PANE_PREFIX}component {
+  opacity: 0.45 !important;
+}
 
 /* ── Light mode overrides ── */
 @media (prefers-color-scheme: light) {
@@ -291,6 +333,15 @@ const LAYERS_CSS = `
   }
   .${LAYERS_PANE_PREFIX}cls {
     color: #1a7a5e !important;
+  }
+  .${LAYERS_PANE_PREFIX}component {
+    color: #9747ff !important;
+  }
+  .${LAYERS_PANE_PREFIX}eye {
+    color: #999 !important;
+  }
+  .${LAYERS_PANE_PREFIX}eye--off {
+    color: #555 !important;
   }
   .${LAYERS_PANE_PREFIX}count {
     color: #aaa !important;
@@ -414,6 +465,7 @@ export function mountLayersPanel(onSelect: (el: Element) => void): void {
 }
 
 export function unmountLayersPanel(): void {
+  componentNameQueue.length = 0;
   if (mutationObserver) {
     mutationObserver.disconnect();
     mutationObserver = null;
@@ -539,6 +591,107 @@ function renderTree(): void {
   }
 }
 
+const EYE_SVG =
+  '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>';
+const EYE_OFF_SVG =
+  '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
+
+/** Elements whose component name hasn't been resolved yet (idle-time fill). */
+const componentNameQueue: Element[] = [];
+let idleNameScheduled = false;
+
+function appendComponentLabel(el: Element, row: HTMLDivElement): void {
+  const name = componentRootName(el);
+  if (!name) return;
+  if (row.querySelector(`.${LAYERS_PANE_PREFIX}component`)) return;
+  const comp = document.createElement("span");
+  comp.className = `${LAYERS_PANE_PREFIX}component`;
+  comp.textContent = `<${name}>`;
+  comp.title = `<${name}>`;
+  const tagEl = row.querySelector(`.${LAYERS_PANE_PREFIX}tag`);
+  if (tagEl) row.insertBefore(comp, tagEl);
+  else row.appendChild(comp);
+}
+
+function scheduleIdleNameFill(): void {
+  if (idleNameScheduled) return;
+  idleNameScheduled = true;
+  const run = () => {
+    idleNameScheduled = false;
+    const batch = componentNameQueue.splice(0, 50);
+    for (const el of batch) {
+      const row = rowForElement.get(el);
+      if (!row || !row.isConnected) continue;
+      appendComponentLabel(el, row);
+    }
+    if (componentNameQueue.length > 0) scheduleIdleNameFill();
+  };
+  const ric = (window as unknown as { requestIdleCallback?: (cb: () => void) => void }).requestIdleCallback;
+  if (ric) ric(run);
+  else window.setTimeout(run, 50);
+}
+
+function nearestComponentName(el: Element): string | null {
+  const cached = componentNameCache.get(el);
+  if (cached !== undefined) return cached;
+  let name: string | null = null;
+  try {
+    name = extractComponentInfo(el).componentName;
+  } catch {
+    /* main-world bridge unavailable */
+  }
+  componentNameCache.set(el, name);
+  return name;
+}
+
+/**
+ * Show the component name only on the component's own DOM root — the row
+ * whose nearest component differs from its parent's. Descendants share the
+ * same nearest component and stay plain tag rows, like Figma's layer list.
+ */
+function componentRootName(el: Element): string | null {
+  const name = nearestComponentName(el);
+  if (!name) return null;
+  const parent = el.parentElement;
+  if (parent && nearestComponentName(parent) === name) return null;
+  return name;
+}
+
+/** Hide/show an element from the tree's eye toggle. Hiding records a normal
+ *  hide change; showing undoes that exact change, keeping handoff clean. */
+function toggleEyeHidden(el: Element): void {
+  const existingChangeId = eyeHidden.get(el);
+  if (existingChangeId !== undefined) {
+    eyeHidden.delete(el);
+    const undone = undoChange(existingChangeId);
+    // The change may be gone (cleared list, undone elsewhere, stale selector)
+    // while our inline hide still sticks — restore from the live ref.
+    if (
+      !undone &&
+      (el instanceof HTMLElement || el instanceof SVGElement) &&
+      el.style.display === "none"
+    ) {
+      el.style.removeProperty("display");
+    }
+  } else if (el instanceof HTMLElement || el instanceof SVGElement) {
+    const prev = window.getComputedStyle(el).display;
+    if (prev === "none") return; // hidden by the page itself — leave alone
+    el.style.setProperty("display", "none", "important");
+    const change = recordHideChange(el, prev);
+    eyeHidden.set(el, change.id);
+  }
+  scheduleRender();
+}
+
+/** Live eye-hidden state — reconciles stale entries left behind when the
+ *  hide change was undone through Cmd+Z or the Changes tab. */
+function isEyeHidden(el: Element): boolean {
+  if (!eyeHidden.has(el)) return false;
+  if (window.getComputedStyle(el).display === "none") return true;
+  eyeHidden.delete(el);
+  return false;
+}
+
 function renderNode(el: Element, depth: number, parentEl: HTMLElement): void {
   if (!shouldShow(el)) return;
 
@@ -581,6 +734,26 @@ function renderNode(el: Element, depth: number, parentEl: HTMLElement): void {
   tag.textContent = el.tagName.toLowerCase();
   row.appendChild(tag);
 
+  // Component root rows lead with the component's name, Figma-purple — the
+  // tree then reads like a layer list (<ProductCard>) instead of divs.
+  // Names come from a synchronous main-world bridge: cached elements render
+  // immediately, uncached ones fill in during idle time so a large first
+  // render never blocks on hundreds of per-row bridge round trips.
+  if (
+    componentNameCache.has(el) &&
+    (!el.parentElement || componentNameCache.has(el.parentElement))
+  ) {
+    appendComponentLabel(el, row);
+  } else {
+    componentNameQueue.push(el);
+    scheduleIdleNameFill();
+  }
+
+  const hidden = isEyeHidden(el);
+  if (hidden) {
+    row.classList.add(`${LAYERS_PANE_PREFIX}row--hidden`);
+  }
+
   if (el.id) {
     const id = document.createElement("span");
     id.className = `${LAYERS_PANE_PREFIX}id`;
@@ -606,6 +779,18 @@ function renderNode(el: Element, depth: number, parentEl: HTMLElement): void {
     count.textContent = String(kids.length);
     row.appendChild(count);
   }
+
+  // Eye toggle — appears on row hover; stays visible while hidden. Inline
+  // SVG with currentColor stroke: a literal eye emoji would render as a
+  // color glyph on most platforms and ignore the CSS color states.
+  const eye = document.createElement("button");
+  eye.type = "button";
+  eye.className =
+    `${LAYERS_PANE_PREFIX}eye` + (hidden ? ` ${LAYERS_PANE_PREFIX}eye--off` : "");
+  eye.setAttribute("data-pd-layers-eye", "1");
+  eye.title = hidden ? "Show element" : "Hide element";
+  eye.innerHTML = hidden ? EYE_OFF_SVG : EYE_SVG;
+  row.appendChild(eye);
 
   rowForElement.set(el, row);
   rowToElement.set(row, el);
@@ -948,6 +1133,12 @@ function handlePaneClick(tgt: Element): void {
   if (!rowEl) return;
   const el = rowToElement.get(rowEl);
   if (!el) return;
+
+  // Eye toggle → hide/show without changing the selection
+  if (tgt.closest("[data-pd-layers-eye]")) {
+    toggleEyeHidden(el);
+    return;
+  }
 
   // Chevron → toggle expand. Anywhere else on the row → select.
   const chevron = tgt.closest("[data-pd-layers-chevron]");

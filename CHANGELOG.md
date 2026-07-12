@@ -4,6 +4,7 @@
 
 ### Added
 
+- Comprehensive documentation for the **Agent Sync (MCP)** feature in `README.md` (detailing the architecture, setup process for clients like Claude Code, available tools, and local development/relay configuration).
 - Multi-shadow effects list: stack drop and inset shadows with per-layer color/X/Y/blur/spread controls and add/remove.
 - Background (backdrop) blur slider beside Layer blur; blend-mode menu including plus-lighter in the section now named Appearance; italic toggle in Typography.
 - Aspect-ratio lock between W and H that co-writes proportional values as one undoable batch, resets per selection, and disables on non-px values.

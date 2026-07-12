@@ -109,6 +109,89 @@ The **Changes** tab records every edit made during a session:
 - **Restore** — replay saved edits when revisiting a page
 - **Screenshot** (📷) — download a PNG of the current viewport
 
+## Agent Sync (MCP)
+
+Page Designer features **Agent Sync**, a real-time bridge that connects your visual browser workspace to AI coding agents (such as Claude Code) using the **Model Context Protocol (MCP)**. This enables a powerful two-way workflow:
+1. **Developer Handoff**: Visual edits you make in Chrome are synced to the agent, allowing it to inspect changes and apply them directly to your source files.
+2. **Interactive Design**: The AI agent can push real-time style and text changes back to the browser window.
+
+---
+
+### How it Works
+
+```
+┌─────────────────┐       WebSocket       ┌──────────────┐
+│  Chrome Extension │ ───────────────────> │ Relay Server │
+└─────────────────┘                      └──────────────┘
+                                                 ▲
+                                                 │ HTTP / SSE (MCP)
+                                                 ▼
+                                         ┌──────────────┐
+                                         │   AI Agent   │
+                                         │ (Claude Code)│
+                                         └──────────────┘
+```
+
+1. **State Synchronization**: When Agent Sync is enabled, the extension connects to a Relay Server via WebSockets and sends updates on the active tab (URL, title, selected element computed styles, and the tracked changelog).
+2. **MCP Host**: The Relay Server caches this workspace state and exposes it as an MCP server.
+3. **Two-Way Control**: When the AI agent calls editing tools (like `apply_style` or `apply_text`), the Relay Server relays the commands to the browser extension to apply them instantly to the active tab DOM.
+
+---
+
+### Connecting to an AI Agent
+
+#### 1. Enable Sync in Chrome
+1. Click the **Page Designer** extension icon to open the side panel.
+2. Scroll to the bottom and locate the **Agent Sync** section.
+3. Toggle the switch to **ON**.
+4. The status indicator should turn green (**Connected**) indicating it has successfully connected to the relay.
+
+#### 2. Configure the MCP Client (e.g. Claude Code)
+1. In the **Agent Sync** panel, click **Copy MCP Config**. This copies the registration command to your clipboard:
+   ```bash
+   claude mcp add --transport http chromo-designer https://chromo-relay.designknowledgebase.com/mcp/<userId>
+   ```
+2. Paste and run this command in your terminal. This registers the extension's MCP server with your AI agent.
+3. Restart or reload your AI agent to activate the new tools.
+
+---
+
+### Available MCP Tools
+
+Once connected, your AI agent has access to the following tools:
+
+| Tool | Parameters | Description |
+|---|---|---|
+| `get_page_info` | None | Returns the current page URL and title. |
+| `get_selected_element` | None | Returns the tag, CSS selector, classes, computed styles, and component context of the selected element. |
+| `get_changes` | None | Returns a structured list of all tracked modifications. |
+| `get_change_summary` | None | Returns a human-readable markdown summary of the changes. |
+| `apply_style` | `selector`, `property`, `value` | Applies a CSS style change live in the browser. |
+| `apply_text` | `selector`, `text` | Updates the text content of an element live. |
+| `get_element_styles` | `selector` | Requests computed styles for any element on the page. |
+| `resolve_change` | `changeId` | Marks a tracked change as resolved/implemented. |
+
+---
+
+### Running the Relay Locally (Development)
+
+If you are developing Page Designer or want to self-host the relay server:
+
+1. **Start the local Relay Server**:
+   ```bash
+   cd relay
+   npm install
+   npm run dev
+   ```
+   This starts the server on port `3847`.
+
+2. **Configure the Extension to use the Local Relay**:
+   Since the extension defaults to the production relay, you need to set a local override. Open the extension's Options/Popup page developer console and run:
+   ```javascript
+   chrome.storage.sync.set({ relayUrlOverride: "ws://localhost:3847" });
+   ```
+   Reload the extension to apply the change. The **Agent Sync** section in the side panel will now show and generate config paths targeting `http://localhost:3847/mcp/<userId>`.
+
 ## Architecture
 
 ```

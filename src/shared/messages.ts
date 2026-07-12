@@ -16,6 +16,8 @@ export type Message =
   | { type: "GET_STATE" }
   | { type: "STATE_RESPONSE"; isActive: boolean }
   | { type: "OPEN_SIDE_PANEL" }
+  | { type: "HIDE_OVERLAYS" }
+  | { type: "SHOW_OVERLAYS" }
   // Element selection
   | { type: "ELEMENT_SELECTED"; data: ElementData }
   | { type: "ELEMENT_DESELECTED" }

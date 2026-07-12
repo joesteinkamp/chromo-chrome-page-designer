@@ -1,5 +1,9 @@
 /* Chromo Design overlay styles — prefixed to avoid collisions with host page */
 
+html.__pd-hide-overlays [class*="__pd-"] {
+  display: none !important;
+}
+
 .__pd-overlay {
   position: fixed !important;
   pointer-events: none !important;

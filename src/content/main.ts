@@ -446,6 +446,16 @@ chrome.runtime.onMessage.addListener(
         } satisfies Message);
         return true;
 
+      case "HIDE_OVERLAYS":
+        document.documentElement.classList.add("__pd-hide-overlays");
+        sendResponse({});
+        return true;
+
+      case "SHOW_OVERLAYS":
+        document.documentElement.classList.remove("__pd-hide-overlays");
+        sendResponse({});
+        return true;
+
       case "CLEAR_CHANGES":
         clearChanges();
         break;

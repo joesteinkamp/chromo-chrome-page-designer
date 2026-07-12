@@ -27,6 +27,7 @@
 
 ### Fixed
 
+- Screenshots (both before/after and user captures) now temporarily hide all Page Designer overlays, outlines, comment pins, spacing boxes, and panel UI elements before snapshotting, ensuring clean images without cluttering annotations.
 - Undoing the hide of an SVG element no longer wedges the entire undo stack; the layers eye stays in sync with undo/redo.
 - Blur sliders preserve other filter functions (e.g. saturate()) instead of overwriting the whole filter list.
 - Multi-selection state no longer desyncs between the panel and the page after the first edit, and the "Mixed" sentinel can never be committed as literal CSS.
@@ -36,3 +37,8 @@
 - The click that ends a drag no longer re-selects whatever sits under the cursor.
 - Alt-measure lines clear on scroll, window blur, and when hovering the overlay UI instead of stranding at stale positions.
 - Sibling-distance and measurement overlays unified on a single measurement red with larger, legible labels.
+
+### Removed
+
+- Tokens and AI tabs from the panel and design system preview as they are no longer valuable enough.
+- Unused state variables, message listeners, imports, and the design tokens quick-link from the empty state in the App component.

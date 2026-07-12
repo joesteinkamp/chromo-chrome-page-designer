@@ -8,11 +8,10 @@ import { DiamondIcon, UndoIcon, RedoIcon, LayersIcon } from "../panel/icons";
 import { ElementInfo } from "../panel/components/ElementInfo";
 import { DesignTab } from "../panel/components/DesignTab";
 import { ChangesTab } from "../panel/components/ChangesTab";
-import { AITab } from "../panel/components/AITab";
 import { AgentSyncSection } from "../panel/components/AgentSyncSection";
 import type { ElementData, Change } from "../shared/types";
 
-type Tab = "design" | "changes" | "ai";
+type Tab = "design" | "changes";
 
 const MOCK_ELEMENT: ElementData = {
   selector: ".hero-card",
@@ -213,12 +212,6 @@ export function SidebarSelected() {
               <span className="pd-panel__tab-badge">{changes.length}</span>
             )}
           </button>
-          <button
-            className={`pd-panel__tab ${activeTab === "ai" ? "pd-panel__tab--active" : ""}`}
-            onClick={() => setActiveTab("ai")}
-          >
-            AI
-          </button>
         </div>
         <div className="pd-panel__content">
           {activeTab === "design" && (
@@ -231,17 +224,6 @@ export function SidebarSelected() {
               onUndo={handleUndo}
               onUndoAll={handleUndoAll}
               url="https://example.com"
-            />
-          )}
-          {activeTab === "ai" && (
-            <AITab
-              elementData={MOCK_ELEMENT}
-              critiqueResponse={null}
-              nlEditResponse={null}
-              aiError={null}
-              onClearCritique={noop}
-              onClearNLEdit={noop}
-              onClearError={noop}
             />
           )}
         </div>

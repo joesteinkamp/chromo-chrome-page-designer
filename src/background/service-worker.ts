@@ -398,13 +398,19 @@ chrome.runtime.onMessage.addListener(
 
       // --- Screenshot ---
       case "CAPTURE_SCREENSHOT":
-        captureScreenshot()
-          .then((dataUrl) => {
-            sendResponse({ type: "SCREENSHOT_CAPTURED", dataUrl } satisfies Message);
-          })
-          .catch((err) => {
-            sendResponse({ error: err.message });
-          });
+        getActiveTabId().then((tabId) => {
+          if (!tabId) {
+            sendResponse({ error: "No active tab" });
+            return;
+          }
+          captureCleanScreenshot(tabId)
+            .then((dataUrl) => {
+              sendResponse({ type: "SCREENSHOT_CAPTURED", dataUrl } satisfies Message);
+            })
+            .catch((err) => {
+              sendResponse({ error: err.message });
+            });
+        });
         return true;
     }
   }
@@ -486,6 +492,38 @@ function beforeShotKey(tabId: number): string {
   return `pdBeforeShot:${tabId}`;
 }
 
+function sendMessagePromise(tabId: number, message: Message): Promise<any> {
+  return new Promise((resolve) => {
+    chrome.tabs.sendMessage(tabId, message, (resp) => {
+      void chrome.runtime.lastError;
+      resolve(resp);
+    });
+  });
+}
+
+async function captureCleanScreenshot(tabId: number, format: "png" | "jpeg" = "png"): Promise<string> {
+  try {
+    await sendMessagePromise(tabId, { type: "HIDE_OVERLAYS" } satisfies Message);
+  } catch {
+    // Ignore error if content script not loaded/ready yet
+  }
+
+  // Small delay to let rendering / layout settle
+  await new Promise((resolve) => setTimeout(resolve, 80));
+
+  let dataUrl: string;
+  try {
+    dataUrl = await captureScreenshot(format);
+  } finally {
+    try {
+      await sendMessagePromise(tabId, { type: "SHOW_OVERLAYS" } satisfies Message);
+    } catch {
+      // Ignore
+    }
+  }
+  return dataUrl;
+}
+
 /**
  * Snapshot the visible page when edit mode is activated, before any edits.
  * Stored per tab+URL in session storage (JPEG to stay well under quota) and
@@ -500,7 +538,7 @@ function captureBeforeShot(tabId: number): void {
       const key = beforeShotKey(tabId);
       const existing = await chrome.storage.session.get(key);
       if (existing[key]?.url === tab.url) return;
-      const dataUrl = await captureScreenshot("jpeg");
+      const dataUrl = await captureCleanScreenshot(tabId, "jpeg");
       await chrome.storage.session.set({
         [key]: { url: tab.url, dataUrl, timestamp: Date.now() },
       });

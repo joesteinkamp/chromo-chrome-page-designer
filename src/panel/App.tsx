@@ -5,14 +5,12 @@ import { useStyleChange, useStyleBatch } from "./hooks/useStyleChange";
 import { ElementInfo } from "./components/ElementInfo";
 import { DesignTab } from "./components/DesignTab";
 import { ChangesTab } from "./components/ChangesTab";
-import { AITab } from "./components/AITab";
-import { TokensTab } from "./components/TokensTab";
 import { AgentSyncSection, type AgentSyncStatus } from "./components/AgentSyncSection";
 import { exportAsSummary, type ComponentContext } from "../shared/export";
 import type { Change } from "../shared/types";
-import type { Message, AISuggestion } from "../shared/messages";
+import type { Message } from "../shared/messages";
 
-type Tab = "design" | "changes" | "tokens" | "ai";
+type Tab = "design" | "changes";
 
 /** Viewport presets for responsive editing (CSS px) */
 const VIEWPORT_PRESETS = [
@@ -54,9 +52,6 @@ export function App() {
     endpoint: "",
     userId: "",
   });
-  const [critiqueResponse, setCritiqueResponse] = useState<AISuggestion[] | null>(null);
-  const [nlEditResponse, setNlEditResponse] = useState<Array<{ property: string; value: string }> | null>(null);
-  const [aiError, setAiError] = useState<string | null>(null);
   const [layersPaneEnabled, setLayersPaneEnabled] = useState(false);
   const [activeViewport, setActiveViewport] = useState<number | null>(null);
   const [actualViewport, setActualViewport] = useState<number | null>(null);
@@ -144,15 +139,6 @@ export function App() {
             endpoint: message.endpoint,
             userId: message.userId,
           });
-          break;
-        case "AI_CRITIQUE_RESPONSE":
-          setCritiqueResponse(message.suggestions);
-          break;
-        case "AI_NL_EDIT_RESPONSE":
-          setNlEditResponse(message.changes);
-          break;
-        case "AI_ERROR":
-          setAiError(message.error);
           break;
         case "LAYERS_PANE_STATE":
           setLayersPaneEnabled(message.enabled);
@@ -531,7 +517,7 @@ export function App() {
       )}
 
       <div className="pd-panel__body">
-        {elementData || changes.length > 0 || activeTab === "tokens" ? (
+        {elementData || changes.length > 0 ? (
           <>
             {elementData && (
               <ElementInfo data={elementData} multiEdit={multiEdit} onToggleMultiEdit={handleToggleMultiEdit} multiSelectCount={multiSelectCount} />
@@ -551,18 +537,6 @@ export function App() {
                 {changes.length > 0 && (
                   <span className="pd-panel__tab-badge">{changes.length}</span>
                 )}
-              </button>
-              <button
-                className={`pd-panel__tab ${activeTab === "tokens" ? "pd-panel__tab--active" : ""}`}
-                onClick={() => setActiveTab("tokens")}
-              >
-                Tokens
-              </button>
-              <button
-                className={`pd-panel__tab ${activeTab === "ai" ? "pd-panel__tab--active" : ""}`}
-                onClick={() => setActiveTab("ai")}
-              >
-                AI
               </button>
             </div>
             <div className="pd-panel__content">
@@ -588,24 +562,6 @@ export function App() {
                   onUndoAll={handleUndoAll}
                   url={pageUrl}
                 />
-              )}
-              {activeTab === "tokens" && <TokensTab />}
-              {activeTab === "ai" && (
-                elementData ? (
-                  <AITab
-                    elementData={elementData}
-                    critiqueResponse={critiqueResponse}
-                    nlEditResponse={nlEditResponse}
-                    aiError={aiError}
-                    onClearCritique={() => setCritiqueResponse(null)}
-                    onClearNLEdit={() => setNlEditResponse(null)}
-                    onClearError={() => setAiError(null)}
-                  />
-                ) : (
-                  <div className="pd-panel__tab-empty">
-                    Select an element to use AI features
-                  </div>
-                )
               )}
             </div>
           </>
@@ -642,13 +598,6 @@ export function App() {
               </div>
             )}
             <div className="pd-panel__empty-icon"><DiamondIcon size={36} /></div>
-            <button
-              className="pd-panel__tokens-link"
-              onClick={() => setActiveTab("tokens")}
-              type="button"
-            >
-              Edit design tokens →
-            </button>
             <div className="pd-panel__empty-title">Select an element</div>
             <div className="pd-panel__empty-subtitle">
               Hover over the page and click an element to inspect and edit its

@@ -4,7 +4,7 @@
  * Receives style changes from panel and applies to elements.
  */
 
-import { TRACKED_PROPERTIES } from "../shared/constants";
+import { TRACKED_PROPERTIES, MIXED_VALUE } from "../shared/constants";
 import { generateBreadcrumb, generateBreadcrumbTrail, generateSelector } from "../shared/selector";
 import { extractComponentInfo } from "./framework-detect";
 import { detectTailwind, extractTailwindClasses, normalizeToHex } from "./tailwind-detect";
@@ -194,6 +194,67 @@ export function extractElementData(element: Element): ElementData {
     styleSources,
     componentInfo,
   };
+}
+
+/**
+ * Element data for a multi-selection, Figma-style: start from the primary's
+ * data and overwrite every property the selection disagrees on with
+ * MIXED_VALUE. Panel controls render the sentinel as a "Mixed" placeholder;
+ * committing a value applies to the whole selection (main.ts APPLY_STYLE
+ * already fans out to all multi-selected elements).
+ */
+export function extractMergedElementData(
+  elements: Element[],
+  primary: Element
+): ElementData {
+  const data = extractElementData(primary);
+  const others = elements.filter((el) => el !== primary);
+  if (others.length === 0) return data;
+
+  for (const other of others) {
+    const otherComputed = window.getComputedStyle(other);
+    for (const prop of TRACKED_PROPERTIES) {
+      if (data.computedStyles[prop] === MIXED_VALUE) continue;
+      const raw = otherComputed.getPropertyValue(prop);
+      const val = COLOR_VALUED_PROPS.has(prop)
+        ? resolveColorValue(raw, other)
+        : raw;
+      if (val !== data.computedStyles[prop]) {
+        data.computedStyles[prop] = MIXED_VALUE;
+      }
+    }
+
+    // Authored values can disagree even when computed ones match (units) —
+    // and vice versa. An absent authored value counts as a disagreement with
+    // a present one, so "auto" isn't shown when only the primary is unsized.
+    const otherAuthored = extractAuthoredStyles(other, TRACKED_PROPERTIES);
+    for (const prop of TRACKED_PROPERTIES) {
+      if (data.authoredStyles[prop] === MIXED_VALUE) continue;
+      const mine = data.authoredStyles[prop] ?? "";
+      const theirs = otherAuthored[prop] ?? "";
+      if (mine !== theirs) {
+        data.authoredStyles[prop] = MIXED_VALUE;
+      }
+    }
+
+    // Rendered size differs while neither has an authored width/height —
+    // Dimensions would read "auto" for both; show Mixed instead.
+    const otherRect = other.getBoundingClientRect();
+    if (
+      !data.authoredStyles["width"] &&
+      Math.round(otherRect.width) !== Math.round(data.rect.width)
+    ) {
+      data.authoredStyles["width"] = MIXED_VALUE;
+    }
+    if (
+      !data.authoredStyles["height"] &&
+      Math.round(otherRect.height) !== Math.round(data.rect.height)
+    ) {
+      data.authoredStyles["height"] = MIXED_VALUE;
+    }
+  }
+
+  return data;
 }
 
 /**

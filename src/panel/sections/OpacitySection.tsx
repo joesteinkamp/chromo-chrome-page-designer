@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useEffect } from "react";
 import { SliderInput } from "../controls";
 import { ChevronDown, PlusIcon } from "../icons";
+import { parseNumericValue } from "../controls/mixed";
 import "./sections.css";
 
 interface OpacitySectionProps {
@@ -12,11 +13,12 @@ export const OpacitySection: React.FC<OpacitySectionProps> = ({
   computedStyles,
   onStyleChange,
 }) => {
-  const rawOpacity = parseFloat(computedStyles["opacity"] || "1");
-  const opacityPercent = Math.round(
-    (isNaN(rawOpacity) ? 1 : rawOpacity) * 100
-  );
-  const hasValue = opacityPercent < 100;
+  // NaN = multi-selection "Mixed" — keep the section open, slider parks at 0
+  const rawOpacity = parseNumericValue(computedStyles["opacity"] || "1", 1);
+  const opacityPercent = Number.isNaN(rawOpacity)
+    ? NaN
+    : Math.round(rawOpacity * 100);
+  const hasValue = Number.isNaN(opacityPercent) || opacityPercent < 100;
   const [collapsed, setCollapsed] = useState(!hasValue);
   useEffect(() => { setCollapsed(!hasValue); }, [hasValue]);
 

@@ -9,6 +9,7 @@ import {
   PositionCenterVIcon,
   PositionBottomIcon,
 } from "../icons";
+import { parseNumericValue } from "../controls/mixed";
 import "./sections.css";
 
 interface PositionSectionProps {
@@ -22,9 +23,8 @@ type HAlign = "left" | "center" | "right" | null;
 type VAlign = "top" | "middle" | "bottom" | null;
 
 function pxOrZero(val: string | undefined): number {
-  if (!val) return 0;
-  const n = parseFloat(val);
-  return isNaN(n) ? 0 : n;
+  // NaN → NumberInput renders the multi-selection "Mixed" placeholder
+  return parseNumericValue(val, 0);
 }
 
 /**

@@ -1,6 +1,7 @@
 import React, { useCallback, useMemo, useState, useRef, useEffect } from "react";
 import { NumberInput, SelectDropdown, ColorPicker, FontPicker } from "../controls";
 import { ALL_FONTS } from "../../shared/google-fonts";
+import { isMixedValue, parseNumericValue } from "../controls/mixed";
 import {
   GearIcon,
   CloseIcon,
@@ -84,13 +85,14 @@ const DECORATION_OPTIONS = [
 ] as const;
 
 function parsePx(val: string | undefined): number {
-  if (!val) return 0;
-  const n = parseFloat(val);
-  return isNaN(n) ? 0 : Math.round(n * 100) / 100;
+  // NaN → NumberInput renders the multi-selection "Mixed" placeholder
+  const n = parseNumericValue(val, 0);
+  return Number.isNaN(n) ? n : Math.round(n * 100) / 100;
 }
 
 function resolveFamily(val: string | undefined): string {
   if (!val) return "Inter";
+  if (isMixedValue(val)) return "Mixed";
   const first = val.split(",")[0].trim().replace(/^["']|["']$/g, "");
   for (const f of ALL_FONTS) {
     if (first.toLowerCase() === f.value.toLowerCase()) return f.value;
@@ -100,6 +102,7 @@ function resolveFamily(val: string | undefined): string {
 
 function resolveWeight(val: string | undefined): string {
   if (!val) return "400";
+  if (isMixedValue(val)) return val;
   const n = parseInt(val, 10);
   if (!isNaN(n)) {
     const clamped = Math.round(n / 100) * 100;

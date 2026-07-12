@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useEffect, useRef } from "react";
 import { NumberInput } from "../controls";
 import { ChevronDown, PlusIcon, GearIcon } from "../icons";
+import { parseNumericValue } from "../controls/mixed";
 import "./sections.css";
 
 interface SpacingSectionProps {
@@ -18,9 +19,8 @@ const ALL_PROPS = [
 ];
 
 function px(val: string | undefined): number {
-  if (!val) return 0;
-  const n = parseFloat(val);
-  return isNaN(n) ? 0 : n;
+  // NaN → NumberInput renders the multi-selection "Mixed" placeholder
+  return parseNumericValue(val, 0);
 }
 
 function detectMode(t: number, r: number, b: number, l: number): SpacingMode {

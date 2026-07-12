@@ -522,6 +522,97 @@
   display: block !important;
 }
 
+/* Marquee (rubber-band) selection */
+.__pd-marquee {
+  position: fixed !important;
+  z-index: 2147483647 !important;
+  pointer-events: none !important;
+  border: 1px solid #4f9eff !important;
+  background: rgba(79, 158, 255, 0.1) !important;
+  box-sizing: border-box !important;
+}
+
+/* Right-click context menu */
+.__pd-context-menu {
+  position: fixed !important;
+  z-index: 2147483647 !important;
+  min-width: 200px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  background: #2c2c2c !important;
+  border: 1px solid #3e3e3e !important;
+  border-radius: 8px !important;
+  padding: 4px !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5) !important;
+  font-family: -apple-system, BlinkMacSystemFont, sans-serif !important;
+  pointer-events: auto !important;
+}
+
+.__pd-context-menu-item {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 24px !important;
+  width: 100% !important;
+  border: none !important;
+  background: transparent !important;
+  border-radius: 5px !important;
+  padding: 6px 10px !important;
+  font-family: inherit !important;
+  font-size: 12px !important;
+  font-weight: 400 !important;
+  color: #ddd !important;
+  text-align: left !important;
+  cursor: pointer !important;
+}
+
+.__pd-context-menu-item:hover:not(:disabled) {
+  background: #4f9eff !important;
+  color: #fff !important;
+}
+
+.__pd-context-menu-item:disabled {
+  opacity: 0.35 !important;
+  cursor: default !important;
+}
+
+.__pd-context-menu-item-label {
+  font-family: inherit !important;
+}
+
+.__pd-context-menu-item-shortcut {
+  font-family: inherit !important;
+  font-size: 11px !important;
+  color: #888 !important;
+}
+
+.__pd-context-menu-item:hover:not(:disabled) .__pd-context-menu-item-shortcut {
+  color: rgba(255, 255, 255, 0.75) !important;
+}
+
+.__pd-context-menu-sep {
+  height: 1px !important;
+  margin: 4px 8px !important;
+  background: #3e3e3e !important;
+}
+
+@media (prefers-color-scheme: light) {
+  .__pd-context-menu {
+    background: #ffffff !important;
+    border-color: #e0e0e0 !important;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15) !important;
+  }
+  .__pd-context-menu-item {
+    color: #333 !important;
+  }
+  .__pd-context-menu-item-shortcut {
+    color: #999 !important;
+  }
+  .__pd-context-menu-sep {
+    background: #eaeaea !important;
+  }
+}
+
 /* Alt-hover measurement lines (Figma red) */
 .__pd-measure-line {
   position: fixed !important;

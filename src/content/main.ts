@@ -8,6 +8,7 @@ import {
   initOverlay,
   destroyOverlay,
   getHandleDirection,
+  isOverlayElement,
   showMultiEditOverlays,
   hideMultiEditOverlays,
   updateMultiEditOverlays,
@@ -35,9 +36,10 @@ import {
   suppressNextClick,
   refreshSelection,
   selectElementDirectly,
+  resolveTargetAt,
   selectMultipleDirectly,
 } from "./element-picker";
-import { extractElementData, applyStyleToElement, findMatchingElements, removeAutoLayout, collectPageTokens, setTokenOverride, getTokenValue } from "./style-bridge";
+import { extractElementData, extractMergedElementData, applyStyleToElement, findMatchingElements, removeAutoLayout, collectPageTokens, setTokenOverride, getTokenValue } from "./style-bridge";
 import { applyComponentProp, extractComponentInfo } from "./framework-detect";
 import { startInlineEdit, stopInlineEdit, isEditing } from "./inline-edit";
 import { initDragDrop, isDragActive, cancelDrag } from "./drag-drop";
@@ -55,6 +57,7 @@ import {
   mountLayersPanel,
   unmountLayersPanel,
   isMounted as isLayersPaneMounted,
+  isLayersPaneElement,
   setSelectedInTree,
 } from "./layers-panel";
 import {
@@ -71,6 +74,7 @@ import {
   recordWrapChange,
   recordDuplicateChange,
   recordDeleteChange,
+  recordHideChange,
   recordPropChange,
   recordTokenChange,
   startBatch,
@@ -82,6 +86,19 @@ import {
   subscribeComments,
 } from "./change-tracker";
 import { generateSelector } from "../shared/selector";
+import {
+  showContextMenu,
+  hideContextMenu,
+  type MenuEntry,
+} from "./context-menu";
+import {
+  copyElement,
+  copyStyles,
+  pasteElement,
+  pasteStyles,
+  hasCopiedElement,
+  hasCopiedStyles,
+} from "./clipboard";
 import type { Message } from "../shared/messages";
 
 let isActive = false;
@@ -538,6 +555,8 @@ function activate(): void {
   document.addEventListener("scroll", updateSpacing, true);
   window.addEventListener("resize", updateSpacing);
 
+  document.addEventListener("contextmenu", onContextMenu, true);
+
   startPicker({
     onSelect: onElementSelected,
     onMultiSelect: onMultiSelect,
@@ -567,12 +586,14 @@ function activate(): void {
       }
     },
     duplicateElement: (el) => {
-      const clone = duplicateElement(el);
+      // Duplicates the whole multi-selection when one is live
+      const clone = duplicateSelectedElements(el);
       if (clone) {
         selectElementDirectly(clone);
         onElementSelected(clone);
       }
     },
+    hideElement: (el) => hideSelectedElements(el),
     deleteElement: (el) => {
       deleteSelectedElements(el);
       clearSelection();
@@ -607,6 +628,8 @@ function deactivate(): void {
   multiEditEnabled = false;
   hideSpacing();
   hideMeasure();
+  hideContextMenu();
+  document.removeEventListener("contextmenu", onContextMenu, true);
 
   closeCommentPopover();
   unsubscribeComments?.();
@@ -681,12 +704,10 @@ function onMultiSelect(elements: Element[], primary: Element): void {
   hideSpacing();
   const nonPrimary = elements.filter((el) => el !== primary);
   showMultiSelectOverlays(nonPrimary);
+  // sendElementData broadcasts the plain ELEMENT_SELECTED for non-panel
+  // consumers, then follows with the merged MULTI_ELEMENT_SELECTED (with
+  // Figma-style "Mixed" placeholders) that the panel settles on.
   sendElementData(primary);
-  safeSendMessage({
-    type: "MULTI_ELEMENT_SELECTED",
-    count: elements.length,
-    data: extractElementData(primary),
-  } satisfies Message);
 }
 
 // --- Double-click → inline text edit ---
@@ -748,6 +769,172 @@ function onElementMouseDown(
     const sel = getSelectedElement();
     if (sel) sendElementData(sel);
   });
+}
+
+// --- Right-click context menu ---
+
+function onContextMenu(e: MouseEvent): void {
+  if (!isActive) return;
+  hideContextMenu();
+
+  const hit = document.elementFromPoint(e.clientX, e.clientY);
+  if (!hit) return;
+  // Keep the native menu on our own UI, the layers pane, empty page space,
+  // and iframes (their own content script handles them).
+  if (isOverlayElement(hit) || isLayersPaneElement(hit)) return;
+  if (hit === document.body || hit === document.documentElement) return;
+  if (hit.tagName === "IFRAME" || hit.tagName === "FRAME") return;
+
+  e.preventDefault();
+  e.stopPropagation();
+  e.stopImmediatePropagation();
+
+  // Figma-style: right-clicking outside the selection selects the target
+  // first. A hit on ANY member of a multi-selection counts as inside — the
+  // selection must survive so menu commands can act on the whole set.
+  let target = getSelectedElement();
+  const insideSelection =
+    (target && (hit === target || target.contains(hit))) ||
+    getMultiSelectedElements().some((m) => m === hit || m.contains(hit));
+  if (!insideSelection) {
+    const resolved = resolveTargetAt(e.clientX, e.clientY, e.metaKey || e.ctrlKey);
+    if (!resolved) return;
+    selectElementDirectly(resolved);
+    onElementSelected(resolved);
+    target = resolved;
+  }
+  if (!(target instanceof HTMLElement)) return;
+
+  showContextMenu(e.clientX, e.clientY, buildContextMenuEntries(target));
+}
+
+/** Every entry reuses an existing command path and shows its shortcut, so the
+ *  menu doubles as shortcut discovery. */
+function buildContextMenuEntries(el: HTMLElement): MenuEntry[] {
+  const isMac = navigator.platform.toLowerCase().includes("mac");
+  const mod = isMac ? "⌘" : "Ctrl+";
+  const modAlt = isMac ? "⌘⌥" : "Ctrl+Alt+";
+
+  const selectClone = (clone: HTMLElement | null) => {
+    if (clone) {
+      selectElementDirectly(clone);
+      onElementSelected(clone);
+    }
+  };
+
+  return [
+    {
+      label: "Edit text",
+      shortcut: "Enter",
+      action: () => onElementDoubleClick(el, new MouseEvent("dblclick")),
+    },
+    {
+      label: "Add comment",
+      action: () => openCommentPopoverForSelection(),
+    },
+    "separator",
+    { label: "Copy", shortcut: `${mod}C`, action: () => copyElement(el) },
+    {
+      label: "Paste",
+      shortcut: `${mod}V`,
+      disabled: !hasCopiedElement(),
+      action: () => selectClone(pasteElement(el)),
+    },
+    { label: "Copy style", shortcut: `${modAlt}C`, action: () => copyStyles(el) },
+    {
+      label: "Paste style",
+      shortcut: `${modAlt}V`,
+      disabled: !hasCopiedStyles(),
+      action: () => {
+        // Restyle the whole multi-selection, like panel edits do
+        for (const t of collectSelectedElements(el)) {
+          pasteStyles(t);
+        }
+        refreshSelection();
+        sendElementData(el);
+      },
+    },
+    {
+      label: "Duplicate",
+      shortcut: `${mod}D`,
+      action: () => selectClone(duplicateSelectedElements(el)),
+    },
+    "separator",
+    {
+      label: "Select parent",
+      shortcut: "Esc",
+      disabled:
+        !el.parentElement ||
+        el.parentElement === document.body ||
+        el.parentElement === document.documentElement,
+      action: () => {
+        const parent = el.parentElement;
+        if (parent) {
+          selectElementDirectly(parent);
+          onElementSelected(parent);
+        }
+      },
+    },
+    {
+      label: "Add container",
+      shortcut: `${mod}G`,
+      action: () => {
+        const wrapper = wrapElementsInGroup(collectSelectedElements(el));
+        if (wrapper) {
+          selectElementDirectly(wrapper);
+          onElementSelected(wrapper);
+        }
+      },
+    },
+    "separator",
+    {
+      label: "Hide",
+      shortcut: isMac ? "⇧⌘H" : "Shift+Ctrl+H",
+      action: () => hideSelectedElements(el),
+    },
+    {
+      label: "Delete",
+      shortcut: "Del",
+      action: () => {
+        deleteSelectedElements(el);
+        clearSelection();
+      },
+    },
+  ];
+}
+
+/**
+ * Hide the whole selection (primary + multi-selected) as one undoable batch.
+ * Shared by the Shift+Cmd+H shortcut and the context menu.
+ */
+function hideSelectedElements(primary: HTMLElement): void {
+  const targets = collectSelectedElements(primary);
+  const batched = targets.length > 1;
+  if (batched) startBatch();
+  for (const t of targets) {
+    const prevDisplay = window.getComputedStyle(t).display;
+    t.style.setProperty("display", "none", "important");
+    recordHideChange(t, prevDisplay);
+  }
+  if (batched) endBatch();
+  clearSelection();
+}
+
+/**
+ * Duplicate the whole selection as one undoable batch; returns the clone of
+ * the primary so the caller can move selection onto it.
+ */
+function duplicateSelectedElements(primary: HTMLElement): HTMLElement | null {
+  const targets = collectSelectedElements(primary);
+  const batched = targets.length > 1;
+  if (batched) startBatch();
+  let primaryClone: HTMLElement | null = null;
+  for (const t of targets) {
+    const clone = duplicateElement(t);
+    if (t === primary) primaryClone = clone;
+  }
+  if (batched) endBatch();
+  return primaryClone;
 }
 
 // --- Comment popover helpers ---
@@ -823,6 +1010,19 @@ function sendElementData(element: Element): void {
     type: "ELEMENT_SELECTED",
     data,
   } satisfies Message);
+
+  // With a live multi-selection, follow up with the merged view so the panel
+  // keeps its "Mixed" placeholders and N-selected badge after every edit —
+  // a plain ELEMENT_SELECTED alone would flip it to single-select while the
+  // content script keeps fanning edits out to the whole selection.
+  const multiEls = getMultiSelectedElements();
+  if (multiEls.length > 1 && multiEls.includes(element)) {
+    safeSendMessage({
+      type: "MULTI_ELEMENT_SELECTED",
+      count: multiEls.length,
+      data: extractMergedElementData(multiEls, element),
+    } satisfies Message);
+  }
 }
 
 /** Collect primary + multi-selected elements as HTMLElements */

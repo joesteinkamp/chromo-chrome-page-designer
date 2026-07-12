@@ -35,6 +35,12 @@ let suspended = false;
  * re-hit-testing at the release point would hijack the selection. */
 let suppressClickOnce = false;
 
+// Marquee (rubber-band) selection — armed on mousedown over empty page
+// space; activates once the pointer moves past a small threshold.
+let marqueeStart: { x: number; y: number } | null = null;
+let marqueeEl: HTMLDivElement | null = null;
+const MARQUEE_THRESHOLD = 4;
+
 export type PickerCallbacks = {
   onSelect: (element: Element | null) => void;
   onMultiSelect: (elements: Element[], primary: Element) => void;
@@ -52,6 +58,7 @@ export function startPicker(cbs: PickerCallbacks): void {
   document.addEventListener("click", onClick, true);
   document.addEventListener("dblclick", onDoubleClick, true);
   document.addEventListener("mousedown", onMouseDown, true);
+  document.addEventListener("mouseup", onMouseUp, true);
   document.addEventListener("keydown", onKeyDown, true);
   document.addEventListener("keyup", onKeyUp, true);
   window.addEventListener("blur", onWindowBlur);
@@ -70,6 +77,7 @@ export function stopPicker(): void {
   document.removeEventListener("click", onClick, true);
   document.removeEventListener("dblclick", onDoubleClick, true);
   document.removeEventListener("mousedown", onMouseDown, true);
+  document.removeEventListener("mouseup", onMouseUp, true);
   document.removeEventListener("keydown", onKeyDown, true);
   document.removeEventListener("keyup", onKeyUp, true);
   window.removeEventListener("blur", onWindowBlur);
@@ -80,6 +88,7 @@ export function stopPicker(): void {
   hideHover();
   hideSelection();
   hideMeasure();
+  cancelMarquee();
   selectedElement = null;
 }
 
@@ -104,6 +113,7 @@ export function suspendPicker(): void {
   suspended = true;
   hideHover();
   hideMeasure();
+  cancelMarquee();
 }
 
 /** Resume the picker after another interaction mode completes */
@@ -126,6 +136,9 @@ export function refreshSelection(): void {
 /** Programmatically select an element (used by keyboard nav, breadcrumbs) */
 export function selectElementDirectly(element: Element): void {
   selectedElement = element;
+  // A direct single-select replaces any multi-selection — leaving the list
+  // populated would keep fanning edits out to stale elements.
+  multiSelectedElements = [];
   hoveredElement = null;
   hideHover();
   showSelection(element);
@@ -234,10 +247,145 @@ function findCommonAncestor(a: Element, b: Element): Element | null {
   return null;
 }
 
+/**
+ * Resolve the element a click at (x, y) would select — same rules as the
+ * live picker. Used by the context menu to select before showing commands.
+ */
+export function resolveTargetAt(x: number, y: number, deep = false): Element | null {
+  const hit = document.elementFromPoint(x, y);
+  if (!hit || isOverlayElement(hit) || isLayersPaneElement(hit)) return null;
+  if (hit === document.body || hit === document.documentElement) return null;
+  if (hit.tagName === "IFRAME" || hit.tagName === "FRAME") return null;
+  return resolveClickTarget(hit, deep);
+}
+
+// --- Marquee (rubber-band) selection ---
+
+/**
+ * True when a mousedown lands on "empty page space" — the body/html, or a
+ * wrapper that effectively is the page (fills ~the whole viewport). Dragging
+ * from there draws a marquee instead of doing nothing.
+ */
+function isPageBackground(el: Element): boolean {
+  if (el === document.body || el === document.documentElement) return true;
+  const rect = el.getBoundingClientRect();
+  return (
+    rect.width >= window.innerWidth * 0.95 &&
+    rect.height >= window.innerHeight * 0.95
+  );
+}
+
+function marqueeRect(e: MouseEvent): { left: number; top: number; right: number; bottom: number } {
+  const start = marqueeStart!;
+  return {
+    left: Math.min(start.x, e.clientX),
+    top: Math.min(start.y, e.clientY),
+    right: Math.max(start.x, e.clientX),
+    bottom: Math.max(start.y, e.clientY),
+  };
+}
+
+function updateMarquee(e: MouseEvent): void {
+  if (!marqueeStart) return;
+  if (!marqueeEl) {
+    const dx = e.clientX - marqueeStart.x;
+    const dy = e.clientY - marqueeStart.y;
+    if (Math.abs(dx) < MARQUEE_THRESHOLD && Math.abs(dy) < MARQUEE_THRESHOLD) return;
+    marqueeEl = document.createElement("div");
+    marqueeEl.className = "__pd-marquee";
+    document.documentElement.appendChild(marqueeEl);
+    hideHover();
+    hideMeasure();
+    hoveredElement = null;
+  }
+  const rect = marqueeRect(e);
+  marqueeEl.style.cssText = `
+    left: ${rect.left}px !important;
+    top: ${rect.top}px !important;
+    width: ${rect.right - rect.left}px !important;
+    height: ${rect.bottom - rect.top}px !important;
+  `;
+}
+
+function cancelMarquee(): void {
+  marqueeStart = null;
+  marqueeEl?.remove();
+  marqueeEl = null;
+}
+
+/**
+ * Select what the marquee touched: descend from body through the chain of
+ * containers that fully enclose the rect, then take that container's
+ * children that intersect it — "the five cards", not the whole section.
+ */
+function finishMarquee(rect: { left: number; top: number; right: number; bottom: number }): void {
+  let container: Element = document.body;
+  let descended = true;
+  while (descended) {
+    descended = false;
+    for (const child of Array.from(container.children)) {
+      if (isOverlayElement(child) || isLayersPaneElement(child)) continue;
+      const r = child.getBoundingClientRect();
+      if (
+        r.left <= rect.left &&
+        r.top <= rect.top &&
+        r.right >= rect.right &&
+        r.bottom >= rect.bottom
+      ) {
+        container = child;
+        descended = true;
+        break;
+      }
+    }
+  }
+
+  const candidates: Element[] = [];
+  for (const child of Array.from(container.children)) {
+    if (isOverlayElement(child) || isLayersPaneElement(child)) continue;
+    const r = child.getBoundingClientRect();
+    if (r.width === 0 && r.height === 0) continue;
+    if (
+      r.left < rect.right &&
+      r.right > rect.left &&
+      r.top < rect.bottom &&
+      r.bottom > rect.top
+    ) {
+      candidates.push(child);
+    }
+  }
+
+  if (candidates.length === 0) {
+    clearSelection();
+    return;
+  }
+
+  hideHover();
+  hideMeasure();
+  hoveredElement = null;
+  selectedElement = candidates[0];
+
+  if (candidates.length === 1) {
+    multiSelectedElements = [];
+    showSelection(candidates[0]);
+    callbacks?.onSelect(candidates[0]);
+    return;
+  }
+
+  multiSelectedElements = [...candidates];
+  showSelection(candidates[0]);
+  callbacks?.onMultiSelect(multiSelectedElements, candidates[0]);
+}
+
 // --- Event handlers ---
 
 function onMouseMove(e: MouseEvent): void {
   if (!isActive || suspended) return;
+
+  // An armed marquee owns the pointer until mouseup
+  if (marqueeStart) {
+    updateMarquee(e);
+    return;
+  }
 
   const hit = document.elementFromPoint(e.clientX, e.clientY);
   if (!hit) return;
@@ -389,11 +537,7 @@ function onDoubleClick(e: MouseEvent): void {
       next = next.parentElement;
     }
     if (next.parentElement === selectedElement && !isOverlayElement(next)) {
-      selectedElement = next;
-      hoveredElement = null;
-      hideHover();
-      showSelection(next);
-      callbacks?.onSelect(next);
+      selectElementDirectly(next);
       return;
     }
   }
@@ -406,8 +550,10 @@ function onKeyUp(e: KeyboardEvent): void {
 }
 
 function onWindowBlur(): void {
-  // Alt+Tab away never delivers the Alt keyup — don't strand measure lines
+  // Alt+Tab away never delivers the Alt keyup or the marquee's mouseup —
+  // don't strand measure lines or a live rubber band.
   hideMeasure();
+  cancelMarquee();
 }
 
 function onMouseDown(e: MouseEvent): void {
@@ -435,12 +581,59 @@ function onMouseDown(e: MouseEvent): void {
       // Don't prevent default yet — let click handler decide
       // But notify main.ts so it can start drag tracking
       callbacks?.onMouseDown(selectedElement, pageTarget || selectedElement, e);
+      return;
     }
+  }
+
+  // Drag from empty page space → marquee selection. preventDefault stops the
+  // browser from starting a native text selection under the rubber band.
+  const hit = document.elementFromPoint(e.clientX, e.clientY);
+  if (
+    e.button === 0 &&
+    hit &&
+    !isOverlayElement(hit) &&
+    !isLayersPaneElement(hit) &&
+    hit.tagName !== "IFRAME" &&
+    hit.tagName !== "FRAME" &&
+    isPageBackground(hit)
+  ) {
+    marqueeStart = { x: e.clientX, y: e.clientY };
+    e.preventDefault();
   }
 }
 
+function onMouseUp(e: MouseEvent): void {
+  if (!isActive || suspended) return;
+  if (!marqueeStart) return;
+  // Only a primary-button release completes the marquee
+  if (e.button !== 0) return;
+
+  if (!marqueeEl) {
+    // Never crossed the threshold — a plain click; the click handler decides
+    marqueeStart = null;
+    return;
+  }
+
+  const rect = marqueeRect(e);
+  cancelMarquee();
+  // The click that follows this mouseup is part of the marquee gesture
+  suppressClickOnce = true;
+  finishMarquee(rect);
+}
+
 function onKeyDown(e: KeyboardEvent): void {
-  if (!isActive || suspended || !selectedElement) return;
+  if (!isActive || suspended) return;
+
+  // Escape cancels an in-progress marquee before any other meaning of Esc
+  if (e.key === "Escape" && marqueeStart) {
+    e.preventDefault();
+    e.stopPropagation();
+    e.stopImmediatePropagation();
+    cancelMarquee();
+    return;
+  }
+
+  if (!selectedElement) return;
   if (e.key !== "Enter") return;
 
   if (e.shiftKey) {
@@ -450,11 +643,7 @@ function onKeyDown(e: KeyboardEvent): void {
       e.preventDefault();
       e.stopPropagation();
       e.stopImmediatePropagation();
-      selectedElement = parent;
-      hoveredElement = null;
-      hideHover();
-      showSelection(selectedElement);
-      callbacks?.onSelect(selectedElement);
+      selectElementDirectly(parent);
     }
   } else {
     // Enter: go down to first child element if one exists
@@ -463,11 +652,7 @@ function onKeyDown(e: KeyboardEvent): void {
       e.preventDefault();
       e.stopPropagation();
       e.stopImmediatePropagation();
-      selectedElement = firstChild;
-      hoveredElement = null;
-      hideHover();
-      showSelection(selectedElement);
-      callbacks?.onSelect(selectedElement);
+      selectElementDirectly(firstChild);
     }
     // No child elements — don't consume the event, let keyboard.ts
     // handle it for inline text editing

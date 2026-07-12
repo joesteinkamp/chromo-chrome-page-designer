@@ -1,6 +1,13 @@
 /** Prefix for all extension-injected DOM elements to avoid collisions */
 export const ELEMENT_PREFIX = "__pd-";
 
+/**
+ * Sentinel for a property whose value differs across a multi-selection
+ * (Figma's "Mixed"). Content script writes it into the merged ElementData;
+ * panel controls render it as a "Mixed" placeholder. Never a real CSS value.
+ */
+export const MIXED_VALUE = "__pd_mixed__";
+
 /** Key CSS properties to extract from computed styles (Figma-relevant subset) */
 export const TRACKED_PROPERTIES = [
   // Dimensions

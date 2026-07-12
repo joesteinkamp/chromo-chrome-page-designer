@@ -3,6 +3,7 @@ import { ColorPicker, GradientEditor } from "../controls";
 import { VarLabel } from "./VarLabel";
 import { ChevronDown, PlusIcon, EyeIcon, EyeOffIcon } from "../icons";
 import { isGradient, parseGradient, buildGradient, defaultGradient } from "../../shared/gradient";
+import { isMixedValue } from "../controls/mixed";
 import "./sections.css";
 
 interface FillSectionProps {
@@ -66,7 +67,9 @@ export const FillSection: React.FC<FillSectionProps> = ({
   );
 
   const switchToGradient = useCallback(() => {
-    const seed = hasSolidFill ? bgColor : "#4f9eff";
+    // Never seed from the multi-selection Mixed sentinel — it isn't a color
+    const seed =
+      hasSolidFill && !isMixedValue(bgColor) ? bgColor : "#4f9eff";
     onStyleChange("background-image", buildGradient(defaultGradient(seed)));
   }, [hasSolidFill, bgColor, onStyleChange]);
 

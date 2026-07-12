@@ -5,6 +5,7 @@ import {
   NumberInput,
 } from "../controls";
 import { ChevronDown } from "../icons";
+import { isMixedValue, parseNumericValue } from "../controls/mixed";
 import "./sections.css";
 
 interface AutoLayoutSectionProps {
@@ -16,8 +17,8 @@ interface AutoLayoutSectionProps {
 }
 
 function parseGap(val: string): number {
-  const num = parseFloat(val);
-  return isNaN(num) ? 0 : num;
+  // NaN → NumberInput renders the multi-selection "Mixed" placeholder
+  return parseNumericValue(val, 0);
 }
 
 export const AutoLayoutSection: React.FC<AutoLayoutSectionProps> = ({
@@ -36,14 +37,18 @@ export const AutoLayoutSection: React.FC<AutoLayoutSectionProps> = ({
 
   // Prefer the authored value (e.g. "1fr 1fr 1fr") over the browser's resolved
   // computed value (e.g. "100px 200px 300px") so the field stays human-editable.
-  const columnsValue =
+  // A multi-selection that disagrees shows an empty draft (the sentinel must
+  // never be rendered into the free-text field or it would get committed).
+  const rawColumns =
     authoredStyles?.["grid-template-columns"] ||
     computedStyles["grid-template-columns"] ||
     "none";
-  const rowsValue =
+  const rawRows =
     authoredStyles?.["grid-template-rows"] ||
     computedStyles["grid-template-rows"] ||
     "none";
+  const columnsValue = isMixedValue(rawColumns) ? "" : rawColumns;
+  const rowsValue = isMixedValue(rawRows) ? "" : rawRows;
 
   // Grid track inputs are free-text and must not commit on every keystroke:
   // each APPLY_STYLE re-extracts computed styles and would clobber the field

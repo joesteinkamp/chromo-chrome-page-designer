@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useEffect } from "react";
 import { CornerRadiusInput } from "../controls";
 import { ChevronDown, PlusIcon, MinusIcon } from "../icons";
+import { isMixedValue } from "../controls/mixed";
 import "./sections.css";
 
 interface CornerRadiusSectionProps {
@@ -39,12 +40,14 @@ export const CornerRadiusSection: React.FC<CornerRadiusSectionProps> = ({
         newValues[1] === newValues[2] &&
         newValues[2] === newValues[3];
 
-      if (allSame) {
+      if (allSame && !isMixedValue(newValues[0])) {
         // Use shorthand
         onStyleChange("border-radius", newValues[0]);
       } else {
-        // Set individual properties
+        // Set individual properties. Corners the multi-selection disagrees on
+        // carry the Mixed sentinel — never write that back as CSS.
         CORNER_PROPS.forEach((prop, i) => {
+          if (isMixedValue(newValues[i])) return;
           onStyleChange(prop, newValues[i]);
         });
       }

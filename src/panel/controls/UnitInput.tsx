@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown } from "../icons";
 import { evaluateExpression } from "./expr";
+import { MIXED_VALUE } from "../../shared/constants";
 import "./controls.css";
 
 const DEFAULT_UNITS = ["px", "rem", "em", "%", "vw", "vh", "auto"];
@@ -38,10 +39,15 @@ export const UnitInput: React.FC<UnitInputProps> = ({
   units = DEFAULT_UNITS,
   className,
 }) => {
+  // The multi-selection disagrees on this property — show the Figma-style
+  // "Mixed" placeholder; committing a value applies to the whole selection.
+  const isMixed = value === MIXED_VALUE;
   const parsed = useMemo(() => parseCSSValue(value), [value]);
-  const isAuto = parsed.unit === "auto";
+  const isAuto = parsed.unit === "auto" && !isMixed;
 
-  const [localValue, setLocalValue] = useState(isAuto ? "Auto" : formatNumber(parsed.num));
+  const [localValue, setLocalValue] = useState(
+    isMixed ? "" : isAuto ? "Auto" : formatNumber(parsed.num)
+  );
   const [isFocused, setIsFocused] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [popoverOpen, setPopoverOpen] = useState(false);
@@ -53,9 +59,9 @@ export const UnitInput: React.FC<UnitInputProps> = ({
   // Sync local text with incoming prop when not being edited
   useEffect(() => {
     if (!isFocused && !isDragging) {
-      setLocalValue(isAuto ? "Auto" : formatNumber(parsed.num));
+      setLocalValue(isMixed ? "" : isAuto ? "Auto" : formatNumber(parsed.num));
     }
-  }, [parsed.num, isAuto, isFocused, isDragging]);
+  }, [parsed.num, isAuto, isMixed, isFocused, isDragging]);
 
   // Close popover on outside click / Escape
   useEffect(() => {
@@ -76,6 +82,10 @@ export const UnitInput: React.FC<UnitInputProps> = ({
 
   const commitValue = useCallback(() => {
     const trimmed = localValue.trim();
+    if (!trimmed && isMixed) {
+      // Nothing typed over a Mixed field — keep the selection's values
+      return;
+    }
     if (!trimmed || /^auto$/i.test(trimmed)) {
       onChange("auto");
       setLocalValue("Auto");
@@ -90,14 +100,15 @@ export const UnitInput: React.FC<UnitInputProps> = ({
       evaluated !== null ? evaluated : looksLikeMath ? NaN : parseFloat(trimmed);
     if (isNaN(num)) {
       // revert
-      setLocalValue(isAuto ? "Auto" : formatNumber(parsed.num));
+      setLocalValue(isMixed ? "" : isAuto ? "Auto" : formatNumber(parsed.num));
       return;
     }
-    // Typing a number when currently auto transitions to px; otherwise keep the current unit.
-    const nextUnit = isAuto ? "px" : parsed.unit;
+    // Typing a number when currently auto or mixed transitions to px;
+    // otherwise keep the current unit.
+    const nextUnit = isAuto || isMixed ? "px" : parsed.unit;
     onChange(`${num}${nextUnit}`);
     setLocalValue(formatNumber(num));
-  }, [localValue, isAuto, parsed.num, parsed.unit, onChange]);
+  }, [localValue, isAuto, isMixed, parsed.num, parsed.unit, onChange]);
 
   const handleInputFocus = useCallback(() => {
     setIsFocused(true);
@@ -119,10 +130,10 @@ export const UnitInput: React.FC<UnitInputProps> = ({
       if (e.key === "Enter") {
         (e.target as HTMLInputElement).blur();
       } else if (e.key === "Escape") {
-        setLocalValue(isAuto ? "Auto" : formatNumber(parsed.num));
+        setLocalValue(isMixed ? "" : isAuto ? "Auto" : formatNumber(parsed.num));
         (e.target as HTMLInputElement).blur();
       } else if (e.key === "ArrowUp" || e.key === "ArrowDown") {
-        if (isAuto) return;
+        if (isAuto || isMixed) return;
         e.preventDefault();
         const base = parsed.unit === "rem" || parsed.unit === "em" ? 0.125 : 1;
         const step = e.shiftKey ? base * 10 : base;
@@ -131,12 +142,12 @@ export const UnitInput: React.FC<UnitInputProps> = ({
         onChange(`${next}${parsed.unit}`);
       }
     },
-    [isAuto, parsed.num, parsed.unit, onChange]
+    [isAuto, isMixed, parsed.num, parsed.unit, onChange]
   );
 
   const handleLabelMouseDown = useCallback(
     (e: React.MouseEvent) => {
-      if (isAuto) return;
+      if (isAuto || isMixed) return;
       e.preventDefault();
       setIsDragging(true);
       const step = parsed.unit === "rem" || parsed.unit === "em" ? 0.125 : 1;
@@ -191,6 +202,7 @@ export const UnitInput: React.FC<UnitInputProps> = ({
         className={`pd-unit-input__input${isAuto && !isFocused ? " pd-unit-input__input--auto" : ""}`}
         type="text"
         value={localValue}
+        placeholder={isMixed ? "Mixed" : undefined}
         onChange={handleInputChange}
         onFocus={handleInputFocus}
         onBlur={handleInputBlur}

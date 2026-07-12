@@ -26,7 +26,10 @@ export const NumberInput: React.FC<NumberInputProps> = ({
   className,
   suggestions,
 }) => {
-  const [localValue, setLocalValue] = useState(String(value));
+  // NaN means the multi-selection disagrees on this property — render the
+  // Figma-style "Mixed" placeholder; committing a number applies to all.
+  const isMixed = Number.isNaN(value);
+  const [localValue, setLocalValue] = useState(isMixed ? "" : String(value));
   const [isDragging, setIsDragging] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
@@ -36,9 +39,9 @@ export const NumberInput: React.FC<NumberInputProps> = ({
 
   useEffect(() => {
     if (!isDragging && document.activeElement !== inputRef.current) {
-      setLocalValue(String(value));
+      setLocalValue(isMixed ? "" : String(value));
     }
-  }, [value, isDragging]);
+  }, [value, isDragging, isMixed]);
 
   // Reset active highlight whenever the typed value or focus changes
   useEffect(() => {
@@ -84,9 +87,9 @@ export const NumberInput: React.FC<NumberInputProps> = ({
       onChange(clamped);
       setLocalValue(String(clamped));
     } else {
-      setLocalValue(String(value));
+      setLocalValue(isMixed ? "" : String(value));
     }
-  }, [localValue, clamp, onChange, value]);
+  }, [localValue, clamp, onChange, value, isMixed]);
 
   const applySuggestion = useCallback(
     (v: number) => {
@@ -157,10 +160,10 @@ export const NumberInput: React.FC<NumberInputProps> = ({
         (e.target as HTMLInputElement).blur();
       } else if (e.key === "ArrowUp") {
         e.preventDefault();
-        onChange(clamp(value + step * (e.shiftKey ? 10 : 1)));
+        if (!isMixed) onChange(clamp(value + step * (e.shiftKey ? 10 : 1)));
       } else if (e.key === "ArrowDown") {
         e.preventDefault();
-        onChange(clamp(value - step * (e.shiftKey ? 10 : 1)));
+        if (!isMixed) onChange(clamp(value - step * (e.shiftKey ? 10 : 1)));
       }
     },
     [showDropdown, filtered, activeIndex, applySuggestion, value, step, clamp, onChange]
@@ -168,6 +171,7 @@ export const NumberInput: React.FC<NumberInputProps> = ({
 
   const handleLabelMouseDown = useCallback(
     (e: React.MouseEvent) => {
+      if (isMixed) return;
       e.preventDefault();
       setIsDragging(true);
       dragRef.current = { startX: e.clientX, startValue: value };
@@ -189,7 +193,7 @@ export const NumberInput: React.FC<NumberInputProps> = ({
       window.addEventListener("mousemove", handleMouseMove);
       window.addEventListener("mouseup", handleMouseUp);
     },
-    [value, step, clamp, onChange]
+    [value, step, clamp, onChange, isMixed]
   );
 
   return (
@@ -207,6 +211,7 @@ export const NumberInput: React.FC<NumberInputProps> = ({
         className="pd-number-input__input"
         type="text"
         value={localValue}
+        placeholder={isMixed ? "Mixed" : undefined}
         onChange={handleInputChange}
         onFocus={handleInputFocus}
         onBlur={handleInputBlur}

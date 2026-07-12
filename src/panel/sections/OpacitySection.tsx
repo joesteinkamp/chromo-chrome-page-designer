@@ -12,6 +12,7 @@ const BLEND_MODE_OPTIONS = [
   { value: "color-burn", label: "Color burn" },
   { value: "lighten", label: "Lighten" },
   { value: "screen", label: "Screen" },
+  { value: "plus-lighter", label: "Plus lighter" },
   { value: "color-dodge", label: "Color dodge" },
   { value: "overlay", label: "Overlay" },
   { value: "soft-light", label: "Soft light" },
@@ -64,7 +65,7 @@ export const OpacitySection: React.FC<OpacitySectionProps> = ({
         className="pd-section__header"
         onClick={() => setCollapsed((c) => !c)}
       >
-        <span className="pd-section__title">Opacity</span>
+        <span className="pd-section__title">Appearance</span>
         {collapsed && !hasValue ? (
           <button className="pd-section__plus-btn" onClick={(e) => { e.stopPropagation(); setCollapsed(false); }} type="button"><PlusIcon size={12} /></button>
         ) : (

@@ -13,9 +13,24 @@ function parseBlurFromFilter(filter: string): number {
   // NaN = multi-selection "Mixed" — NumberInput renders the placeholder
   if (isMixedValue(filter)) return NaN;
   if (!filter || filter === "none") return 0;
-  const match = filter.match(/blur\(\s*([\d.]+)px\s*\)/);
+  const match = filter.match(/(?:^|\s)blur\(\s*([\d.]+)px\s*\)/);
   if (match) return parseFloat(match[1]);
   return 0;
+}
+
+/**
+ * Replace only the blur() term in a filter list, preserving everything else
+ * (glassmorphism backdrops are commonly "blur(...) saturate(...)" — a slider
+ * tick must not destroy the saturate).
+ */
+function withBlur(existing: string, px: number): string {
+  const base =
+    !existing || existing === "none" || isMixedValue(existing)
+      ? ""
+      : existing.replace(/(?:^|\s)blur\(\s*[\d.]+px\s*\)/, "").trim();
+  const blurTerm = px > 0 ? `blur(${px}px)` : "";
+  const combined = [blurTerm, base].filter(Boolean).join(" ").trim();
+  return combined || "none";
 }
 
 export const BlurSection: React.FC<BlurSectionProps> = ({
@@ -37,16 +52,19 @@ export const BlurSection: React.FC<BlurSectionProps> = ({
 
   const handleChange = useCallback(
     (v: number) => {
-      onStyleChange("filter", v > 0 ? `blur(${v}px)` : "none");
+      onStyleChange("filter", withBlur(computedStyles["filter"] || "none", v));
     },
-    [onStyleChange]
+    [onStyleChange, computedStyles]
   );
 
   const handleBackdropChange = useCallback(
     (v: number) => {
-      onStyleChange("backdrop-filter", v > 0 ? `blur(${v}px)` : "none");
+      onStyleChange(
+        "backdrop-filter",
+        withBlur(computedStyles["backdrop-filter"] || "none", v)
+      );
     },
-    [onStyleChange]
+    [onStyleChange, computedStyles]
   );
 
   return (
@@ -82,7 +100,7 @@ export const BlurSection: React.FC<BlurSectionProps> = ({
               min={0}
               max={50}
               step={1}
-              label="Backdrop"
+              label="Background"
               suffix="px"
             />
           </div>

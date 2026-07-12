@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { DiamondIcon, UndoIcon, RedoIcon, LayersIcon, ResponsiveIcon } from "./icons";
 import { useElementData } from "./hooks/useElementData";
-import { useStyleChange } from "./hooks/useStyleChange";
+import { useStyleChange, useStyleBatch } from "./hooks/useStyleChange";
 import { ElementInfo } from "./components/ElementInfo";
 import { DesignTab } from "./components/DesignTab";
 import { ChangesTab } from "./components/ChangesTab";
@@ -30,6 +30,7 @@ export interface ArchivedSend {
 export function App() {
   const { elementData, isConnected, setElementData, multiSelectCount } = useElementData();
   const sendStyleChange = useStyleChange();
+  const sendStyleBatch = useStyleBatch();
   const sendRemoveAutoLayout = useCallback(() => {
     chrome.runtime.sendMessage({ type: "REMOVE_AUTO_LAYOUT" } satisfies Message);
   }, []);
@@ -570,6 +571,7 @@ export function App() {
                   <DesignTab
                     data={elementData}
                     onStyleChange={sendStyleChange}
+                    onStyleBatch={sendStyleBatch}
                     onRemoveLayout={sendRemoveAutoLayout}
                   />
                 ) : (

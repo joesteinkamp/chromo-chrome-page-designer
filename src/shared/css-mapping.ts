@@ -62,7 +62,7 @@ export const FIGMA_LABELS: Record<string, string> = {
   Opacity: "opacity",
   Shadow: "box-shadow",
   Blur: "filter",
-  "Backdrop blur": "backdrop-filter",
+  "Background blur": "backdrop-filter",
   "Blend mode": "mix-blend-mode",
   Italic: "font-style",
   "Aspect ratio": "aspect-ratio",

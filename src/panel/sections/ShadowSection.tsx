@@ -68,12 +68,27 @@ function parseSingleShadow(raw: string): ShadowValues {
     working = working.slice(5).trim();
   }
 
-  // Extract color — could be at the start or end
+  // Extract color — could be at the start or end. Computed values are
+  // usually rgb()/rgba(), but wide-gamut colors survive as color()/lab()/
+  // oklch() etc; extract any functional color with balanced parens so its
+  // numbers never leak into the offset/blur parsing.
   let colorStr = "";
-  const rgbaMatch = working.match(/rgba?\([^)]+\)/);
-  if (rgbaMatch) {
-    colorStr = rgbaMatch[0];
-    working = working.replace(colorStr, "").trim();
+  const fnMatch = /(?:rgba?|hsla?|color-mix|color|lab|lch|oklab|oklch)\(/i.exec(working);
+  if (fnMatch) {
+    let depth = 0;
+    let end = fnMatch.index;
+    for (let i = fnMatch.index; i < working.length; i++) {
+      if (working[i] === "(") depth++;
+      else if (working[i] === ")") {
+        depth--;
+        if (depth === 0) {
+          end = i + 1;
+          break;
+        }
+      }
+    }
+    colorStr = working.slice(fnMatch.index, end);
+    working = (working.slice(0, fnMatch.index) + working.slice(end)).trim();
   } else {
     const hexMatch = working.match(/#[0-9a-fA-F]{3,8}/);
     if (hexMatch) {
@@ -132,8 +147,22 @@ export const ShadowSection: React.FC<ShadowSectionProps> = ({
     [rawShadow]
   );
 
+  // Compose edits from the last EMITTED list, not the last-received prop —
+  // a blur-commit followed immediately by a click on another row's control
+  // would otherwise rebuild the list from stale data and revert the commit.
+  // The prop catches up after the content-script round trip, clearing this.
+  const pendingRef = React.useRef<ShadowValues[] | null>(null);
+  useEffect(() => {
+    pendingRef.current = null;
+  }, [rawShadow]);
+  const currentShadows = useCallback(
+    () => pendingRef.current ?? shadows,
+    [shadows]
+  );
+
   const emit = useCallback(
     (list: ShadowValues[]) => {
+      pendingRef.current = list;
       onStyleChange(
         "box-shadow",
         list.length > 0 ? list.map(composeShadow).join(", ") : "none"
@@ -144,27 +173,22 @@ export const ShadowSection: React.FC<ShadowSectionProps> = ({
 
   const updateAt = useCallback(
     (index: number, patch: Partial<ShadowValues>) => {
-      emit(shadows.map((s, i) => (i === index ? { ...s, ...patch } : s)));
+      emit(currentShadows().map((s, i) => (i === index ? { ...s, ...patch } : s)));
     },
-    [shadows, emit]
+    [currentShadows, emit]
   );
 
   const removeAt = useCallback(
     (index: number) => {
-      emit(shadows.filter((_, i) => i !== index));
+      emit(currentShadows().filter((_, i) => i !== index));
     },
-    [shadows, emit]
+    [currentShadows, emit]
   );
 
   const addShadow = useCallback(() => {
-    emit([...shadows, { ...DEFAULT_SHADOW }]);
+    emit([...currentShadows(), { ...DEFAULT_SHADOW }]);
     setCollapsed(false);
-  }, [shadows, emit]);
-
-  const handleRemoveAll = useCallback(
-    () => onStyleChange("box-shadow", "none"),
-    [onStyleChange]
-  );
+  }, [currentShadows, emit]);
 
   return (
     <div className={`pd-section${sectionDisabled ? " pd-section--disabled" : ""}`}>
@@ -178,9 +202,6 @@ export const ShadowSection: React.FC<ShadowSectionProps> = ({
         ) : (
           <div className="pd-section__header-actions">
             <button className="pd-section__plus-btn" onClick={(e) => { e.stopPropagation(); addShadow(); }} type="button" title="Add shadow"><PlusIcon size={12} /></button>
-            {hasValue && (
-              <button className="pd-section__minus-btn" onClick={(e) => { e.stopPropagation(); handleRemoveAll(); }} type="button" title="Remove all shadows"><MinusIcon size={12} /></button>
-            )}
             <span className={`pd-section__arrow${collapsed ? " pd-section__arrow--collapsed" : ""}`}><ChevronDown size={12} /></span>
           </div>
         )}
@@ -197,7 +218,9 @@ export const ShadowSection: React.FC<ShadowSectionProps> = ({
             </button>
           )}
           {shadows.map((shadow, i) => (
-            <div className="pd-shadow__item" key={i}>
+            // Length in the key remounts rows on add/remove, so an open
+            // color popover can't end up editing a shifted neighbor's layer.
+            <div className="pd-shadow__item" key={`${shadows.length}-${i}`}>
               <div className="pd-section__row">
                 <ColorPicker
                   value={shadow.color}

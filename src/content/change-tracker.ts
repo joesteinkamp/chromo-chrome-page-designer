@@ -643,7 +643,8 @@ function applyUndo(change: Change): boolean {
     }
 
     case "hide": {
-      if (!element || !(element instanceof HTMLElement)) return false;
+      // SVG elements can be hidden too (layers-pane eye) — both have .style
+      if (!element || !(element instanceof HTMLElement || element instanceof SVGElement)) return false;
       if (change.previousDisplay && change.previousDisplay !== "none") {
         element.style.setProperty("display", change.previousDisplay, "important");
       } else {
@@ -759,7 +760,7 @@ function applyRedo(change: Change): boolean {
     }
 
     case "hide": {
-      if (!element || !(element instanceof HTMLElement)) return false;
+      if (!element || !(element instanceof HTMLElement || element instanceof SVGElement)) return false;
       element.style.setProperty("display", "none", "important");
       return true;
     }

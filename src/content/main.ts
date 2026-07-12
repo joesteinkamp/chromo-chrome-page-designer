@@ -202,59 +202,31 @@ chrome.runtime.onMessage.addListener(
       case "APPLY_STYLE": {
         const el = getSelectedElement();
         if (el && (el instanceof HTMLElement || el instanceof SVGElement)) {
-          const computed = window.getComputedStyle(el);
-          const oldValue = computed.getPropertyValue(message.property);
-
-          // Determine if this is a multi-element operation
-          const multiEls = getMultiSelectedElements();
-          const matches = multiEditEnabled ? findMatchingElements(el) : [];
-          const hasMultiple = multiEls.length > 0 || matches.length > 0;
-
-          // Start batch if applying to multiple elements
+          // Batch only when several ELEMENTS receive the write — a batched
+          // single-element change would defeat the tracker's coalescing of
+          // repeated slider ticks.
+          const hasMultiple =
+            getMultiSelectedElements().length > 0 ||
+            (multiEditEnabled && findMatchingElements(el).length > 0);
           if (hasMultiple) startBatch();
-
-          // Apply to primary element
-          applyStyleToElement(el, message.property, message.value);
-          if (oldValue !== message.value) {
-            recordStyleChange(el, message.property, oldValue, message.value);
-          }
-
-          // Apply to all matching elements if multi-edit is on
-          for (const match of matches) {
-            if (match instanceof HTMLElement || match instanceof SVGElement) {
-              const mc = window.getComputedStyle(match);
-              const mv = mc.getPropertyValue(message.property);
-              applyStyleToElement(match, message.property, message.value);
-              if (mv !== message.value) {
-                recordStyleChange(match, message.property, mv, message.value);
-              }
-            }
-          }
-          if (matches.length > 0) updateMultiEditOverlays(matches);
-
-          // Apply to multi-selected elements too
-          for (const multiEl of multiEls) {
-            if (multiEl !== el && (multiEl instanceof HTMLElement || multiEl instanceof SVGElement)) {
-              const mc = window.getComputedStyle(multiEl);
-              const mv = mc.getPropertyValue(message.property);
-              applyStyleToElement(multiEl, message.property, message.value);
-              if (mv !== message.value) {
-                recordStyleChange(multiEl, message.property, mv, message.value);
-              }
-            }
-          }
-
+          applyPropertyToSelection(el, message.property, message.value);
           if (hasMultiple) endBatch();
 
-          refreshSelection();
+          finishStyleApplication(el);
+        }
+        break;
+      }
 
-          // Visual flash feedback (force reflow between class toggles)
-          el.classList.remove("__pd-flash");
-          void el.getBoundingClientRect();
-          el.classList.add("__pd-flash");
-          setTimeout(() => el.classList.remove("__pd-flash"), 400);
-
-          sendElementData(el);
+      case "APPLY_STYLES": {
+        // Several properties as ONE undoable batch (aspect-locked W+H, etc.)
+        const el = getSelectedElement();
+        if (el && (el instanceof HTMLElement || el instanceof SVGElement)) {
+          startBatch();
+          for (const { property, value } of message.changes) {
+            applyPropertyToSelection(el, property, value);
+          }
+          endBatch();
+          finishStyleApplication(el);
         }
         break;
       }
@@ -769,6 +741,63 @@ function onElementMouseDown(
     const sel = getSelectedElement();
     if (sel) sendElementData(sel);
   });
+}
+
+// --- Style application ---
+
+/** Apply one property to the primary element plus the multi-selection and
+ *  (when multi-edit is on) all matching instances, recording each change.
+ *  Batching decisions belong to the caller. */
+function applyPropertyToSelection(
+  el: HTMLElement | SVGElement,
+  property: string,
+  value: string
+): void {
+  const computed = window.getComputedStyle(el);
+  const oldValue = computed.getPropertyValue(property);
+
+  applyStyleToElement(el, property, value);
+  if (oldValue !== value) {
+    recordStyleChange(el, property, oldValue, value);
+  }
+
+  const matches = multiEditEnabled ? findMatchingElements(el) : [];
+  for (const match of matches) {
+    if (match instanceof HTMLElement || match instanceof SVGElement) {
+      const mc = window.getComputedStyle(match);
+      const mv = mc.getPropertyValue(property);
+      applyStyleToElement(match, property, value);
+      if (mv !== value) {
+        recordStyleChange(match, property, mv, value);
+      }
+    }
+  }
+  if (matches.length > 0) updateMultiEditOverlays(matches);
+
+  for (const multiEl of getMultiSelectedElements()) {
+    if (multiEl !== el && (multiEl instanceof HTMLElement || multiEl instanceof SVGElement)) {
+      const mc = window.getComputedStyle(multiEl);
+      const mv = mc.getPropertyValue(property);
+      applyStyleToElement(multiEl, property, value);
+      if (mv !== value) {
+        recordStyleChange(multiEl, property, mv, value);
+      }
+    }
+  }
+}
+
+/** Shared tail of every panel-driven style write: refresh overlays, flash
+ *  the element, and send fresh element data back to the panel. */
+function finishStyleApplication(el: HTMLElement | SVGElement): void {
+  refreshSelection();
+
+  // Visual flash feedback (force reflow between class toggles)
+  el.classList.remove("__pd-flash");
+  void el.getBoundingClientRect();
+  el.classList.add("__pd-flash");
+  setTimeout(() => el.classList.remove("__pd-flash"), 400);
+
+  sendElementData(el);
 }
 
 // --- Right-click context menu ---

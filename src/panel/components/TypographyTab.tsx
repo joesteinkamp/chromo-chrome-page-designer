@@ -391,8 +391,8 @@ export function TypographyTab({ computedStyles, onStyleChange }: Props) {
             />
           </div>
 
-          {/* Alignment buttons — horizontal + vertical — and italic */}
-          <div className="pd-section__row pd-section__row--half">
+          {/* Italic — its own group so it doesn't read as a fourth alignment */}
+          <div className="pd-section__row">
             <div className="pd-typography__btn-group">
               <button
                 type="button"
@@ -400,8 +400,14 @@ export function TypographyTab({ computedStyles, onStyleChange }: Props) {
                 title="Italic"
                 onClick={handleItalicToggle}
               >
-                <span style={{ fontStyle: "italic", fontFamily: "Georgia, serif", fontSize: 13 }}>I</span>
+                <span style={{ fontStyle: "italic", fontSize: 12 }}>I</span>
               </button>
+            </div>
+          </div>
+
+          {/* Alignment buttons — horizontal + vertical */}
+          <div className="pd-section__row pd-section__row--half">
+            <div className="pd-typography__btn-group">
               {ALIGNMENT_OPTIONS.map((opt) => {
                 const Icon = opt.icon;
                 return (
